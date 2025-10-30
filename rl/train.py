@@ -9,9 +9,9 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 
 
 if __name__ == "__main__":
-sac_cfg = yaml.safe_load(open(os.path.join(ROOT, "configs", "sac.yaml")).read())
-veh_cfg = os.path.join(ROOT, "configs", "vehicle.yaml")
-cl_csv = os.path.join(ROOT, "assets", "track_centerline.csv")
+    sac_cfg = yaml.safe_load(open(os.path.join(ROOT, "configs", "sac.yaml")).read())
+    veh_cfg = os.path.join(ROOT, "configs", "vehicle.yaml")
+    cl_csv = os.path.join(ROOT, "assets", "track_centerline.csv")
 
 
 env = F1TenthSACEnv(vehicle_cfg=veh_cfg, track_centerline_csv=cl_csv)
