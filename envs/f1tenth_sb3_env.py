@@ -23,7 +23,6 @@ class F1TenthSACEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
     def __init__(self, vehicle_cfg, track_centerline_csv, render_mode=None, *args, **kwargs):
-        # Accept dict or path for vehicle_cfg
         if isinstance(vehicle_cfg, dict):
             cfg = vehicle_cfg
         else:
@@ -39,26 +38,22 @@ class F1TenthSACEnv(gym.Env):
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
 
         super().__init__()
-        # centerline: accept str/Path
         cl_path = Path(track_centerline_csv)
         if not cl_path.exists():
             raise FileNotFoundError(f"Centerline CSV not found at {cl_path}")
         self.centerline = np.loadtxt(cl_path, delimiter=",", ndmin=2)
 
-        # Observation = [v, a_long, delta, yaw_rate, e_head, e_lat, a_lat, 21 lidar mins]
         self.n_lidar = self.cfg["lidar"]["sectors"]
         self.obs_dim = 7 + self.n_lidar
 
         self.render_mode = render_mode
 
-        # Actions are normalized in [-1, 1]^2 then mapped to (v, δ)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32)
 
         self.mapper = ActionMapper(self.cfg)
         self.normalizer = StateNormalizer(self.cfg)
 
-        # ---- hook up the underlying f1tenth_gym here ----
         self.render_mode = render_mode
         self._api = None
         self._dt = 1.0 / 30.0  # sane default; will try to infer if the sim exposes it
@@ -69,13 +64,11 @@ class F1TenthSACEnv(gym.Env):
         if not map_dir.exists():
           raise FileNotFoundError(f"Map directory not found: {map_dir}")
 
-        # Build full path to map WITHOUT extension - F110Env will add .yaml and .png
         map_path_no_ext = map_dir / map_name
         map_yaml_check = map_dir / f"{map_name}.yaml"
         if not map_yaml_check.exists():
             raise FileNotFoundError(f"Map file not found: {map_yaml_check}")
 
-        # Preferred: direct class import (works regardless of Gym vs Gymnasium registry)
         self.sim = None
         try:
             from f110_gym.envs import F110Env  # type: ignore
@@ -85,7 +78,6 @@ class F1TenthSACEnv(gym.Env):
             raise RuntimeError("Could not create F110 sim. Check map_dir/map_name and f1tenth_gym install.") from e
 
 
-        # Try to learn dt if the sim exposes it (nice-to-have)
         for key in ("dt", "_dt", "time_step", "timestep"):
             if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
                 val = float(getattr(self.sim, key))
@@ -93,7 +85,6 @@ class F1TenthSACEnv(gym.Env):
                     self._dt = val
                     break
 
-    # ------------- sim <-> wrapper glue helpers -------------
 
     def _pack_obs_dict(self, d):
         """

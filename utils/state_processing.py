@@ -2,7 +2,6 @@ import numpy as np
 from .geometry import project_to_centerline
 
 
-# Split ±105° into N sectors and take min distance per sector (after clipping & outlier removal)
 
 
 def lidar_to_sectors(scan, cfg):
@@ -15,7 +14,6 @@ def lidar_to_sectors(scan, cfg):
     scan = np.clip(scan, clip_min, clip_max)
 
 
-    # take the middle ±FOV and split into equal sectors
     fov = cfg["lidar"]["fov_deg"]
     n = scan.size
     mid = n // 2
@@ -30,7 +28,6 @@ def lidar_to_sectors(scan, cfg):
         if seg.size == 0:
             mins.append(clip_max)
             continue
-        # Drop extreme outliers (e.g., stray max returns)
         hi = np.quantile(seg, q)
         seg = seg[seg <= hi]
         mins.append(np.min(seg) if seg.size else clip_max)
@@ -40,24 +37,20 @@ def lidar_to_sectors(scan, cfg):
 
 
 def make_state(obs_raw, centerline, cfg):
-    # Required raw inputs from sim: pose(x,y,yaw), speed, steer, yaw_rate, a_long, a_lat, scan
     x, y, yaw = obs_raw["pose"]
-    v = float(obs_raw["speed"]) # forward speed
-    d = float(obs_raw["steer"]) # steering angle
+    v = float(obs_raw["speed"]) 
+    d = float(obs_raw["steer"]) 
     r = float(obs_raw.get("yaw_rate", 0.0))
     a_long = float(obs_raw.get("a_long", 0.0))
     a_lat = float(obs_raw.get("a_lat", 0.0))
 
 
-    # Centerline errors
     e_lat, e_head = project_to_centerline(np.array([x, y, yaw]), centerline)
 
 
-    # LiDAR → 21-mins
     lidar_mins = lidar_to_sectors(obs_raw["scan"], cfg)
 
 
-    # Final state vector (order fixed)
     state = np.concatenate([
     [v, a_long, d, r, e_head, e_lat, a_lat],
     lidar_mins,

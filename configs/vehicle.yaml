@@ -1,15 +1,14 @@
-v_max: 6.0            # m/s max speed used for normalization
-delta_max: 0.4189     # rad, ~24°
-a_long_max: 6.0       # m/s^2, adjust to your sim
-a_lat_max: 8.0        # m/s^2, adjust to your sim
-steer_max_deg: 24.0   # since 0.4189 rad ≈ 24°
-# Normalization references
-aref_long_g: 0.5   # 0.5 g reference longitudinal accel (≈4.9 m/s²)
-aref_lat_g: 0.8    # 0.8 g reference lateral accel (≈7.8 m/s²)
+v_max: 6.0            
+delta_max: 0.4189     
+a_long_max: 6.0       
+a_lat_max: 8.0        
+steer_max_deg: 24.0   
+aref_long_g: 0.5   
+aref_lat_g: 0.8    
 
 lidar:
-  sectors: 20          # number of lidar sectors your state builder expects
-  fov_deg: 270         # total lidar field of view
+  sectors: 20          
+  fov_deg: 270         
   max_range_m: 10.0
   clip_max_m: 10.0   
   clip_min_m: 0.05   
