@@ -27,13 +27,13 @@ def lidar_to_sectors(scan, cfg):
     mins = []
     q = cfg["lidar"].get("outlier_quantile", 0.995)
     for seg in splits:
-    if seg.size == 0:
-    mins.append(clip_max)
-    continue
-    # Drop extreme outliers (e.g., stray max returns)
-    hi = np.quantile(seg, q)
-    seg = seg[seg <= hi]
-    mins.append(np.min(seg) if seg.size else clip_max)
+        if seg.size == 0:
+            mins.append(clip_max)
+            continue
+        # Drop extreme outliers (e.g., stray max returns)
+        hi = np.quantile(seg, q)
+        seg = seg[seg <= hi]
+        mins.append(np.min(seg) if seg.size else clip_max)
     return np.asarray(mins, dtype=float)
 
 
@@ -67,7 +67,7 @@ def make_state(obs_raw, centerline, cfg):
 
 
 
-def make_info(obs_raw):
+def make_info(obs_raw, centerline=None):
     return {
     "crash": bool(obs_raw.get("crash", False))
     }

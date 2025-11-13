@@ -1,0 +1,34 @@
+v_max: 6.0            # m/s max speed used for normalization
+delta_max: 0.4189     # rad, ~24°
+a_long_max: 6.0       # m/s^2, adjust to your sim
+a_lat_max: 8.0        # m/s^2, adjust to your sim
+steer_max_deg: 24.0   # since 0.4189 rad ≈ 24°
+# Normalization references
+aref_long_g: 0.5   # 0.5 g reference longitudinal accel (≈4.9 m/s²)
+aref_lat_g: 0.8    # 0.8 g reference lateral accel (≈7.8 m/s²)
+
+lidar:
+  sectors: 20          # number of lidar sectors your state builder expects
+  fov_deg: 270         # total lidar field of view
+  max_range_m: 10.0
+  clip_max_m: 10.0   
+  clip_min_m: 0.05   
+sim:
+  map_name: vegas
+  map_dir: "/Users/niki/Documents/GitHub/f1tenth_gym/gym/f110_gym/envs/maps"
+
+vehicle:
+  wheelbase_m: 0.33
+  max_steer_rad: 0.4189
+  max_speed_mps: 6.0
+  min_speed_mps: 0.0
+  
+
+reward:
+  progress_gain: 1.0
+  collision_penalty: -10.0
+  offtrack_penalty: -5.0
+
+env:
+  dt: 0.05
+  episode_max_steps: 2000

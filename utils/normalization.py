@@ -24,3 +24,7 @@ class StateNormalizer:
         s[6] = s[6] / max(1e-6, self.a_lat_ref) # a_lat
         s[7:] = s[7:] / self.lidar_max # lidar mins
         return s
+
+    def normalize(self, state):
+        """Alias for __call__ to support both calling conventions."""
+        return self(state)

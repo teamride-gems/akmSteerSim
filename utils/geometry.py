@@ -1,7 +1,5 @@
 import numpy as np
-from .geometry import project_to_centerline
-
-
+from typing import Tuple
 # Split ±105° into N sectors and take min distance per sector (after clipping & outlier removal)
 
 
@@ -27,15 +25,70 @@ def lidar_to_sectors(scan, cfg):
     mins = []
     q = cfg["lidar"].get("outlier_quantile", 0.995)
     for seg in splits:
-    if seg.size == 0:
-    mins.append(clip_max)
-    continue
+        if seg.size == 0:
+            mins.append(clip_max)
+            continue
     # Drop extreme outliers (e.g., stray max returns)
     hi = np.quantile(seg, q)
     seg = seg[seg <= hi]
     mins.append(np.min(seg) if seg.size else clip_max)
     return np.asarray(mins, dtype=float)
 
+
+def project_to_centerline(pose: np.ndarray, centerline: np.ndarray) -> Tuple[float, float]:
+    """
+    Project a pose (x, y, yaw) onto a polyline centerline.
+    
+    Args:
+        pose: [x, y, yaw] where yaw is the heading in radians
+        centerline: Nx2 array of (x, y) points forming the track centerline
+    
+    Returns:
+        e_lat: lateral error (positive = right of centerline)
+        e_head: heading error in radians (positive = turning right relative to track)
+    """
+    x, y, yaw = pose
+    
+    # Find closest point on centerline
+    dists = np.sqrt((centerline[:, 0] - x)**2 + (centerline[:, 1] - y)**2)
+    idx = np.argmin(dists)
+    
+    # Get two points to define centerline segment direction
+    if idx < len(centerline) - 1:
+        p1 = centerline[idx]
+        p2 = centerline[idx + 1]
+    elif idx > 0:
+        p1 = centerline[idx - 1]
+        p2 = centerline[idx]
+    else:
+        # Single point centerline - can't compute heading
+        e_lat = dists[idx]
+        e_head = 0.0
+        return e_lat, e_head
+    
+    # Centerline segment direction
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    track_heading = np.arctan2(dy, dx)
+    
+    # Lateral error: perpendicular distance to segment
+    # Using cross product for signed distance
+    v_to_point = np.array([x - p1[0], y - p1[1]])
+    v_segment = np.array([dx, dy])
+    segment_length = np.sqrt(dx**2 + dy**2)
+    
+    if segment_length > 1e-6:
+        # Signed lateral error (positive = right of centerline)
+        e_lat = np.cross(v_segment, v_to_point) / segment_length
+    else:
+        e_lat = dists[idx]
+    
+    # Heading error: difference between vehicle heading and track heading
+    e_head = yaw - track_heading
+    # Normalize to [-pi, pi]
+    e_head = (e_head + np.pi) % (2 * np.pi) - np.pi
+    
+    return float(e_lat), float(e_head)
 
 
 
