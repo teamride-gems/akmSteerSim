@@ -1,0 +1,13 @@
+policy: "MlpPolicy"
+learning_rate: 0.0003
+batch_size: 256
+tau: 0.005
+gamma: 0.99
+seed: 42
+train_steps: 1000000
+save_every_steps: 10000
+eval_interval_steps: 5000
+ent_coef: "auto"
+
+policy_kwargs:
+  net_arch: [256, 256]

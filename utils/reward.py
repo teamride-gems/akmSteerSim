@@ -1,10 +1,8 @@
-#soley for reward function 
 
 import numpy as np
 from .geometry import project_to_centerline
 
 
-# r = v*cos(e_head) + λ_lat*(a_lat/aref_lat)^2 + λ_long*(a_long/aref_long)^2 + λ_time + λ_crash*(crash)
 
 
 def compute_reward(obs_raw, centerline, cfg):
@@ -17,7 +15,7 @@ def compute_reward(obs_raw, centerline, cfg):
     crash = bool(obs_raw.get("crash", False))
 
 
-    lam = cfg["lambda"]
+    lam = cfg.get("lambda", {"a_long": -0.1, "a_lat": -0.1, "time": -0.01, "crash": -10.0})
     aref_x = cfg["aref_long_g"] * 9.81
     aref_y = cfg["aref_lat_g"] * 9.81
 
@@ -30,11 +28,4 @@ def compute_reward(obs_raw, centerline, cfg):
 
 
     r = r_align + r_along + r_alat + r_time + r_crash
-    terms = {
-    "align": float(r_align),
-    "a_long": float(r_along),
-    "a_lat": float(r_alat),
-    "time": float(r_time),
-    "crash": float(crash),
-    }
-    return float(r), terms
+    return float(r)

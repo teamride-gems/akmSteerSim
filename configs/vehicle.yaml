@@ -1,0 +1,33 @@
+v_max: 6.0            
+delta_max: 0.4189     
+a_long_max: 6.0       
+a_lat_max: 8.0        
+steer_max_deg: 24.0   
+aref_long_g: 0.5   
+aref_lat_g: 0.8    
+
+lidar:
+  sectors: 20          
+  fov_deg: 270         
+  max_range_m: 10.0
+  clip_max_m: 10.0   
+  clip_min_m: 0.05   
+sim:
+  map_name: vegas
+  map_dir: "/Users/niki/Documents/GitHub/f1tenth_gym/gym/f110_gym/envs/maps"
+
+vehicle:
+  wheelbase_m: 0.33
+  max_steer_rad: 0.4189
+  max_speed_mps: 6.0
+  min_speed_mps: 0.0
+  
+
+reward:
+  progress_gain: 1.0
+  collision_penalty: -10.0
+  offtrack_penalty: -5.0
+
+env:
+  dt: 0.05
+  episode_max_steps: 2000
