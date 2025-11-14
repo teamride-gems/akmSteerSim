@@ -1,186 +1,163 @@
 import gymnasium as gym
+import gym as legacy_gym  # used only for the F110Env
 from gymnasium import spaces
 import numpy as np
 from pathlib import Path
 import yaml
-
-from utils.state_processing import make_state, make_info, lidar_to_sectors
+import gym as legacy_gym
+import f110_gym 
+from utils.state_processing import make_state, make_info
 from utils.reward import compute_reward
 from utils.normalization import StateNormalizer
-from drivers.driver_spec import ActionMapper
+from drivers.driver1 import ActionMapper
 
 
 class F1TenthSACEnv(gym.Env):
-    """
-    Gymnasium wrapper that:
-      - Spawns the f1tenth/f110 simulator (class import preferred; falls back to gym ID)
-      - Maps normalized actions in [-1,1]^2 -> (v, δ) then to sim's expected order ([δ, v] for F110)
-      - Builds your state vector: [v, a_long, δ, yaw_rate, e_head, e_lat, a_lat, lidar(21 mins)]
-      - Computes reward r = v*cos(e_head) + penalties (a_long^2, a_lat^2, time) + crash penalty
-    """
-    metadata = {"render_modes": ["human"], "render_fps": 30}
-
-    def __init__(self, vehicle_cfg: str, track_centerline_csv: str, render_mode=None):
+    def __init__(
+        self,
+        vehicle_cfg: str = "configs/vehicle.yaml",
+        track_centerline_csv: str = "tracks/test-track-1/YasMarina_centerline.csv",
+        map_yaml: str = "tracks/test-track-1/YasMarina_map.yaml",
+        render_mode=None,
+    ):
         super().__init__()
-        self.cfg = yaml.safe_load(Path(vehicle_cfg).read_text())
-        self.centerline = np.loadtxt(track_centerline_csv, delimiter=",", ndmin=2)
+        self.cfg_path = Path(vehicle_cfg)
+        self.centerline_path = Path(track_centerline_csv)
+        self.map_yaml_path = Path(map_yaml)
 
-        # Observation = [v, a_long, delta, yaw_rate, e_head, e_lat, a_lat, 21 lidar mins]
+        self.cfg = yaml.safe_load(self.cfg_path.read_text())
+        self.centerline = np.loadtxt(self.centerline_path, delimiter=",", ndmin=2)
+
+        # Observation = [7 core state vars + N lidar sectors]
         self.n_lidar = self.cfg["lidar"]["sectors"]
         self.obs_dim = 7 + self.n_lidar
 
-        # Actions are normalized in [-1, 1]^2 then mapped to (v, δ)
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=-1.0, high=1.0, shape=(2,), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32
+        )
 
         self.mapper = ActionMapper(self.cfg)
         self.normalizer = StateNormalizer(self.cfg)
 
-        # ---- hook up the underlying f1tenth_gym here ----
+        # ---- create the underlying F110Env (from f110-gym) ----
+        # Use the *base* path (no extension); f110-gym will append ".png"
+        map_base = self.map_yaml_path.with_suffix("")  # drops ".yaml" -> "…/YasMarina_map"
+
+        self.sim = legacy_gym.make(
+            "f110-v0",
+            map=str(map_base),
+            map_ext=".png",
+            num_agents=1,
+        )
+
+        # Default starting pose: (x, y, yaw)
+        self._start_poses = np.array([[0.0, 0.0, 0.0]], dtype=np.float64)
+
         self.render_mode = render_mode
-        self._api = None
-        self._dt = 1.0 / 30.0  # sane default; will try to infer if the sim exposes it
-        self._last_for_rates = None  # store last (t, x, y, yaw, v) to finite-diff rates
+        self.t = 0
 
-        # Preferred: direct class import (works regardless of Gym vs Gymnasium registry)
-        self.sim = None
-        try:
-            from f110_gym.envs import F110Env  # type: ignore
-            # Common kwargs; tweak if your fork needs different names
-            self.sim = F110Env(map="columbia_simple", num_agents=1)
-            self._api = "class"
-        except Exception:
-            # Fallback: use the registered ID (this is registered under classic gym)
-            try:
-                import gym as gym_legacy  # classic gym, not gymnasium
-                self.sim = gym_legacy.make("f110-v0")
-                self._api = "id"
-            except Exception as e:
-                raise RuntimeError(
-                    "Could not create F110 sim via class or env ID. "
-                    "Check that f1tenth_gym is installed (pip install -e ./f1tenth_gym) "
-                    "and that 'f110_gym' is importable."
-                ) from e
+        self._last_v = 0.0
+        self._last_yaw_rate = 0.0
 
-        # Try to learn dt if the sim exposes it (nice-to-have)
-        for key in ("dt", "_dt", "time_step", "timestep"):
-            if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
-                val = float(getattr(self.sim, key))
-                if val > 0:
-                    self._dt = val
-                    break
 
-    # ------------- sim <-> wrapper glue helpers -------------
 
-    def _pack_obs_dict(self, d):
+    # ---------- helpers to convert F110Env obs -> our obs_raw ----------
+
+    def _obs_to_raw(self, obs_dict):
         """
-        Convert a heterogeneous dict from various F110 forks to a unified raw-obs dict
-        our pipeline expects. Missing signals are filled later via finite differences.
+        F110Env obs is a dict with batched values (num_agents, ...).
+        We pull out ego index 0 and put into our obs_raw format.
         """
-        # pose
-        if "pose" in d and len(np.asarray(d["pose"]).ravel()) >= 3:
-            pose = np.asarray(d["pose"], dtype=float).ravel()
-            x, y, yaw = float(pose[0]), float(pose[1]), float(pose[2])
-        else:
-            x = float(d.get("x", 0.0))
-            y = float(d.get("y", 0.0))
-            yaw = float(d.get("yaw", d.get("theta", 0.0)))
+        # index of “our” car
+        idx = 0
 
-        # speed & steer
-        v = float(d.get("speed", d.get("v", 0.0)))
-        steer = float(d.get("steer", d.get("delta", 0.0)))
+        # lidar scan: shape (num_agents, num_beams)
+        scan = np.asarray(obs_dict["scans"][idx], dtype=float)
 
-        # lidar
-        scan = d.get("scan", d.get("lidar", None))
-        if scan is None:
-            # some forks use 'ranges'
-            scan = d.get("ranges", np.ones(1080, dtype=float))
-        scan = np.asarray(scan, dtype=float).ravel()
+        x = float(obs_dict["poses_x"][idx])
+        y = float(obs_dict["poses_y"][idx])
+        yaw = float(obs_dict["poses_theta"][idx])
 
-        return {
+        # longitudinal velocity approx: x-velocity of ego
+        v = float(obs_dict["linear_vels_x"][idx])
+        yaw_rate = float(obs_dict["ang_vels_z"][idx])
+
+        # collisions is 0/1 per agent
+        crash = bool(obs_dict["collisions"][idx] > 0.5)
+
+        # we’re not computing true accel yet → 0 for now
+        a_long = 0.0
+        a_lat = 0.0
+
+        # steering is not directly given by F110Env; start with 0
+        steer = 0.0
+
+        obs_raw = {
             "pose": np.array([x, y, yaw], dtype=float),
             "speed": v,
             "scan": scan,
             "steer": steer,
-            "yaw_rate": float(d.get("yaw_rate", d.get("r", 0.0))),
-            "a_long": float(d.get("a_long", d.get("ax", 0.0))),
-            "a_lat": float(d.get("a_lat", d.get("ay", 0.0))),
-            "crash": bool(d.get("crash", d.get("done", False))),
+            "yaw_rate": yaw_rate,
+            "a_long": a_long,
+            "a_lat": a_lat,
+            "crash": crash,
         }
+        return obs_raw
 
-    def _extract_obs(self, sim_obs):
-        """
-        Handle common F110 observation shapes:
-          - dict with keys ('scan', 'x','y','theta'/'yaw', 'speed'/'v', 'delta'/'steer', ...)
-          - tuple/list where index 0 is a dict
-          - np.ndarray (rare): we only pull lidar from it and leave pose zeros
-        """
-        if isinstance(sim_obs, dict):
-            return self._pack_obs_dict(sim_obs)
+    # ------------------- Gymnasium API -------------------
 
-        if isinstance(sim_obs, (list, tuple)) and len(sim_obs) > 0 and isinstance(sim_obs[0], dict):
-            return self._pack_obs_dict(sim_obs[0])
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.t = 0
 
-        if isinstance(sim_obs, (list, tuple)) and len(sim_obs) > 0 and isinstance(sim_obs[0], (np.ndarray, list)):
-            # Heuristic: [scan, ...] with no pose — keep zeros for pose/speeds
-            scan = np.asarray(sim_obs[0], dtype=float).ravel()
-            return {
-                "pose": np.zeros(3, dtype=float),
-                "speed": 0.0,
-                "scan": scan,
-                "steer": 0.0,
-                "yaw_rate": 0.0,
-                "a_long": 0.0,
-                "a_lat": 0.0,
-                "crash": False,
-            }
+        # F110Env reset wants poses: (num_agents, 3)
+        res = self.sim.reset(self._start_poses.copy())
 
-        if isinstance(sim_obs, np.ndarray):
-            # Only lidar known
-            scan = np.asarray(sim_obs, dtype=float).ravel()
-            return {
-                "pose": np.zeros(3, dtype=float),
-                "speed": 0.0,
-                "scan": scan,
-                "steer": 0.0,
-                "yaw_rate": 0.0,
-                "a_long": 0.0,
-                "a_lat": 0.0,
-                "crash": False,
-            }
-
-        # Fallback: zeros
-        return {
-            "pose": np.zeros(3, dtype=float),
-            "speed": 0.0,
-            "scan": np.ones(1080, dtype=float),
-            "steer": 0.0,
-            "yaw_rate": 0.0,
-            "a_long": 0.0,
-            "a_lat": 0.0,
-            "crash": False,
-        }
-
-    def _finite_difference_kin(self, obs_raw):
-        """
-        Fill yaw_rate, a_long, a_lat from last state if missing or zero.
-        """
-        x, y, yaw = obs_raw["pose"]
-        v = obs_raw["speed"]
-        now = getattr(self.sim, "t", None)
-        t_now = float(now) if isinstance(now, (float, int)) else None
-
-        if self._last_for_rates is None:
-            self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
-            return obs_raw
-
-        t_prev = self._last_for_rates["t"]
-        if t_now is None or t_prev is None:
-            dt = self._dt
+        # Some versions return obs directly, others (obs, *stuff)
+        if isinstance(res, dict):
+            obs_sim = res
+        elif isinstance(res, tuple) or isinstance(res, list):
+            obs_sim = res[0]
         else:
-            dt = max(1e-3, float(t_now) - float(t_prev))
+            # Fallback: assume it's already an obs dict-like
+            obs_sim = res
 
-        dx = x - self._last_for_rates["x"]
-        dy = y - self._last_for_rates["y"]
-        dyaw = (yaw - self._last_for_rates["yaw"] + np.pi) % (2 * np.pi) - np.pi
-        dv = v - self._last_for_rates["v"]_
+        obs_raw = self._obs_to_raw(obs_sim)
+        state = make_state(obs_raw, self.centerline, self.cfg)
+        obs = self.normalizer(state)
+        info = make_info(obs_raw)
+        return obs.astype(np.float32), info
+
+
+
+    def step(self, action):
+        self.t += 1
+
+        # RL action -> (v_cmd, delta_cmd)
+        v_cmd, delta_cmd = self.mapper(action)
+
+        # F110Env expects shape (num_agents, 2) = [[steer, speed]]
+        act_sim = np.array([[delta_cmd, v_cmd]], dtype=np.float32)
+
+        obs_sim, _reward_native, done, info_sim = self.sim.step(act_sim)
+        obs_raw_next = self._obs_to_raw(obs_sim)
+
+        reward, terms = compute_reward(obs_raw_next, self.centerline, self.cfg)
+        obs = self.normalizer(
+            make_state(obs_raw_next, self.centerline, self.cfg)
+        ).astype(np.float32)
+
+        terminated = bool(done or terms.get("crash", False))
+        truncated = False
+        info = {"native_terms": terms, "sim_info": info_sim}
+        return obs, float(reward), terminated, truncated, info
+
+    def render(self):
+        # delegate to sim’s renderer
+        self.sim.render(mode="human")
+
+    def close(self):
+        self.sim.close()

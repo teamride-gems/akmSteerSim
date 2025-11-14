@@ -1,0 +1,29 @@
+wheelbase_m: 0.33
+
+# Speed limits (m/s)
+v_min: 0.0
+v_max: 6.0
+
+# Steering limits (deg)
+steer_min_deg: -28.0
+steer_max_deg:  28.0
+steer_rate_deg_s: 180.0   # optional rate limiting
+
+# Accel references for normalization (fractions of g)
+aref_long_g: 0.4
+aref_lat_g:  0.5
+
+# LiDAR processing
+lidar:
+  fov_deg: 210        # ±105°
+  sectors: 21
+  clip_min_m: 0.05
+  clip_max_m: 10.0
+  outlier_quantile: 0.995
+
+# Reward weights (λ’s). Negative for penalties.
+lambda:
+  crash: -50.0
+  a_long: -0.20
+  a_lat:  -0.15
+  time:   -0.001
