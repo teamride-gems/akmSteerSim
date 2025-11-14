@@ -1,0 +1,26 @@
+# Reinforcement Learning
+stable-baselines3==2.7.0
+tensorboard==2.20.0
+
+# Gymnasium & Gym compatibility
+gymnasium==1.2.1
+gym==0.26.2
+shimmy>=2.0.0
+
+# Simulation Physics
+numpy>=2.1.0
+scipy>=1.15.0
+numba>=0.61.0
+
+# F110 Gym Dependencies
+Pillow>=11.0.0
+pyyaml>=6.0.0
+pyglet<1.5
+pyopengl>=3.1.0
+
+# PyTorch 
+torch>=2.9.0
+
+# Utilities
+pandas>=2.2.0
+matplotlib>=3.10.0
