@@ -1,0 +1,3 @@
+[submodule "assets/f1tenth_racetracks"]
+	path = assets/f1tenth_racetracks
+	url = https://github.com/f1tenth/f1tenth_racetracks.git
