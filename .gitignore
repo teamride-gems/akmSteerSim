@@ -1,0 +1,70 @@
+############################
+# Python virtual environments
+############################
+.venv/
+.venv*/
+venv/
+env/
+f1tenth-env/
+__pypackages__/
+
+############################
+# Python cache / build junk
+############################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+############################
+# RL / ML artifacts (IMPORTANT)
+############################
+# Trained models & checkpoints
+checkpoints/
+*.zip
+
+# TensorBoard / training logs
+runs/
+tb_logs/
+logs/
+
+############################
+# Simulation / rendering junk
+############################
+*.log
+*.tmp
+*.bak
+
+############################
+# OS / editor noise
+############################
+.DS_Store
+Thumbs.db
+desktop.ini
+
+############################
+# VS Code / IDE
+############################
+.vscode/
+.idea/
+
+############################
+# Local config overrides
+############################
+.env
+.env.*
+local_*.yaml
+local_*.yml
+
+############################
+# Notebooks (optional)
+############################
+.ipynb_checkpoints/

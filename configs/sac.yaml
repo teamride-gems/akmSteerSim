@@ -11,3 +11,16 @@ ent_coef: "auto"
 
 policy_kwargs:
   net_arch: [256, 256]
+
+heldout_tracks: [Austin, BrandsHatch, Budapest, Hockenheim]
+
+map_schedule:
+  - track: Sakhir
+    steps: 300000
+    eval_freq: 50000
+  - track: Montreal
+    steps: 300000
+    eval_freq: 50000
+  - track: Shanghai
+    steps: 300000
+    eval_freq: 50000

@@ -1,0 +1,2 @@
+numpy==1.22.0
+contourpy==1.0.7

@@ -7,14 +7,15 @@ aref_long_g: 0.5
 aref_lat_g: 0.8    
 
 lidar:
-  sectors: 20          
+  sectors: 21      
   fov_deg: 270         
   max_range_m: 10.0
   clip_max_m: 10.0   
   clip_min_m: 0.05   
 sim:
-  map_name: vegas
-  map_dir: "/Users/niki/Documents/GitHub/f1tenth_gym/gym/f110_gym/envs/maps"
+  map_dir: assets/f1tenth_racetracks/Sakhir
+  map_name: Sakhir_map
+
 
 vehicle:
   wheelbase_m: 0.33

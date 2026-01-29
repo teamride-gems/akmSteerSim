@@ -35,4 +35,5 @@ def compute_reward(obs_raw, centerline, cfg):
     "time": float(r_time),
     "crash": float(crash),
     }
+    
     return float(r), terms
