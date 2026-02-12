@@ -257,7 +257,8 @@ class F1TenthSACEnv(gym.Env):
         state_norm = self.normalizer.normalize(state)
 
         reward = compute_reward(obs_raw, self.centerline, self.cfg)
-
+        #reward , terms = compute_reward(obs_raw, self.centerline, self.cfg)
+        #info["reward_terms"] = terms
         crash = bool(obs_raw.get("crash", False))
         terminated = bool(crash or sim_done)
         truncated = False
