@@ -155,9 +155,9 @@ avoid NumPy 2.x for this simulator stack unless everything is rebuilt
 
 Recommended pinned set (Python 3.10):
 
-pip install --no-cache-dir --only-binary=:all: \
-  "numpy==1.22.0" \
-  "llvmlite==0.39.1" "numba==0.56.4" \
+pip install --no-cache-dir --only-binary=:all:
+  "numpy==1.22.0"
+  "llvmlite==0.39.1" "numba==0.56.4"
   "pandas==1.5.3" "matplotlib==3.6.3"
 
 pip install "stable-baselines3==2.7.0" tqdm rich pyyaml
@@ -167,24 +167,24 @@ A) Verify sim + LiDAR (headless record + HTML replay)
 
 Record:
 
-mkdir -p rollouts
-python scripts/simple_drive_vis.py \
-  --vehicle_cfg configs/vehicle.yaml \
-  --no_render \
+mkdir -p rollouts  
+python scripts/simple_drive_vis.py
+  --vehicle_cfg configs/vehicle.yaml
+  --no_render
   --record --record_path rollouts/heuristic_run.npz
 
 
 Replay:
 
-python scripts/replay_rollout_html.py \
-  --rollout rollouts/heuristic_run.npz \
-  --out rollouts/heuristic_run.html \
+python scripts/replay_rollout_html.py
+  --rollout rollouts/heuristic_run.npz 
+  --out rollouts/heuristic_run.html
   --stride 1 --lidar
 
 
 Serve & open:
 
-cd rollouts
+cd rollouts  
 python -m http.server 8000 --bind 0.0.0.0
 
 
@@ -204,9 +204,8 @@ Common usage:
 
 Headless + record:
 
-python scripts/simple_drive_vis.py \
-  --vehicle_cfg configs/vehicle.yaml \
-  --no_render \
+python scripts/simple_drive_vis.py
+  --vehicle_cfg configs/vehicle.yaml
   --record --record_path rollouts/sakhir_test.npz
 
 
@@ -231,10 +230,10 @@ Slider + play/pause; shows pose + action + errors + optional LiDAR bars.
 
 Usage:
 
-python scripts/replay_rollout_html.py \
-  --rollout rollouts/sakhir_test.npz \
-  --out rollouts/sakhir_test.html \
-  --stride 1 \
+python scripts/replay_rollout_html.py
+  --rollout rollouts/sakhir_test.npz
+  --out rollouts/sakhir_test.html
+  --stride 1
   --lidar
 
 
@@ -278,20 +277,20 @@ replay in HTML
 
 If you have a script like scripts/run_trained_policy.py:
 
-python scripts/run_trained_policy.py \
-  --model checkpoints/<run_id>/sac_final \
-  --vehicle_cfg configs/vehicle.yaml \
-  --track Sakhir \
-  --steps 5000 \
-  --no_render \
-  --record --record_path rollouts/sac_sakhir.npz --record_lidar
+
+  python scripts/run_trained_policy.py
+    --model checkpoints/20260120-233406/sac_final
+    --vehicle_cfg configs/vehicle.yaml
+    --track Sakhir
+    --steps 5000
+    --record --record_path rollouts/sac_sakhir.npz
 
 
 Replay:
 
-python scripts/replay_rollout_html.py \
-  --rollout rollouts/sac_sakhir.npz \
-  --out rollouts/sac_sakhir.html \
+python scripts/replay_rollout_html.py
+  --rollout rollouts/sac_sakhir.npz
+  --out rollouts/sac_sakhir.html
   --lidar
 
 Troubleshooting
@@ -326,29 +325,3 @@ print("min x,y:", np.nanmin(pose[:,0]), np.nanmin(pose[:,1]))
 print("max x,y:", np.nanmax(pose[:,0]), np.nanmax(pose[:,1]))
 
 PY
-
-
-Command again
-
-Record heuristic:
-
-python scripts/simple_drive_vis.py --vehicle_cfg configs/vehicle.yaml --no_render --record --record_path rollouts/heuristic.npz
-
-
-Make HTML replay:
-
-python scripts/replay_rollout_html.py --rollout rollouts/heuristic.npz --out rollouts/heuristic.html --lidar
-
-
-Serve rollouts:
-
-cd rollouts
-python -m http.server 8000 --bind 0.0.0.0
-
-
-Train + TensorBoard:
-
-python rl/train.py --vehicle_cfg configs/vehicle.yaml --sac_cfg configs/sac.yaml
-tensorboard --logdir runs --bind_all --port 6006
-
-
