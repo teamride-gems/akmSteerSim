@@ -2,9 +2,6 @@
 """
 Create a self-contained HTML replay from a recorded rollout (.npz).
 
-No matplotlib, no extra deps. Just numpy + stdlib.
-Open the resulting .html in your browser to scrub/play the trajectory.
-
 Features:
 - Pan (drag), zoom (wheel), reset (double-click)
 - Follow camera checkbox
