@@ -25,6 +25,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from copy import deepcopy
+import pandas as pd
+import math
+# idk if these needed but just in case
+import json
+import hashlib
+# also python mp is FAKE
+import multiprocessing as mp
 
 
 import yaml
@@ -39,6 +46,9 @@ from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.utils import set_random_seed
 
 from envs.f1tenth_sb3_env import F1TenthSACEnv
+from scripts.random_pose_gen import deterministic_hash, generate_start_poses_from_centerline
+# can replace parallel w singular if buggy
+from scripts.run_eval import _run_single_episode, run_episodes_parallel, aggregate_results_list
 
 
 # ----------------------------
@@ -144,15 +154,202 @@ class EvalResult:
     mean_len: float
 
 
+# create a new validation callback
+class ValidationCallback(BaseCallback):
+    """
+    does one validation cycle every eval_freq steps
+    goes through all maps
+    uses same start poses throughout entire validation cycle
+    """
+    def __init__(self,
+                 vehicle_cfg: Dict[str,Any],
+                 eval_config: Dict[str,Any],
+                 eval_freq: int,
+                 ckpt_dir: Path,
+                 runs_root: Path,
+                 verbose: int = 0):
+        super().__init__(verbose=verbose)
+        self.vehicle_cfg = vehicle_cfg
+        self.eval_cfg = eval_config or {}
+        self.eval_freq = int(eval_freq)
+        self.ckpt_dir = Path(ckpt_dir)
+        self.runs_root = Path(runs_root)
+        self.master_seed = int(self.eval_cfg.get("master_seed", 123456))
+        self.val_pool = [str(m) for m in self.eval_cfg.get("val_pool", [])]
+        self.maps_per_cycle = int(self.eval_cfg.get("val_maps_per_cycle", 3))
+        self.attempts_per_map = int(self.eval_cfg.get("val_attempts_per_map", 10))
+        self.val_seeds = list(self.eval_cfg.get("val_seeds", [0,1,2]))
+        self.deterministic = bool(self.eval_cfg.get("val_deterministic", True))
+        self.timeout_per_meter = float(self.eval_cfg.get("val_timeout_per_meter", 0.5))
+        self.min_spacing_frac = float(self.eval_cfg.get("val_min_spacing_frac", 0.02))
+        self.yaw_jitter_deg = float(self.eval_cfg.get("val_yaw_jitter_deg", 5.0))
+        self.lateral_jitter_m = float(self.eval_cfg.get("val_lateral_jitter_m", 0.05))
+        self.workers = int(self.eval_cfg.get("val_workers", 4))
+
+        # save good stats
+        self.best_score = -1e9
+        self.cycle_count = 0
+
+        # create validation root dir
+        self.val_root = self.runs_root / "validation"
+        self.val_root.mkdir(parents=True, exist_ok=True)
+    def _on_step(self) -> bool:
+        if self.eval_freq <= 0:
+            return True
+        # trigger only on eval frequency
+        if (self.num_timesteps % self.eval_freq) != 0:
+            return True
+        # compute cycle index deterministically
+        cycle_index = self.num_timesteps // self.eval_freq
+        self._run_cycle(cycle_index)
+        self.cycle_count += 1
+        return True
+    # compute approximate timeout: track length * timeout_per_meter
+    def _estimate_timeout_for_map(self, map_name: str):
+        cl_csv = resolve_centerline_csv(self.vehicle_cfg, map_name)
+        cdf = pd.read_csv(cl_csv)
+        xs = cdf.iloc[:,0].to_numpy(); ys = cdf.iloc[:,1].to_numpy()
+        ds = ((xs[1:] - xs[:-1])**2 + (ys[1:] - ys[:-1])**2)**0.5
+        track_len = float(ds.sum())
+        return float(track_len * self.timeout_per_meter + 5.0)
+
+    # actual cycle code
+    def _run_cycle(self, cycle_index: int):
+        # deterministic RNG seed for this cycle
+        cycle_seed = deterministic_hash(self.master_seed, cycle_index)
+
+        # We should use ALL Maps, but in case we want smaller amount we allow random sampling
+        rng = random.Random(cycle_seed)
+        maps = list(self.val_pool)
+        if len(maps) == 0:
+            return
+        rng.shuffle(maps)
+        selected = maps[:self.maps_per_cycle] if len(maps) >= self.maps_per_cycle else maps
+        cycle_dir = self.val_root / f"cycles/cycle_{cycle_index:05d}"
+        cycle_dir.mkdir(parents=True, exist_ok=True)
+
+        # save selected maps
+        (cycle_dir / "maps.json").write_text(json.dumps(selected))
+
+        # For each map, generate poses and save them
+        per_map_pose_files = {}
+        for m in selected:
+            # find centerline csv
+            cl_csv = resolve_centerline_csv(self.vehicle_cfg, m)
+
+            # generate N poses total for all seeds: attempts_per_map * len(val_seeds)
+            n_total = self.attempts_per_map * len(self.val_seeds)
+            pose_seed = deterministic_hash(cycle_seed, m)
+            poses = generate_start_poses_from_centerline(
+                centerline_csv=str(cl_csv),
+                n_poses=n_total,
+                seed=pose_seed,
+                min_spacing_frac=self.min_spacing_frac,
+                yaw_jitter_rad=math.radians(self.yaw_jitter_deg),
+                lateral_jitter_m=self.lateral_jitter_m
+            )
+
+            # Save as CSV
+            df = pd.DataFrame(poses)
+            pose_csv = cycle_dir / f"{m}_start_poses.csv"
+            df.to_csv(pose_csv, index=False)
+            per_map_pose_files[m] = str(pose_csv)
+        # Now run evaluation for each policy & seed combination
+        # For validation we evaluate the current model checkpoint saved by training.
+        # Save current model to a temporary path and evaluate
+        timestamp = int(time.time())
+        ckpt_name = f"val_ckpt_step_{self.num_timesteps}"
+        ckpt_path = str(self.ckpt_dir / ckpt_name)
+        # save model
+        self.model.save(ckpt_path)
+        # For reproducibility, write metadata
+        meta = {
+            "cycle_index": cycle_index,
+            "cycle_seed": cycle_seed,
+            "maps": selected,
+            "poses": per_map_pose_files,
+            "num_timesteps": self.num_timesteps,
+            "ckpt_path": ckpt_path
+        }
+        (cycle_dir / "meta.json").write_text(json.dumps(meta, indent=2))
+        # now run for each map: for simplicity run sequentially per map but episodes per map in parallel
+        all_map_summaries = {}
+        for m in selected:
+            pose_csv = per_map_pose_files[m]
+            df = pd.read_csv(pose_csv)
+            # split poses for each seed deterministically
+            # we assign contiguous blocks of attempts per seed
+            n = len(self.val_seeds)
+            per_seed = self.attempts_per_map
+            map_results = []
+            timeout_s = self._estimate_timeout_for_map(m)
+            # run per-seed blocks
+            for i, seed_val in enumerate(self.val_seeds):
+                start_idx = i * per_seed
+                end_idx = start_idx + per_seed
+                poses_block = df.iloc[start_idx:end_idx].to_dict(orient="records")
+                # run episodes in parallel
+                results = run_episodes_parallel(
+                    ckpt_path=f"{ckpt_path}.zip" if not str(ckpt_path).endswith(".zip") and not str(ckpt_path).endswith(".pkl") else ckpt_path,
+                    vehicle_cfg=self.vehicle_cfg,
+                    track=m,
+                    poses=poses_block,
+                    deterministic=self.deterministic,
+                    timeout_s=timeout_s,
+                    workers=self.workers
+                )
+                map_results.extend(results)
+            # aggregate and save per-map results
+            agg = aggregate_results_list(map_results)
+            all_map_summaries[m] = {"aggregate": agg, "raw": map_results}
+            # save raw
+            import json
+            (cycle_dir / f"{m}_raw.json").write_text(json.dumps(map_results, indent=2))
+            (cycle_dir / f"{m}_summary.json").write_text(json.dumps(agg, indent=2))
+        # compute combined validation score across maps (weighted average equal)
+        scores = []
+        for m in selected:
+            agg = all_map_summaries[m]["aggregate"]
+            # create composite score (configurable weights)
+            w = self.eval_cfg.get("selection_weights", {"success_rate":1.0, "feasibility_violations":-0.5, "normalized_time":-0.2})
+            success = float(agg.get("success_rate", 0.0))
+            fv = float(agg.get("mean_feasibility_violations", 0.0))
+            # normalized time: use mean_duration_s / track_length (we compute track_length)
+            from rl.train import resolve_centerline_csv
+            cl_csv = resolve_centerline_csv(self.vehicle_cfg, m)
+            # quick centerline length:
+            cdf = pd.read_csv(cl_csv)
+            # approximate length by sum of distances
+            xs = cdf.iloc[:,0].to_numpy(); ys = cdf.iloc[:,1].to_numpy()
+            ds = ((xs[1:] - xs[:-1])**2 + (ys[1:] - ys[:-1])**2)**0.5
+            track_len = float(ds.sum())
+            mean_dur = float(agg.get("mean_duration_s", 0.0))
+            norm_time = mean_dur / max(1e-6, track_len)
+            score = (w.get("success_rate",1.0) * success) + (w.get("feasibility_violations",-0.5) * fv) + (w.get("normalized_time",-0.2) * norm_time)
+            scores.append(score)
+        val_score = float(sum(scores) / len(scores))
+        # save combined summary
+        (cycle_dir / "combined_summary.json").write_text(json.dumps({"val_score": val_score}, indent=2))
+        # if better than best_score, save this ckpt as best
+        if val_score > self.best_score:
+            self.best_score = val_score
+            best_path = self.ckpt_dir / "best_validation_model"
+            self.model.save(str(best_path))
+            (cycle_dir / "best_marker.txt").write_text("best")
+            if self.verbose:
+                print(f"[Validation] New best score {val_score:.4f} at step {self.num_timesteps}, saved {best_path}")
+    
+"""
+
 class RandomMapEvalCallback(BaseCallback):
-    """
-    Every eval_freq steps:
-      - pick a random track from eval_tracks
-      - create a fresh env for that track
-      - run n_eval_episodes with deterministic policy
-      - log eval/mean_reward, eval/mean_ep_len, eval/track_name
-      - optionally save best model
-    """
+    
+    #Every eval_freq steps:
+    #  - pick a random track from eval_tracks
+    #  - create a fresh env for that track
+    #  - run n_eval_episodes with deterministic policy
+    #  - log eval/mean_reward, eval/mean_ep_len, eval/track_name
+    #  - optionally save best model
+   #
     def __init__(
         self,
         vehicle_cfg: Dict[str, Any],
@@ -238,7 +435,7 @@ class RandomMapEvalCallback(BaseCallback):
 
         return True
 
-
+"""
 # ----------------------------
 # Main training
 # ----------------------------
@@ -263,6 +460,7 @@ def main():
 
     veh_cfg = load_yaml(vehicle_cfg_path)
     sac_cfg = load_yaml(sac_cfg_path)
+    eval_cfg = sac_cfg.get("evaluation", {})
 
     if not veh_cfg:
         raise ValueError(f"Vehicle config is empty/invalid: {vehicle_cfg_path}")
@@ -286,13 +484,11 @@ def main():
     schedule_tracks = [normalize_track_name(item["track"]) for item in schedule]
 
     # --- eval tracks: user-provided OR held-out (not in schedule) ---
+    # currently set up so eval tracks kinda useless since our validation uses set in yaml
     if args.eval_tracks.strip():
         eval_tracks = [normalize_track_name(t) for t in args.eval_tracks.split(",") if t.strip()]
     else:
-        held_out = [t for t in available_tracks if t not in set(schedule_tracks)]
-        # “random out of 4 the model hasn't seen” (if available)
-        random.shuffle(held_out)
-        eval_tracks = held_out[:4] if len(held_out) >= 4 else held_out
+        eval_tracks = [t for t in eval_cfg.get("val_pool", []) if t not in set(schedule_tracks)]
 
     # If no held-out maps exist, eval on current schedule track(s)
     if not eval_tracks:
@@ -366,18 +562,31 @@ def main():
             )
         )
 
-        # random-map eval
+        # upgraded valididation map eval
         callbacks.append(
-            RandomMapEvalCallback(
+            ValidationCallback(
                 vehicle_cfg=veh_cfg,
-                eval_tracks=eval_tracks,
+                eval_config=eval_cfg,
                 eval_freq=eval_freq,
-                n_eval_episodes=args.n_eval_episodes,
-                best_model_dir=phase_dir,
-                deterministic=True,
+                ckpt_dir=phase_dir,
+                runs_root=runs_dir,
                 verbose=1,
             )
         )
+
+
+        # # random-map eval
+        # callbacks.append(
+        #     RandomMapEvalCallback(
+        #         vehicle_cfg=veh_cfg,
+        #         eval_tracks=eval_tracks,
+        #         eval_freq=eval_freq,
+        #         n_eval_episodes=args.n_eval_episodes,
+        #         best_model_dir=phase_dir,
+        #         deterministic=True,
+        #         verbose=1,
+        #     )
+        # )
 
         print(f"\n=== Phase {phase_idx} ===")
         print("track:", track)
