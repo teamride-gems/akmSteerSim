@@ -170,7 +170,6 @@ Record:
 mkdir -p rollouts  
 python scripts/simple_drive_vis.py
   --vehicle_cfg configs/vehicle.yaml
-  --no_render
   --record --record_path rollouts/heuristic_run.npz
 
 
