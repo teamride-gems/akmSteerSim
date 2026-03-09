@@ -206,15 +206,23 @@ class F1TenthSACEnv(gym.Env):
 
         self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
         return obs_raw
-
+    
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self._step_i = 0
         self._last_for_rates = None
+        options = options or {}
 
-        # random spawn on centerline
         N = self.centerline.shape[0]
-        i = int(self.np_random.integers(1, N - 1))
+
+        # Fixed spawn for eval if provided
+        if "spawn_index" in options:
+            i = int(options["spawn_index"])
+            i = max(1, min(i, N - 2))
+        else:
+            # Default behavior: random spawn on centerline
+            i = int(self.np_random.integers(1, N - 1))
+
         x = float(self.centerline[i, 0])
         y = float(self.centerline[i, 1])
         dx = float(self.centerline[i + 1, 0] - self.centerline[i, 0])
@@ -230,11 +238,11 @@ class F1TenthSACEnv(gym.Env):
         state = make_state(obs_raw, self.centerline, self.cfg)
         state_norm = self.normalizer.normalize(state)
 
-        # info includes pose/speed so recorder can replay
         info = {
             "crash": bool(obs_raw.get("crash", False)),
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
+            "spawn_index": int(i),
         }
         return state_norm.astype(np.float32), info
 
@@ -256,9 +264,8 @@ class F1TenthSACEnv(gym.Env):
         state = make_state(obs_raw, self.centerline, self.cfg)
         state_norm = self.normalizer.normalize(state)
 
-        reward = compute_reward(obs_raw, self.centerline, self.cfg)
-        #reward , terms = compute_reward(obs_raw, self.centerline, self.cfg)
-        #info["reward_terms"] = terms
+        reward, reward_terms = compute_reward(obs_raw, self.centerline, self.cfg)
+
         crash = bool(obs_raw.get("crash", False))
         terminated = bool(crash or sim_done)
         truncated = False
@@ -269,6 +276,7 @@ class F1TenthSACEnv(gym.Env):
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
             "steer": float(obs_raw.get("steer", 0.0)),
+            "reward_terms": reward_terms,
         }
 
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info

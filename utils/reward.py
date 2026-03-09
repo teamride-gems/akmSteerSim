@@ -3,14 +3,19 @@ from typing import Dict, Tuple
 
 from utils.geometry import project_to_centerline
 
-def compute_reward(obs_raw, centerline, cfg):
+
+
+
+
+def compute_reward(obs_raw, centerline, cfg) -> Tuple[float, Dict[str, float]]:
     """
     Reward = forward progress
              + accel smoothness penalties
              + time penalty
              + crash penalty
 
-    All weights come from cfg["reward"].
+    Returns:
+        total_reward, reward_terms
     """
     rw = cfg.get("reward", {})
     w_progress = float(rw.get("w_progress", 1.0))
@@ -29,18 +34,29 @@ def compute_reward(obs_raw, centerline, cfg):
     a_long = float(obs_raw.get("a_long", 0.0))
     a_lat  = float(obs_raw.get("a_lat", 0.0))
     crash  = bool(obs_raw.get("crash", False))
-    r_progress = w_progress * v * np.cos(e_head)
 
+    r_progress = w_progress * v * np.cos(e_head)
     r_along = w_a_long * (a_long / max(1e-6, ref_a_long))**2
     r_alat  = w_a_lat  * (a_lat  / max(1e-6, ref_a_lat))**2
-
     r_time = w_time
-
     r_crash = crash_pen if crash else 0.0
 
-    r = r_progress + r_along + r_alat + r_time + r_crash
+    total = r_progress + r_along + r_alat + r_time + r_crash
 
-    return float(r)
+    terms = {
+        "total": float(total),
+        "progress": float(r_progress),
+        "a_long_pen": float(r_along),
+        "a_lat_pen": float(r_alat),
+        "time_pen": float(r_time),
+        "crash_pen": float(r_crash),
+        "speed": float(v),
+        "a_long": float(a_long),
+        "a_lat": float(a_lat),
+        "heading_error": float(e_head),
+    }
+
+    return float(total), terms
 
 
 
