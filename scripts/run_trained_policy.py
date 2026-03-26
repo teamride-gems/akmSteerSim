@@ -181,6 +181,8 @@ def main():
     lap_id = 0
     lap_start_time = time.time()
     logger = LapMetricsLogger("metrics/lap_metrics.csv")
+    # time step edits - nik
+    logger.enable_step_log("metrics/timestep_metrics.csv")
 
     # recording buffers
     poses = []
@@ -193,6 +195,12 @@ def main():
         action, _ = model.predict(obs, deterministic=args.deterministic)
 
         obs, reward, terminated, truncated, info = env.step(action)
+
+        # time step edits - nik
+        t_sec = time.time() - lap_start_time
+        speed_mps = float(info.get("speed", np.nan))
+        if np.isfinite(speed_mps):
+            logger.log_step_speed(t_sec=t_sec, speed_mps=speed_mps, lap_id=lap_id)
 
         if args.render:
             try:
@@ -250,6 +258,8 @@ def main():
             # Reset lap
             lap_id += 1
             lap_start_time = time.time()
+            # time step edits - nik
+            logger.reset_step()
             crashed = False
             sim_done = False
             if isinstance(info, dict):
@@ -258,6 +268,17 @@ def main():
             print(f"[episode {ep}] t={t} crash={crashed} sim_done={sim_done}")
             obs, info = env.reset()
 
+    # time step edits - nik
+    # TIMEOUT
+    logger.log_lap(
+        lap_id         = lap_id,
+        policy_id      = model_path,
+        action_space_id= "N/A",
+        track_id       = track,
+        lap_status     = "TIMEOUT",
+        lap_time_sec   = time.time() - lap_start_time,
+        lap_progress   = 0.0,
+    )
     try:
         logger.close()
         env.close()

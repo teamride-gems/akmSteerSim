@@ -119,6 +119,8 @@ def main():
     lap_id = 0
     lap_start_time = time.time()
     logger = LapMetricsLogger("metrics/lap_metrics.csv")
+    # time step edits - nik
+    logger.enable_step_log("metrics/timestep_metrics.csv")
 
     # recorder buffers
     rec = {
@@ -144,6 +146,12 @@ def main():
 
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += float(reward)
+
+        # time step edits - nik
+        t_sec = time.time() - lap_start_time
+        speed_mps = float(info.get("speed", np.nan))
+        if np.isfinite(speed_mps):
+            logger.log_step_speed(t_sec=t_sec, speed_mps=speed_mps, lap_id=lap_id)
 
         # debug lidar
         if args.lidar_print_every > 0 and (t % args.lidar_print_every == 0):
@@ -203,9 +211,22 @@ def main():
             # Reset lap
             lap_id += 1
             lap_start_time = time.time()
+            # time step edits - nik
+            logger.reset_step()
             total_reward = 0.0
             obs, info = env.reset()
 
+    # time step edits - nik
+    # TIMEOUT
+    logger.log_lap(
+        lap_id         = lap_id,
+        policy_id      = "heurisitc run",
+        action_space_id= "N/A",
+        track_id       = track_name,
+        lap_status     = "TIMEOUT",
+        lap_time_sec   = time.time() - lap_start_time,
+        lap_progress   = 0.0,
+    )
     logger.close()
     env.close()
 
