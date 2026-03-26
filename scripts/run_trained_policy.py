@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from metrics_logger import LapMetricsLogger
 
 # Make repo root importable
 ROOT = Path(__file__).resolve().parents[1]
@@ -176,6 +177,10 @@ def main():
 
     obs, info = env.reset()
     ep = 0
+    
+    lap_id = 0
+    lap_start_time = time.time()
+    logger = LapMetricsLogger("metrics/lap_metrics.csv")
 
     # recording buffers
     poses = []
@@ -221,6 +226,13 @@ def main():
 
         if terminated or truncated:
             ep += 1
+
+            lap_time_sec = time.time() - lap_start_time
+            logger.log_lap(lap_id, lap_time_sec)
+
+            # Reset lap
+            lap_id += 1
+            lap_start_time = time.time()
             crashed = False
             sim_done = False
             if isinstance(info, dict):
@@ -230,6 +242,7 @@ def main():
             obs, info = env.reset()
 
     try:
+        logger.close()
         env.close()
     except Exception:
         pass
