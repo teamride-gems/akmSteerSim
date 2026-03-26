@@ -20,6 +20,7 @@ import inspect
 import time
 import numpy as np
 import yaml
+from metrics_logger import LapMetricsLogger
 
 
 def load_yaml(path: str) -> dict:
@@ -114,6 +115,10 @@ def main():
                   render_mode=("human" if args.render else None))
 
     obs, info = env.reset()
+    
+    lap_id = 0
+    lap_start_time = time.time()
+    logger = LapMetricsLogger("metrics/lap_metrics.csv")
 
     # recorder buffers
     rec = {
@@ -173,9 +178,17 @@ def main():
         if terminated or truncated:
             episode += 1
             print(f"[episode {episode}] t={t} ep_return={total_reward:.3f} crash={bool(info.get('crash', False))} sim_done={bool(info.get('sim_done', False))}")
+            
+            lap_time_sec = time.time() - lap_start_time
+            logger.log_lap(lap_id, lap_time_sec)
+
+            # Reset lap
+            lap_id += 1
+            lap_start_time = time.time()
             total_reward = 0.0
             obs, info = env.reset()
-
+            
+    logger.close()
     env.close()
 
     if args.record:
