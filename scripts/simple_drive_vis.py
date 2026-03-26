@@ -179,15 +179,33 @@ def main():
             episode += 1
             print(f"[episode {episode}] t={t} ep_return={total_reward:.3f} crash={bool(info.get('crash', False))} sim_done={bool(info.get('sim_done', False))}")
             
+            # Get info
             lap_time_sec = time.time() - lap_start_time
-            logger.log_lap(lap_id, lap_time_sec)
+            if bool(info.get("crash",    False)):
+                lap_status = "CRASH"
+            elif bool(info.get("sim_done", False)):
+                lap_status = "SUCCESS"
+            else:
+                lap_status = "TIMEOUT"
+            lap_progress = float(info.get("lap_progress", 0.0)) # Still needs to be implemented
+
+            # Log metrics
+            logger.log_lap(
+                lap_id         = lap_id,
+                policy_id      = "heurisitc run",
+                action_space_id= "N/A",
+                track_id       = track_name,
+                lap_status     = lap_status,
+                lap_time_sec   = lap_time_sec,
+                lap_progress   = lap_progress,
+            )
 
             # Reset lap
             lap_id += 1
             lap_start_time = time.time()
             total_reward = 0.0
             obs, info = env.reset()
-            
+
     logger.close()
     env.close()
 

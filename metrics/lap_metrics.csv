@@ -1,6 +1,9 @@
-lap_id,lap_time_sec
-0,1.1521971225738525
-1,0.6356768608093262
-2,0.19944000244140625
-3,0.9221501350402832
-4,1.1876931190490723
+lap_id,policy_id,action_space_id,track_id,lap_status,lap_time_sec,lap_progress
+0,heurisitc run,N/A,Sakhir,SUCCESS,1.1097,0.0
+1,heurisitc run,N/A,Sakhir,SUCCESS,0.3202,0.0
+2,heurisitc run,N/A,Sakhir,SUCCESS,0.312,0.0
+3,heurisitc run,N/A,Sakhir,SUCCESS,0.3982,0.0
+4,heurisitc run,N/A,Sakhir,SUCCESS,0.4182,0.0
+5,heurisitc run,N/A,Sakhir,SUCCESS,0.2488,0.0
+6,heurisitc run,N/A,Sakhir,SUCCESS,0.551,0.0
+7,heurisitc run,N/A,Sakhir,SUCCESS,0.7614,0.0
