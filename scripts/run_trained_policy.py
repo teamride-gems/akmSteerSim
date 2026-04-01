@@ -206,7 +206,7 @@ def main():
             poses.append([x, y, yaw])
 
             # action
-            actions.append([float(action[0]), float(action[1])])
+            actions.append([float(a) for a in action])
 
             # errors (your obs layout used earlier: obs[4]=e_head, obs[5]=e_lat)
             eh = float(obs[4]) if np.asarray(obs).size > 5 else float("nan")

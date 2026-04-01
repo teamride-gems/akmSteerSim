@@ -6,6 +6,9 @@ WSL2 note: real-time pyglet rendering can hang. So this script:
 - runs headless by default
 - can record rollouts to .npz
 - can still attempt rendering if you pass --render
+
+Supports all action spaces defined in action_spaces_utils:
+  steer_speed, curvature_speed, lookahead_point, bezier
 """
 
 import sys
@@ -20,6 +23,8 @@ import inspect
 import time
 import numpy as np
 import yaml
+
+from action_spaces_utils import get_action_space_spec, get_policy_dim
 
 
 def load_yaml(path: str) -> dict:
@@ -40,11 +45,19 @@ def find_env_class(module_name: str):
     return candidates[0]
 
 
+# ---------------------------------------------------------------------------
+# Heuristic policies per action space
+# ---------------------------------------------------------------------------
+
 _LAST_STEER = 0.0
 
 
-def heuristic_policy(obs: np.ndarray) -> np.ndarray:
-    """Gentle centerline PD + smoothing."""
+def _compute_steer_and_speed(obs: np.ndarray):
+    """
+    Shared PD logic: returns (steer_cmd, speed_cmd) both in [-1, 1].
+    steer_cmd is a normalized steering value (negative = turn right for positive e_head).
+    speed_cmd is a normalized speed value.
+    """
     global _LAST_STEER
     obs = np.asarray(obs, dtype=float)
 
@@ -67,7 +80,56 @@ def heuristic_policy(obs: np.ndarray) -> np.ndarray:
     speed *= float(np.clip(1.0 - 2.5 * abs(e_head) - 0.8 * abs(e_lat), 0.1, 1.0))
     speed = float(np.clip(speed, -1.0, 1.0))
 
-    return np.array([speed, steer], dtype=np.float32)
+    return steer, speed
+
+
+def heuristic_steer_speed(obs: np.ndarray) -> np.ndarray:
+    """Action = [steering_angle, speed] (both as raw policy outputs)."""
+    steer, speed = _compute_steer_and_speed(obs)
+    return np.array([steer, speed], dtype=np.float32)
+
+
+def heuristic_curvature_speed(obs: np.ndarray) -> np.ndarray:
+    """Action = [curvature, speed].
+    We reuse the steering heuristic as a curvature proxy — the tanh squash
+    in the policy output spec maps it to the feasible curvature range."""
+    steer, speed = _compute_steer_and_speed(obs)
+    return np.array([steer, speed], dtype=np.float32)
+
+
+def heuristic_lookahead_point(obs: np.ndarray) -> np.ndarray:
+    """Action = [lookahead_x, lookahead_y, speed].
+    Raw outputs go through sigmoid/tanh, so we pick values that produce
+    a sensible forward point: x≈0 maps to mid-range via sigmoid,
+    y uses the steering signal via tanh."""
+    steer, speed = _compute_steer_and_speed(obs)
+    # x=0 -> sigmoid maps to midpoint of [0.5, 5.0] ≈ 2.75m ahead
+    lookahead_x_raw = 0.0
+    # y uses steering signal — tanh will map this to lateral offset
+    lookahead_y_raw = steer
+    return np.array([lookahead_x_raw, lookahead_y_raw, speed], dtype=np.float32)
+
+
+def heuristic_bezier(obs: np.ndarray) -> np.ndarray:
+    """Action = [p1_x, p1_y, p2_x, p2_y, speed].
+    Produce a roughly straight-ahead Bezier with mild lateral shaping
+    from the steering signal."""
+    steer, speed = _compute_steer_and_speed(obs)
+    # p1 and p2 x: 0.0 -> sigmoid maps to midpoint of x range
+    # p1 and p2 y: use steering signal scaled down for gentle curves
+    p1_x_raw = 0.0
+    p1_y_raw = steer * 0.5
+    p2_x_raw = 0.0
+    p2_y_raw = steer * 0.3
+    return np.array([p1_x_raw, p1_y_raw, p2_x_raw, p2_y_raw, speed], dtype=np.float32)
+
+
+HEURISTIC_POLICIES = {
+    "steer_speed": heuristic_steer_speed,
+    "curvature_speed": heuristic_curvature_speed,
+    "lookahead_point": heuristic_lookahead_point,
+    "bezier": heuristic_bezier,
+}
 
 
 def main():
@@ -93,6 +155,19 @@ def main():
     if not cfg_path.exists():
         raise FileNotFoundError(f"Config not found: {cfg_path}")
     vehicle_cfg = load_yaml(str(cfg_path))
+
+    # Determine action space
+    action_space_name = vehicle_cfg.get("action_space", "steer_speed")
+    policy_dim = get_policy_dim(action_space_name)
+
+    if action_space_name not in HEURISTIC_POLICIES:
+        raise ValueError(
+            f"No heuristic policy implemented for action space '{action_space_name}'. "
+            f"Available: {list(HEURISTIC_POLICIES.keys())}"
+        )
+
+    heuristic_fn = HEURISTIC_POLICIES[action_space_name]
+    print(f"action_space: {action_space_name}  (policy_dim={policy_dim})")
 
     env_cls = find_env_class("envs.f1tenth_sb3_env")
 
@@ -129,13 +204,14 @@ def main():
         "e_lat": [],
         "lidar_sectors": [],
         "track_centerline_csv": str(track_centerline_csv),
+        "action_space": action_space_name,
     }
 
     total_reward = 0.0
     episode = 0
 
     for t in range(args.steps):
-        action = heuristic_policy(obs)
+        action = heuristic_fn(obs)
 
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += float(reward)
@@ -143,8 +219,9 @@ def main():
         # debug lidar
         if args.lidar_print_every > 0 and (t % args.lidar_print_every == 0):
             lidar = np.asarray(obs[7:], dtype=float)
+            act_str = ",".join(f"{a:+.2f}" for a in action)
             print(
-                f"t={t:5d} act=[{action[0]:+.2f},{action[1]:+.2f}] "
+                f"t={t:5d} act=[{act_str}] "
                 f"e_head={float(obs[4]):+.3f} e_lat={float(obs[5]):+.3f} "
                 f"lidar(min/mean/max/std)=({lidar.min():.3f},{lidar.mean():.3f},{lidar.max():.3f},{lidar.std():.3f})"
             )
@@ -175,6 +252,7 @@ def main():
             print(f"[episode {episode}] t={t} ep_return={total_reward:.3f} crash={bool(info.get('crash', False))} sim_done={bool(info.get('sim_done', False))}")
             total_reward = 0.0
             obs, info = env.reset()
+            _LAST_STEER = 0.0  # reset smoothing state on episode boundary
 
     env.close()
 
@@ -182,7 +260,6 @@ def main():
         out_path = Path(args.record_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # stack arrays
         np.savez_compressed(
             out_path,
             t=np.asarray(rec["t"], dtype=int),
@@ -197,6 +274,7 @@ def main():
             e_lat=np.asarray(rec["e_lat"], dtype=float),
             lidar_sectors=np.asarray(rec["lidar_sectors"], dtype=float),
             track_centerline_csv=rec["track_centerline_csv"],
+            action_space=rec["action_space"],
         )
         print(f"Saved rollout: {out_path}")
 

@@ -7,6 +7,8 @@ Features:
 - Follow camera checkbox
 - Triangle car icon
 - Optional embedded map PNG background (auto from track_centerline_csv)
+- Supports any action space dimensionality (steer_speed, curvature_speed,
+  lookahead_point, bezier) with automatic label detection
 """
 
 import argparse
@@ -15,6 +17,15 @@ import json
 from pathlib import Path
 
 import numpy as np
+
+
+# Dimension name lookup per action space (matches action_spaces_utils registry)
+ACTION_DIM_NAMES = {
+    "steer_speed": ["steering_angle", "speed"],
+    "curvature_speed": ["curvature", "speed"],
+    "lookahead_point": ["lookahead_x", "lookahead_y", "speed"],
+    "bezier": ["p1_x", "p1_y", "p2_x", "p2_y", "speed"],
+}
 
 
 def _read_text(path: Path) -> str:
@@ -87,6 +98,24 @@ def _embed_png_data_uri(png_path: Path) -> str:
     return "data:image/png;base64," + enc
 
 
+def _get_action_dim_names(data) -> list:
+    """
+    Determine action dimension labels from the .npz metadata.
+    Tries: action_space field -> known lookup, then falls back to generic labels.
+    """
+    action_space = None
+    if "action_space" in data:
+        action_space = str(data["action_space"])
+
+    if action_space and action_space in ACTION_DIM_NAMES:
+        return ACTION_DIM_NAMES[action_space]
+
+    # Fallback: infer from action array width
+    action = np.asarray(data["action"], dtype=float)
+    ndim = action.shape[1] if action.ndim == 2 else 1
+    return [f"a{i}" for i in range(ndim)]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rollout", required=True, help="Path to .npz recorded rollout")
@@ -99,11 +128,14 @@ def main():
 
     data = np.load(args.rollout, allow_pickle=True)
 
-    pose = np.asarray(data["pose"], dtype=float)          # [T,3]
-    action = np.asarray(data["action"], dtype=float)      # [T,2]
-    e_head = np.asarray(data["e_head"], dtype=float)      # [T]
-    e_lat = np.asarray(data["e_lat"], dtype=float)        # [T]
+    pose = np.asarray(data["pose"], dtype=float)          # [T, 3]
+    action = np.asarray(data["action"], dtype=float)       # [T, action_dim]
+    e_head = np.asarray(data["e_head"], dtype=float)       # [T]
+    e_lat = np.asarray(data["e_lat"], dtype=float)         # [T]
     centerline_csv = Path(str(data["track_centerline_csv"]))
+
+    dim_names = _get_action_dim_names(data)
+    action_space_name = str(data["action_space"]) if "action_space" in data else "unknown"
 
     # Ensure centerline is Nx2 even if CSV has extra columns
     centerline = np.loadtxt(centerline_csv, delimiter=",", ndmin=2)[:, :2]
@@ -135,7 +167,6 @@ def main():
                     "data_uri": data_uri,
                     "resolution": float(y["resolution"]),
                     "origin": [float(y["origin"][0]), float(y["origin"][1]), float(y["origin"][2] if len(y["origin"]) > 2 else 0.0)],
-                    # We don't know image dims without PIL; we can read them in JS from Image() once loaded.
                     "track_name": track_name,
                     "png_name": png_path.name,
                     "yaml_name": yaml_path.name,
@@ -148,7 +179,9 @@ def main():
         "e_head": e_head.tolist(),
         "e_lat": e_lat.tolist(),
         "lidar": None if lidar is None else lidar.tolist(),
-        "map": map_payload,  # may be null
+        "map": map_payload,
+        "dim_names": dim_names,
+        "action_space": action_space_name,
     }
 
     payload_json = json.dumps(payload)
@@ -230,6 +263,8 @@ const e_head = DATA.e_head;
 const e_lat = DATA.e_lat;
 const lidar = DATA.lidar;
 const mapInfo = DATA.map;
+const dimNames = DATA.dim_names;
+const actionSpaceName = DATA.action_space;
 
 slider.max = String(pose.length - 1);
 
@@ -357,15 +392,6 @@ if (mapInfo && mapInfo.data_uri) {{
 function drawMapBackground() {{
   if (!mapInfo || !mapImgLoaded || !showMapInput.checked) return;
 
-  // ROS map convention:
-  //   world_x = origin_x + pixel_x * resolution
-  //   world_y = origin_y + (image_height - 1 - pixel_y) * resolution
-  //
-  // So:
-  //   pixel_x = (world_x - origin_x) / resolution
-  //   pixel_y = (image_height - 1) - (world_y - origin_y) / resolution
-  //
-  // To draw image, we compute screen coords for world corners of image and draw scaled.
   const res = mapInfo.resolution;
   const ox = mapInfo.origin[0];
   const oy = mapInfo.origin[1];
@@ -373,46 +399,28 @@ function drawMapBackground() {{
   const iw = mapImg.width;
   const ih = mapImg.height;
 
-  // world corners of the map image
   const world_min_x = ox;
   const world_min_y = oy;
   const world_max_x = ox + iw * res;
   const world_max_y = oy + ih * res;
 
-  // In ROS map convention, the image "up" corresponds to +y in world,
-  // but PNG pixel y increases downward, so we need to flip vertically when drawing.
-
-  // screen corners (we'll draw using a transform)
-  const p00 = worldToScreen(world_min_x, world_min_y); // bottom-left in world
+  const p00 = worldToScreen(world_min_x, world_min_y);
   const p10 = worldToScreen(world_max_x, world_min_y);
   const p01 = worldToScreen(world_min_x, world_max_y);
 
-  // Compute screen-space basis vectors
-  const vx = [p10[0] - p00[0], p10[1] - p00[1]]; // corresponds to +x in world
-  const vy = [p01[0] - p00[0], p01[1] - p00[1]]; // corresponds to +y in world
+  const vx = [p10[0] - p00[0], p10[1] - p00[1]];
+  const vy = [p01[0] - p00[0], p01[1] - p00[1]];
 
-  // We want to map image pixel coords to world coords:
-  // pixel (0, ih) corresponds to (world_min_x, world_min_y)
-  // pixel (iw, ih) corresponds to (world_max_x, world_min_y)
-  // pixel (0, 0) corresponds to (world_min_x, world_max_y)
-  //
-  // That implies drawing the image with a vertical flip.
   ctx.save();
 
-  // Place origin at p00 (world_min_x, world_min_y)
   ctx.translate(p00[0], p00[1]);
 
-  // Build transform mapping image pixels -> screen
-  // x-axis: vx / iw
-  // y-axis (image down): -vy / ih   (flip)
   ctx.transform(
     vx[0] / iw, vx[1] / iw,
     -vy[0] / ih, -vy[1] / ih,
     0, 0
   );
 
-  // draw image such that its bottom-left aligns with p00:
-  // because we flipped y, we draw at (0, -ih)
   ctx.globalAlpha = 0.90;
   ctx.drawImage(mapImg, 0, -ih, iw, ih);
 
@@ -456,16 +464,13 @@ function drawCarTriangle(k) {{
   const x = pose[k][0], y = pose[k][1], yaw = pose[k][2];
   const P = worldToScreen(x,y);
 
-  // triangle size in SCREEN pixels (constant size regardless of zoom)
   const tipLen = 22;
   const baseLen = 14;
   const baseHalfWidth = 11;
 
-  // yaw in screen coords (+y down => flip sin)
   const dx = Math.cos(yaw);
   const dy = -Math.sin(yaw);
 
-  // perpendicular (left) in screen coords
   const px = -dy;
   const py = dx;
 
@@ -525,6 +530,16 @@ function drawLidar(k) {{
   }}
 }}
 
+function formatAction(k) {{
+  const act = action[k];
+  const parts = [];
+  for (let i = 0; i < act.length; i++) {{
+    const label = (i < dimNames.length) ? dimNames[i] : ("a" + i);
+    parts.push(label + "=" + act[i].toFixed(3));
+  }}
+  return parts.join(" ");
+}}
+
 function renderFrame(k) {{
   if (followInput && followInput.checked) {{
     worldCenter.x = pose[k][0];
@@ -538,8 +553,6 @@ function renderFrame(k) {{
   drawCarTriangle(k);
   drawLidar(k);
 
-  const a0 = action[k][0].toFixed(3);
-  const a1 = action[k][1].toFixed(3);
   const eh = e_head[k].toFixed(3);
   const el = e_lat[k].toFixed(3);
   const x = pose[k][0], y = pose[k][1], yaw = pose[k][2];
@@ -551,8 +564,9 @@ function renderFrame(k) {{
 
   info.textContent =
     "frame: " + k + "/" + (pose.length - 1) + "\\n" +
+    "action_space: " + actionSpaceName + "\\n" +
     "pose: x=" + x.toFixed(3) + " y=" + y.toFixed(3) + " yaw=" + yaw.toFixed(3) + "\\n" +
-    "action: speed_norm=" + a0 + " steer_norm=" + a1 + "\\n" +
+    "action: " + formatAction(k) + "\\n" +
     "errors: e_head=" + eh + " e_lat=" + el + "\\n" +
     mapLine +
     "view: scale=" + cam.scale.toFixed(3) + " pan=(" + cam.tx.toFixed(1) + "," + cam.ty.toFixed(1) + ")\\n";
@@ -596,6 +610,7 @@ renderFrame(0);
     out_path.write_text(html, encoding="utf-8")
 
     print(f"Wrote HTML replay: {out_path}")
+    print(f"Action space: {action_space_name} (dims: {dim_names})")
     if map_payload is None and not args.no_map:
         print("Note: map PNG/YAML not embedded (could not auto-find or missing origin/resolution).")
         print("Expected next to centerline: <Track>_map.png and <Track>_map.yaml")

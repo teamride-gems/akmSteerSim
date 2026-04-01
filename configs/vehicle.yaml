@@ -1,3 +1,5 @@
+action_space: steer_speed  # options: steer_speed, curvature_speed, lookahead_point, bezier
+
 v_max: 6.0            
 delta_max: 0.4189     
 a_long_max: 6.0       
@@ -5,7 +7,6 @@ a_lat_max: 8.0
 steer_max_deg: 24.0   
 aref_long_g: 0.5   
 aref_lat_g: 0.8    
-
 lidar:
   sectors: 21      
   fov_deg: 270         
@@ -15,15 +16,12 @@ lidar:
 sim:
   map_dir: assets/f1tenth_racetracks/Sakhir
   map_name: Sakhir_map
-
-
 vehicle:
   wheelbase_m: 0.33
   max_steer_rad: 0.4189
   max_speed_mps: 6.0
   min_speed_mps: 0.0
   
-
 reward:
   #current reward weights 
   w_progress: 1.0          # forward progress weight
@@ -31,31 +29,22 @@ reward:
   w_a_lat: -0.1            # lateral accel penalty weight
   w_time: -0.01            # time penalty per step
   crash_penalty: -10.0     # crash penalty
-
   # # reference accelerations (for normalization)
   # ref_a_long: 5.0          # m/s^2
   # ref_a_lat: 8.0           # m/s^2
-
-
   # # speed bonus: reward for going faster
   # w_speed: 0.5
   # speed_power: 1.0        # 1.0 = linear, >1 pushes more for top speed
-
   # offtrack_penalty: -20.0
-
   # w_heading: -1.0
-
   # w_accel_long: -0.05
   # w_accel_lat: -0.05
   # w_steer_rate: -0.05
-
   # w_clearance: 1.5
   # min_clear_m: 0.6
   # crash_clear_m: 0.25
-
   # time_penalty: -0.01
   # progress_if_offtrack: 0.0
-
 env:
   dt: 0.05
   episode_max_steps: 2000

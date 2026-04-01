@@ -8,7 +8,14 @@ import os
 from utils.state_processing import make_state
 from utils.reward import compute_reward
 from utils.normalization import StateNormalizer
-from drivers.driver_spec import ActionMapper
+from action_spaces_utils import (
+    get_policy_dim,
+    get_action_space_spec,
+    raw_action_to_command,
+    refresh_action_space_bounds,
+    get_speed_bounds,
+    get_steering_bounds,
+)
 
 
 class F1TenthSACEnv(gym.Env):
@@ -35,25 +42,55 @@ class F1TenthSACEnv(gym.Env):
 
         self.render_mode = render_mode
 
-        # lidar sector count for your state vector
+        # ---- action space setup via action_spaces_utils ----
+        self.action_space_name = str(cfg.get("action_space", "steer_speed"))
+
+        # Build the robot config dict that action_spaces_utils expects.
+        # It reads keys like min_steering_angle, max_steering_angle, min_speed,
+        # max_speed, wheelbase from a flat dict. We assemble this from the
+        # vehicle_cfg structure.
+        self._robot_config = self._build_robot_config(cfg)
+
+        # Refresh the registry bounds to match this robot's geometry
+        refresh_action_space_bounds(self._robot_config)
+
+        spec = get_action_space_spec(self.action_space_name)
+        self._policy_dim = spec.policy_dim
+
+        # Gym action space: policy outputs are unconstrained reals that get
+        # squashed by the policy_output_spec (tanh/sigmoid). SB3 SAC already
+        # applies tanh squashing internally, so we expose a [-1, 1]^dim box
+        # and let the pipeline's squashing handle the rest.
+        # NOTE: if you use SB3's squash_output=True (default for SAC), the
+        # raw network output is already in [-1, 1]. The action_spaces_utils
+        # pipeline then maps these through its own tanh/sigmoid to physical
+        # bounds. This double-squash is intentional and well-behaved: the
+        # outer tanh from SB3 bounds the raw value, and the inner
+        # tanh/sigmoid in the spec maps to physical limits.
+        self.action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(self._policy_dim,),
+            dtype=np.float32,
+        )
+
+        # Track previous command for rate limiting
+        self._prev_command = None
+
+        # ---- observation space ----
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
         self.obs_dim = 7 + self.n_lidar
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32
+        )
 
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32)
-
-        self.mapper = ActionMapper(self.cfg)
         self.normalizer = StateNormalizer(self.cfg)
 
         self._dt = 1.0 / 30.0
         self._last_for_rates = None
 
         # OPTIONAL: reduce raw scan beams before sectorization (CPU saver)
-        # e.g. cfg:
-        # lidar:
-        #   sectors: 21
-        #   raw_beams: 360
-        self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))  # 0 = no downsample
+        self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))
 
         sim_cfg = self.cfg.get("sim", {})
         raw_map_name = sim_cfg.get("map_name", "Sakhir")
@@ -62,7 +99,7 @@ class F1TenthSACEnv(gym.Env):
         if not map_dir.exists():
             raise FileNotFoundError(f"Map directory not found: {map_dir}")
 
-        map_stem = f"{track_name}_map"  # <Track>_map.yaml/png
+        map_stem = f"{track_name}_map"
         map_path_no_ext = map_dir / map_stem
         map_yaml_check = map_dir / f"{map_stem}.yaml"
         if not map_yaml_check.exists():
@@ -83,6 +120,64 @@ class F1TenthSACEnv(gym.Env):
                     break
 
         self._step_i = 0
+
+        print(
+            f"[F1TenthSACEnv] action_space={self.action_space_name} "
+            f"policy_dim={self._policy_dim} "
+            f"obs_dim={self.obs_dim}"
+        )
+
+    @staticmethod
+    def _build_robot_config(cfg: dict) -> dict:
+        """
+        Translate vehicle_cfg keys into the flat config dict that
+        action_spaces_utils expects.
+        """
+        vehicle = cfg.get("vehicle", {})
+        rc = {}
+
+        # Speed bounds
+        rc["min_speed"] = float(
+            cfg.get("v_min", vehicle.get("min_speed_mps", 0.0))
+        )
+        v_max = cfg.get("v_max", vehicle.get("max_speed_mps", 5.0))
+        rc["max_speed"] = float(v_max)
+
+        # Steering bounds
+        delta_max = cfg.get("delta_max", None)
+        if delta_max is None:
+            delta_max = vehicle.get("max_steer_rad", None)
+        if delta_max is None and "steer_max_deg" in cfg:
+            delta_max = np.deg2rad(float(cfg["steer_max_deg"]))
+        if delta_max is None:
+            delta_max = 0.4189  # ~24 deg default
+        delta_max = float(delta_max)
+        delta_min = float(cfg.get("delta_min", -delta_max))
+
+        rc["min_steering_angle"] = delta_min
+        rc["max_steering_angle"] = delta_max
+
+        # Wheelbase (accept wheelbase or wheelbase_m)
+        wb = vehicle.get("wheelbase", vehicle.get("wheelbase_m", cfg.get("wheelbase", cfg.get("wheelbase_m", 0.33))))
+        rc["wheelbase"] = float(wb)
+
+        # Rate limits (optional)
+        if "max_steering_rate" in vehicle:
+            rc["max_steering_rate"] = float(vehicle["max_steering_rate"])
+        if "max_acceleration" in vehicle:
+            rc["max_acceleration"] = float(vehicle["max_acceleration"])
+
+        # Lookahead / bezier bounds (optional overrides)
+        for key in (
+            "lookahead_min_x", "lookahead_max_x", "lookahead_max_abs_y",
+            "bezier_min_x", "bezier_max_x", "bezier_max_abs_y",
+            "bezier_end_x", "bezier_min_dx",
+            "bezier_num_samples", "bezier_lookahead_distance",
+        ):
+            if key in cfg:
+                rc[key] = float(cfg[key])
+
+        return rc
 
     def _downsample_scan(self, scan: np.ndarray) -> np.ndarray:
         """Optionally downsample raw scan beams to cfg lidar.raw_beams (uniform stride)."""
@@ -206,23 +301,16 @@ class F1TenthSACEnv(gym.Env):
 
         self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
         return obs_raw
-    
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self._step_i = 0
         self._last_for_rates = None
-        options = options or {}
+        self._prev_command = None
 
+        # random spawn on centerline
         N = self.centerline.shape[0]
-
-        # Fixed spawn for eval if provided
-        if "spawn_index" in options:
-            i = int(options["spawn_index"])
-            i = max(1, min(i, N - 2))
-        else:
-            # Default behavior: random spawn on centerline
-            i = int(self.np_random.integers(1, N - 1))
-
+        i = int(self.np_random.integers(1, N - 1))
         x = float(self.centerline[i, 0])
         y = float(self.centerline[i, 1])
         dx = float(self.centerline[i + 1, 0] - self.centerline[i, 0])
@@ -242,17 +330,30 @@ class F1TenthSACEnv(gym.Env):
             "crash": bool(obs_raw.get("crash", False)),
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
-            "spawn_index": int(i),
         }
         return state_norm.astype(np.float32), info
 
     def step(self, action):
         self._step_i += 1
 
-        # normalized action -> (v, delta)
-        v_target, delta_target = self.mapper.map_action(action)
+        # ---- action space pipeline ----
+        # action is the raw policy output (shape = policy_dim, values in [-1, 1])
+        # raw_action_to_command: squash -> interpret -> constrain -> robot command
+        command = raw_action_to_command(
+            self.action_space_name,
+            action,
+            self._robot_config,
+            prev_command=self._prev_command,
+            dt=self._dt,
+            apply_final_constraints=True,
+        )
 
-        sim_action = np.array([[delta_target, v_target]], dtype=float)
+        steering_angle = float(command["steering_angle"])
+        speed = float(command["speed"])
+        self._prev_command = command
+
+        # f110_gym expects [[steering, speed]]
+        sim_action = np.array([[steering_angle, speed]], dtype=float)
         sim_obs, _, done, _ = self.sim.step(sim_action)
 
         # handle done as array/bool safely
@@ -264,8 +365,7 @@ class F1TenthSACEnv(gym.Env):
         state = make_state(obs_raw, self.centerline, self.cfg)
         state_norm = self.normalizer.normalize(state)
 
-        reward, reward_terms = compute_reward(obs_raw, self.centerline, self.cfg)
-
+        reward = compute_reward(obs_raw, self.centerline, self.cfg)
         crash = bool(obs_raw.get("crash", False))
         terminated = bool(crash or sim_done)
         truncated = False
@@ -275,8 +375,9 @@ class F1TenthSACEnv(gym.Env):
             "sim_done": sim_done,
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
-            "steer": float(obs_raw.get("steer", 0.0)),
-            "reward_terms": reward_terms,
+            "steer": steering_angle,
+            "commanded_speed": speed,
+            "action_space": self.action_space_name,
         }
 
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info
@@ -286,7 +387,6 @@ class F1TenthSACEnv(gym.Env):
         if self.render_mode != "human":
             return
         try:
-            # prefer renderer.flip if present (sometimes less likely to hang)
             r = getattr(self.sim, "renderer", None)
             if r is not None and hasattr(r, "flip"):
                 r.flip()
