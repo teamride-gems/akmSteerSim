@@ -5,6 +5,8 @@ Run a trained SB3 SAC model in your F1TenthSACEnv.
 Supports:
 - render (if your WSL2 pyglet window works)
 - headless recording to .npz (then replay with replay_rollout_html.py)
+- lap metrics logging via LapMetricsLogger
+- per-timestep speed/acceleration logging
 
 Example:
   python scripts/run_trained_policy.py \
@@ -26,6 +28,8 @@ import yaml
 # Make repo root importable
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from metrics_logger import LapMetricsLogger
 
 
 def load_yaml(path: Path) -> dict:
@@ -140,6 +144,9 @@ def main():
         raise FileNotFoundError(f"Vehicle cfg not found: {veh_cfg_path}")
     veh_cfg = load_yaml(veh_cfg_path)
 
+    # Action space from config
+    action_space_name = veh_cfg.get("action_space", "steer_speed")
+
     # Track override (optional)
     if args.track is None:
         # use whatever is in vehicle.yaml
@@ -153,6 +160,7 @@ def main():
 
     print("=== Run setup ===")
     print("model:", str(model_path))
+    print("action_space:", action_space_name)
     print("track:", track)
     print("map_name:", map_name)
     print("map_dir:", veh_cfg["sim"]["map_dir"])
@@ -171,11 +179,16 @@ def main():
     )
 
     # Load model
-    # NOTE: SB3 expects env/action_space compatibility; this is your same env used in training.
     model = SAC.load(str(model_path), device="auto")
 
     obs, info = env.reset()
     ep = 0
+
+    # Lap metrics logging
+    lap_id = 0
+    lap_start_time = time.time()
+    logger = LapMetricsLogger("metrics/lap_metrics.csv")
+    logger.enable_step_log("metrics/timestep_metrics.csv")
 
     # recording buffers
     poses = []
@@ -188,6 +201,12 @@ def main():
         action, _ = model.predict(obs, deterministic=args.deterministic)
 
         obs, reward, terminated, truncated, info = env.step(action)
+
+        # Per-timestep speed/acceleration logging
+        t_sec = time.time() - lap_start_time
+        speed_mps = float(info.get("speed", np.nan))
+        if np.isfinite(speed_mps):
+            logger.log_step_speed(t_sec=t_sec, speed_mps=speed_mps, lap_id=lap_id)
 
         if args.render:
             try:
@@ -205,22 +224,48 @@ def main():
             x, y, yaw = try_get_pose(env)
             poses.append([x, y, yaw])
 
-            # action
+            # action — handle any dimensionality
             actions.append([float(a) for a in action])
 
-            # errors (your obs layout used earlier: obs[4]=e_head, obs[5]=e_lat)
+            # errors (obs layout: obs[4]=e_head, obs[5]=e_lat)
             eh = float(obs[4]) if np.asarray(obs).size > 5 else float("nan")
             el = float(obs[5]) if np.asarray(obs).size > 5 else float("nan")
             e_heads.append(eh)
             e_lats.append(el)
 
-            # lidar sectors from obs[7:] if you want
+            # lidar sectors from obs[7:]
             if args.record_lidar:
                 o = np.asarray(obs, dtype=float)
                 lidar_sectors.append(o[7:].tolist())
 
         if terminated or truncated:
             ep += 1
+
+            # Lap metrics
+            lap_time_sec = time.time() - lap_start_time
+            if bool(info.get("crash", False)):
+                lap_status = "CRASH"
+            elif bool(info.get("sim_done", False)):
+                lap_status = "SUCCESS"
+            else:
+                lap_status = "TIMEOUT"
+            lap_progress = float(info.get("lap_progress", 0.0))
+
+            logger.log_lap(
+                lap_id=lap_id,
+                policy_id=str(model_path),
+                action_space_id=action_space_name,
+                track_id=track,
+                lap_status=lap_status,
+                lap_time_sec=lap_time_sec,
+                lap_progress=lap_progress,
+            )
+
+            # Reset lap state
+            lap_id += 1
+            lap_start_time = time.time()
+            logger.reset_step()
+
             crashed = False
             sim_done = False
             if isinstance(info, dict):
@@ -229,7 +274,19 @@ def main():
             print(f"[episode {ep}] t={t} crash={crashed} sim_done={sim_done}")
             obs, info = env.reset()
 
+    # Log final incomplete lap as TIMEOUT
+    logger.log_lap(
+        lap_id=lap_id,
+        policy_id=str(model_path),
+        action_space_id=action_space_name,
+        track_id=track,
+        lap_status="TIMEOUT",
+        lap_time_sec=time.time() - lap_start_time,
+        lap_progress=0.0,
+    )
+
     try:
+        logger.close()
         env.close()
     except Exception:
         pass
@@ -249,6 +306,7 @@ def main():
             e_head=e_heads,
             e_lat=e_lats,
             track_centerline_csv=str(centerline_csv),
+            action_space=action_space_name,
         )
 
         if args.record_lidar and len(lidar_sectors) > 0:

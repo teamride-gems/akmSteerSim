@@ -24,7 +24,8 @@ import time
 import numpy as np
 import yaml
 
-from utils.action_spaces_utils import get_action_space_spec, get_policy_dim
+from action_spaces_utils import get_action_space_spec, get_policy_dim
+from metrics_logger import LapMetricsLogger
 
 
 def load_yaml(path: str) -> dict:
@@ -103,9 +104,7 @@ def heuristic_lookahead_point(obs: np.ndarray) -> np.ndarray:
     a sensible forward point: x≈0 maps to mid-range via sigmoid,
     y uses the steering signal via tanh."""
     steer, speed = _compute_steer_and_speed(obs)
-    # x=0 -> sigmoid maps to midpoint of [0.5, 5.0] ≈ 2.75m ahead
     lookahead_x_raw = 0.0
-    # y uses steering signal — tanh will map this to lateral offset
     lookahead_y_raw = steer
     return np.array([lookahead_x_raw, lookahead_y_raw, speed], dtype=np.float32)
 
@@ -115,8 +114,6 @@ def heuristic_bezier(obs: np.ndarray) -> np.ndarray:
     Produce a roughly straight-ahead Bezier with mild lateral shaping
     from the steering signal."""
     steer, speed = _compute_steer_and_speed(obs)
-    # p1 and p2 x: 0.0 -> sigmoid maps to midpoint of x range
-    # p1 and p2 y: use steering signal scaled down for gentle curves
     p1_x_raw = 0.0
     p1_y_raw = steer * 0.5
     p2_x_raw = 0.0
@@ -133,6 +130,8 @@ HEURISTIC_POLICIES = {
 
 
 def main():
+    global _LAST_STEER
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--vehicle_cfg", default="configs/vehicle.yaml")
     ap.add_argument("--steps", type=int, default=5000)
@@ -190,6 +189,12 @@ def main():
 
     obs, info = env.reset()
 
+    # Lap metrics logging
+    lap_id = 0
+    lap_start_time = time.time()
+    logger = LapMetricsLogger("metrics/lap_metrics.csv")
+    logger.enable_step_log("metrics/timestep_metrics.csv")
+
     # recorder buffers
     rec = {
         "t": [],
@@ -215,6 +220,12 @@ def main():
 
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += float(reward)
+
+        # Per-timestep speed/acceleration logging
+        t_sec = time.time() - lap_start_time
+        speed_mps = float(info.get("speed", np.nan))
+        if np.isfinite(speed_mps):
+            logger.log_step_speed(t_sec=t_sec, speed_mps=speed_mps, lap_id=lap_id)
 
         # debug lidar
         if args.lidar_print_every > 0 and (t % args.lidar_print_every == 0):
@@ -250,10 +261,48 @@ def main():
         if terminated or truncated:
             episode += 1
             print(f"[episode {episode}] t={t} ep_return={total_reward:.3f} crash={bool(info.get('crash', False))} sim_done={bool(info.get('sim_done', False))}")
+
+            # Lap metrics
+            lap_time_sec = time.time() - lap_start_time
+            if bool(info.get("crash", False)):
+                lap_status = "CRASH"
+            elif bool(info.get("sim_done", False)):
+                lap_status = "SUCCESS"
+            else:
+                lap_status = "TIMEOUT"
+            lap_progress = float(info.get("lap_progress", 0.0))
+
+            logger.log_lap(
+                lap_id=lap_id,
+                policy_id="heuristic_run",
+                action_space_id=action_space_name,
+                track_id=track_name,
+                lap_status=lap_status,
+                lap_time_sec=lap_time_sec,
+                lap_progress=lap_progress,
+            )
+
+            # Reset lap state
+            lap_id += 1
+            lap_start_time = time.time()
+            logger.reset_step()
+            _LAST_STEER = 0.0
+
             total_reward = 0.0
             obs, info = env.reset()
-            _LAST_STEER = 0.0  # reset smoothing state on episode boundary
 
+    # Log final incomplete lap as TIMEOUT
+    logger.log_lap(
+        lap_id=lap_id,
+        policy_id="heuristic_run",
+        action_space_id=action_space_name,
+        track_id=track_name,
+        lap_status="TIMEOUT",
+        lap_time_sec=time.time() - lap_start_time,
+        lap_progress=0.0,
+    )
+
+    logger.close()
     env.close()
 
     if args.record:
