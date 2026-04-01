@@ -8,7 +8,7 @@ import os
 from utils.state_processing import make_state
 from utils.reward import compute_reward
 from utils.normalization import StateNormalizer
-from action_spaces_utils import (
+from utils.action_spaces_utils import (
     get_policy_dim,
     get_action_space_spec,
     raw_action_to_command,

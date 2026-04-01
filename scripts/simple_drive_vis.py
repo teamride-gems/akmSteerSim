@@ -24,7 +24,7 @@ import time
 import numpy as np
 import yaml
 
-from action_spaces_utils import get_action_space_spec, get_policy_dim
+from utils.action_spaces_utils import get_action_space_spec, get_policy_dim
 
 
 def load_yaml(path: str) -> dict:
