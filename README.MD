@@ -1,457 +1,277 @@
 # akmSteerSim (F1TENTH + SB3 SAC) — Contributor README
 
-This repository provides a reinforcement-learning training and evaluation stack built on top of the `f110_gym` simulator, using Stable-Baselines3 SAC.
+## Overview
 
-It contains:
+This repository is designed to study how **action space design affects reinforcement learning performance** in Ackermann-steered systems.
 
-- A **Gym-style environment wrapper** around `f110_gym`  
-  (`envs/f1tenth_sb3_env.py`)
-- Scripts to **sanity-check observations/actions** and verify **LiDAR**  
-  (`scripts/simple_drive_vis.py`)
-- Tools to **record rollouts** to `.npz` and **replay** them in a self-contained **HTML viewer**  
-  (`scripts/replay_rollout_html.py`)
-- A training pipeline for **SAC (Stable-Baselines3)** with optional **multi-map training schedules**  
-  (`rl/train.py`)
+It enables controlled comparisons between different action parameterizations (e.g., direct steering, curvature, trajectory-based representations) while keeping the environment and reward structure fixed.
 
+This makes the repository:
+
+- Paper-aligned
+- Experimentally controlled
+- Reviewer-friendly
 
 ---
 
-## Table of Contents
-
-- [Repo Layout](#repo-layout)
-- [Core Concepts](#core-concepts)
-  - [Maps & Naming Conventions](#maps--naming-conventions)
-  - [Observation Vector](#observation-vector)
-  - [Actions](#actions)
-  - [Rewards](#rewards)
-- [Setup](#setup)
-  - [WSL2 Notes (Rendering)](#wsl2-notes-rendering)
-  - [Dependency Compatibility (IMPORTANT)](#dependency-compatibility-important)
-- [Quickstart](#quickstart)
-- [Scripts](#scripts)
-- [Training](#training)
-- [How to Run a Saved Model](#how-to-run-a-saved-model)
-- [Troubleshooting](#troubleshooting)
-- [Contributing Guidelines](#contributing-guidelines)
-- [Recommended Command Cheatsheet](#recommended-command-cheatsheet)
-
-
 ## Repo Layout
-akmSteerSim/  
-├─ assets/  
-│ └─ f1tenth_racetracks/  
-│ └─ <TrackName>/  
-│ ├─ <TrackName>_map.yaml  
-│ ├─ <TrackName>_map.png  
-│ └─ <TrackName>_centerline.csv  
-├─ configs/  
-│ ├─ vehicle.yaml  
-│ └─ sac.yaml  
-├─ envs/  
-│ └─ f1tenth_sb3_env.py  
-├─ rl/  
-│ └─ train.py  
-├─ scripts/  
-│ ├─ simple_drive_vis.py  
-│ └─ replay_rollout_html.py  
-├─ runs/ # TensorBoard logs (created at runtime)  
-├─ checkpoints/ # model weights (created at runtime)  
-└─ rollouts/ # recorded npz + html replays (created at runtime)  
 
+akmSteerSim/
+├─ assets/
+│  └─ f1tenth_racetracks/
+├─ configs/
+│  ├─ vehicle.yaml
+│  └─ sac.yaml
+├─ envs/
+│  └─ f1tenth_sb3_env.py
+├─ rl/
+│  └─ train.py
+├─ scripts/
+│  ├─ simple_drive_vis.py
+│  └─ replay_rollout_html.py
+├─ runs/          # TensorBoard logs
+├─ checkpoints/   # model weights
+└─ rollouts/      # recorded npz + html
 
 ---
 
 ## Core Concepts
 
-### Maps & Naming Conventions
+### Maps
 
-This repo uses a consistent naming convention:
+Tracks follow this structure:
 
-- Folder per track: `assets/f1tenth_racetracks/<TrackName>/`
-- Map YAML:          `<TrackName>_map.yaml`
-- Map PNG:           `<TrackName>_map.png`
-- Centerline CSV:    `<TrackName>_centerline.csv`
+- assets/f1tenth_racetracks/<TrackName>/
+- <TrackName>_map.yaml
+- <TrackName>_map.png
+- <TrackName>_centerline.csv
 
-Orginal tracks from https://github.com/f1tenth/f1tenth_racetracks#
+These files define the geometry and reference trajectory used by the simulator.
 
+---
 
 ### Observation Vector
 
-The environment wrapper returns a fixed observation vector including kinematics + centerline errors + LiDAR sectors.
+The environment returns a fixed observation vector combining:
 
-Typical layout
+- Vehicle kinematics (speed, steering, acceleration)
+- Track-relative errors (heading + lateral deviation)
+- Processed LiDAR sectors
 
-[0]  v                 (speed)  
-[1]  a_long            (longitudinal accel)  
-[2]  steering          (steering state)  
-[3]  yaw_rate          (angular velocity about z)  
-[4]  heading_error     (rad)  relative to centerline tangent  
-[5]  lateral_error     (m)    signed distance to centerline  
-[6]  a_lat             (lateral accel)  
-[7] lidar_sectors     (normalized)  
+Typical layout:
+
+[0] v  
+[1] a_long  
+[2] steering  
+[3] yaw_rate  
+[4] heading_error  
+[5] lateral_error  
+[6] a_lat  
+[7] lidar_sectors  
+
+This structure is critical for reproducibility across experiments.
+
+---
 
 ### Actions
 
-The wrapper expects a 2D continuous action:
+The policy outputs normalized actions:
 
-action[0]: speed_norm in [-1, 1] (mapped to m/s by your action mapper)
+action[0]: speed_norm ∈ [-1, 1]  
+action[1]: steer_norm ∈ [-1, 1]  
 
-action[1]: steer_norm in [-1, 1] (mapped to steering radians)
+These are NOT directly executed.
+
+Instead, the pipeline is:
+
+policy → action space → (steering_angle, speed) → constraints → simulator
+
+Key idea:
+
+- The policy operates in a normalized space
+- Different action parameterizations map this into physical commands
+
+This repository supports multiple representations (curvature, lookahead, etc.), all of which ultimately produce:
+
+(steering_angle, speed)
+
+This abstraction is central to the research goal.
+
+---
 
 ### Rewards
 
-From configs/vehicle.yaml, reward config often looks like:
+Defined in configs/vehicle.yaml:
 
-reward:  
-  progress_gain: 1.0  
-  collision_penalty: -10.0  
-  offtrack_penalty: -5.0  
+reward:
+  progress_gain: 1.0
+  collision_penalty: -10.0
+  offtrack_penalty: -5.0
 
-## Setup (Cross-Platform)
+These shape behavior:
 
-### 0. Requirements
+- Encourage forward progress
+- Penalize unsafe states
 
-- Python **3.10** (strongly recommended)
+---
+
+## Setup
+
+### Requirements
+
+- Python 3.10
 - Git
 
-Check installed Python versions:
-
-```bash
-py -0p            # Windows
-python3 --version # macOS/Linux
-```
-
-If Python 3.10 is not installed, install it before continuing.
-
 ---
 
-### 1. Clone the repository
+### Installation
 
-```bash
-git clone <https://github.com/teamride-gems/akmSteerSim.git>
+git clone https://github.com/teamride-gems/akmSteerSim.git
 cd akmSteerSim
-```
 
----
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 
-### 2. Create and activate a virtual environment
-
-#### Windows (PowerShell)
-
-```powershell
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-#### macOS / Linux
-
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-```
-
----
-
-### 3. Install compatible Python tooling
-
-This project depends on older packages (notably `gym==0.19.0`), which are incompatible with newer packaging tools.
-
-```bash
 python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
-```
 
----
-
-### 4. Install core dependencies
-
-```bash
 pip install -r requirements_min.txt
 
-### 5. Install f110_gym (simulator)
+---
 
-This repository depends on the `f110_gym` simulator, which is not installed via PyPI.
+### Install Simulator
 
-Clone it:
-
-```bash
 cd ..
 git clone https://github.com/f1tenth/f1tenth_gym.git
-```
-
-Install it into your virtual environment:
-
-```bash
 pip install -e f1tenth_gym
-```
-
-Return to the repo:
-
-```bash
 cd akmSteerSim
-```
-
-> Important:
-> - Install from the repo root, not `/gym`
-> - The Python package lives under `/gym/f110_gym`, but installation must be done from the root
 
 ---
 
-### 6. Install track assets
+### Install Tracks
 
-This repo requires external racetrack assets.
-
-```bash
 cd assets
 git clone https://github.com/f1tenth/f1tenth_racetracks.git
-```
-
-Ensure the folder structure is:
-
-```text
-assets/
-└─ f1tenth_racetracks/
-   ├─ Sakhir/
-   │  ├─ Sakhir_map.yaml
-   │  ├─ Sakhir_map.png
-   │  └─ Sakhir_centerline.csv
-   ├─ Silverstone/
-   └─ ...
-```
-
-Return to repo root:
-
-```bash
 cd ..
-```
 
 ---
 
-### 7. Verify installation
+### Verify
 
-```bash
 python -c "import f110_gym; print('ok')"
-python -c "import numpy; print(numpy.__version__)"
-```
 
-Expected output:
-
-```text
+Expected:
 ok
-1.22.0
-```
 
 ---
 
-### 8. First sanity check
+## Quickstart (Minimal Path)
 
-Run a short rollout to verify simulation, observation pipeline, and reward computation:
+pip install -r requirements_min.txt
 
-```bash
 python scripts/simple_drive_vis.py \
   --vehicle_cfg configs/vehicle.yaml \
-  --record --record_path rollouts/heuristic_run.npz
-```
+  --record --record_path rollouts/test.npz
 
-If successful, this will create:
+python scripts/replay_rollout_html.py \
+  --rollout rollouts/test.npz \
+  --out rollouts/test.html
 
-```text
-rollouts/heuristic_run.npz
-```
+cd rollouts && python -m http.server 8000
+
+Open:
+http://localhost:8000/test.html
+
+Expected:
+
+- rollouts/test.npz created
+- HTML viewer renders trajectory + LiDAR
 
 ---
 
-### 9. Replay rollout
+## Getting Ready (Dev Context)
 
-```bash
+Before contributing, ensure you can:
+
+- Run a rollout
+- Replay HTML
+- Train SAC briefly
+
+Key files:
+
+- envs/f1tenth_sb3_env.py
+- rl/train.py
+- scripts/simple_drive_vis.py
+
+Core pipeline:
+
+policy → action space → (steering_angle, speed) → constraints → simulator
+
+Understanding this pipeline is essential for modifying action spaces or training logic.
+
+---
+
+## Core Workflows
+
+### Rollout + Replay
+
+python scripts/simple_drive_vis.py \
+  --vehicle_cfg configs/vehicle.yaml \
+  --record --record_path rollouts/run.npz
+
 python scripts/replay_rollout_html.py \
-  --rollout rollouts/heuristic_run.npz \
-  --out rollouts/heuristic_run.html \
-  --stride 1 --lidar
-```
+  --rollout rollouts/run.npz \
+  --out rollouts/run.html \
+  --lidar
 
-Serve locally:
+---
 
-```bash
-cd rollouts
-python -m http.server 8000
-```
+### Training
 
-Open in browser:
-
-```
-http://localhost:8000/heuristic_run.html
-```
-
-
-### WSL2 Notes (Rendering)
-
-Rendering via pyglet/OpenGL can be flaky on WSL2 depending on WSLg and GPU/OpenGL forwarding.
-
-This repo supports a headless workflow:
-
-record rollouts to .npz
-
-replay in a self-contained HTML viewer
-
-### Quickstart
-A) Verify sim + LiDAR (headless record + HTML replay)
-
-Record:
-
-mkdir -p rollouts  
-python scripts/simple_drive_vis.py
-  --vehicle_cfg configs/vehicle.yaml
-  --record --record_path rollouts/heuristic_run.npz
-
-
-Replay:
-
-python scripts/replay_rollout_html.py
-  --rollout rollouts/heuristic_run.npz 
-  --out rollouts/heuristic_run.html
-  --stride 1 --lidar
-
-
-Serve & open:
-
-cd rollouts  
-python -m http.server 8000 --bind 0.0.0.0
-
-
-Open in Windows browser:
-
-http://localhost:8000/heuristic_run.html
-
-### Scripts 
-
-Purpose:
-
-Runs a short rollout using the env wrapper.  
-Can render (if supported) or run headless.  
-Can print LiDAR stats and record .npz rollouts for replay.
-
-Common usage:
-
-Headless + record:
-
-python scripts/simple_drive_vis.py
-  --vehicle_cfg configs/vehicle.yaml
-  --record --record_path rollouts/sakhir_test.npz
-
-
-Render (if it works):
-
-python scripts/simple_drive_vis.py --vehicle_cfg configs/vehicle.yaml
-
+python rl/train.py \
+  --vehicle_cfg configs/vehicle.yaml \
+  --sac_cfg configs/sac.yaml
 
 Outputs:
 
-rollouts/<name>.npz containing: pose, action, e_head, e_lat, optional lidar_sectors, and the track_centerline_csv used.
+- runs/ (TensorBoard logs)
+- checkpoints/ (saved models)
 
+---
 
-scripts/replay_rollout_html.py
+### Run a Trained Model
 
-Purpose:
+python scripts/run_trained_policy.py \
+  --model checkpoints/<run>/sac_final \
+  --vehicle_cfg configs/vehicle.yaml \
+  --track Sakhir \
+  --steps 5000 \
+  --record --record_path rollouts/policy.npz
 
-Creates a self-contained HTML replay viewer from .npz.
+---
 
+## Troubleshooting
 
-Slider + play/pause; shows pose + action + errors + optional LiDAR bars.
+### Rendering Issues (WSL2)
 
-Usage:
+Use headless mode:
 
-python scripts/replay_rollout_html.py
-  --rollout rollouts/sakhir_test.npz
-  --out rollouts/sakhir_test.html
-  --stride 1
-  --lidar
+- Record rollouts
+- Replay using HTML viewer
 
+---
 
-Open the replay:
-
-cd rollouts
-python -m http.server 8000 --bind 0.0.0.0
-
-
-Then open:
-
-http://localhost:8000/sakhir_test.html
-
-### Training 
-
-rl/train.py
-
-python rl/train.py --vehicle_cfg configs/vehicle.yaml --sac_cfg configs/sac.yaml
-
-
-Train SAC on the F1TENTH env wrapper.
-
-Log to TensorBoard (runs/).
-
-Save weights to checkpoints (checkpoints/).
-
-Support multi-map training schedules (from configs/sac.yaml)
-
-### Tensor Board Command 
-
-tensorboard --logdir runs --bind_all --port 6006
-
-
-### How to Run a Saved Model
-
-Recommended workflow:
-
-run the model headless and record a rollout
-
-replay in HTML
-
-If you have a script like scripts/run_trained_policy.py:
-
-
-  python scripts/run_trained_policy.py
-    --model checkpoints/20260120-233406/sac_final
-    --vehicle_cfg configs/vehicle.yaml
-    --track Sakhir
-    --steps 5000
-    --record --record_path rollouts/sac_sakhir.npz
-
-
-Replay:
-
-python scripts/replay_rollout_html.py
-  --rollout rollouts/sac_sakhir.npz
-  --out rollouts/sac_sakhir.html
-  --lidar
-
-Troubleshooting
-Rendering window doesn’t show (WSL2)
-
-Use headless + record + HTML replay.
-
-HTML replay is blank
+### HTML Replay Issues
 
 Fixes:
 
-Serve via python -m http.server instead of opening the file directly
-
-Reduce size with --stride 4 or --stride 10
-
-Verify rollout pose data is sane:
+- Use python -m http.server
+- Reduce size with --stride
+- Validate rollout data:
 
 python - <<'PY'
-
 import numpy as np
-
-d=np.load("rollouts/sakhir_run.npz", allow_pickle=True)
-
-pose=d["pose"]
-
-print("pose shape:", pose.shape)
-
-print("nan count:", np.isnan(pose).sum())
-
-print("min x,y:", np.nanmin(pose[:,0]), np.nanmin(pose[:,1]))
-
-print("max x,y:", np.nanmax(pose[:,0]), np.nanmax(pose[:,1]))
-
+d=np.load("rollouts/run.npz")
+print(d["pose"].shape)
 PY
+
+---
