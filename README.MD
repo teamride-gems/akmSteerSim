@@ -6,108 +6,95 @@ This repository is designed to study how **action space design affects reinforce
 
 It enables controlled comparisons between different action parameterizations (e.g., direct steering, curvature, trajectory-based representations) while keeping the environment and reward structure fixed.
 
+## Table of Contents
+
+- [Repo Layout](#repo-layout)
+- [Core Concepts](#core-concepts)
+  - [Maps & Naming Conventions](#maps--naming-conventions)
+  - [Observation Vector](#observation-vector)
+  - [Actions](#actions)
+  - [Rewards](#rewards)
+- [Setup](#setup)
+  - [WSL2 Notes (Rendering)](#wsl2-notes-rendering)
+  - [Dependency Compatibility (IMPORTANT)](#dependency-compatibility-important)
+- [Quickstart](#quickstart)
+- [Scripts](#scripts)
+- [Training](#training)
+- [How to Run a Saved Model](#how-to-run-a-saved-model)
+- [Troubleshooting](#troubleshooting)
+- [Contributing Guidelines](#contributing-guidelines)
+- [Recommended Command Cheatsheet](#recommended-command-cheatsheet)
+
 ---
 
 ## Repo Layout
-
-akmSteerSim /
-├─ assets /
-│  └─ f1tenth_racetracks /
-├─ configs /
-│  ├─ vehicle.yaml
-│  └─ sac.yaml
-├─ envs /
-│  └─ f1tenth_sb3_env.py
-├─ rl /
-│  └─ train.py
-├─ scripts /
-│  ├─ simple_drive_vis.py
-│  └─ replay_rollout_html.py
-├─ runs /
-├─ checkpoints /
-└─ rollouts /
+akmSteerSim/  
+├─ assets/  
+│ └─ f1tenth_racetracks/  
+│ └─ <TrackName>/  
+│ ├─ <TrackName>_map.yaml  
+│ ├─ <TrackName>_map.png  
+│ └─ <TrackName>_centerline.csv  
+├─ configs/  
+│ ├─ vehicle.yaml  
+│ └─ sac.yaml  
+├─ envs/  
+│ └─ f1tenth_sb3_env.py  
+├─ rl/  
+│ └─ train.py  
+├─ scripts/  
+│ ├─ simple_drive_vis.py  
+│ └─ replay_rollout_html.py  
+├─ runs/ # TensorBoard logs (created at runtime)  
+├─ checkpoints/ # model weights (created at runtime)  
+└─ rollouts/ # recorded npz + html replays (created at runtime)  
 
 ---
-
 ## Core Concepts
 
-### Maps
+### Maps & Naming Conventions
 
-Tracks follow this structure:
+This repo uses a consistent naming convention:
 
-- assets/f1tenth_racetracks/<TrackName>/
-- <TrackName>_map.yaml
-- <TrackName>_map.png
-- <TrackName>_centerline.csv
+- Folder per track: `assets/f1tenth_racetracks/<TrackName>/`
+- Map YAML:          `<TrackName>_map.yaml`
+- Map PNG:           `<TrackName>_map.png`
+- Centerline CSV:    `<TrackName>_centerline.csv`
 
-These files define the geometry and reference trajectory used by the simulator.
+Orginal tracks from https://github.com/f1tenth/f1tenth_racetracks#
 
----
 
 ### Observation Vector
 
-The environment returns a fixed observation vector combining:
+The environment wrapper returns a fixed observation vector including kinematics + centerline errors + LiDAR sectors.
 
-- Vehicle kinematics (speed, steering, acceleration)
-- Track-relative errors (heading + lateral deviation)
-- Processed LiDAR sectors
+Typical layout
 
-Typical layout:
-
-[0] v  
-[1] a_long  
-[2] steering  
-[3] yaw_rate  
-[4] heading_error  
-[5] lateral_error  
-[6] a_lat  
-[7] lidar_sectors  
-
-This structure is critical for reproducibility across experiments.
-
----
+[0]  v                 (speed)  
+[1]  a_long            (longitudinal accel)  
+[2]  steering          (steering state)  
+[3]  yaw_rate          (angular velocity about z)  
+[4]  heading_error     (rad)  relative to centerline tangent  
+[5]  lateral_error     (m)    signed distance to centerline  
+[6]  a_lat             (lateral accel)  
+[7] lidar_sectors     (normalized)  
 
 ### Actions
 
-The policy outputs normalized actions:
+The wrapper expects a 2D continuous action:
 
-action[0]: speed_norm ∈ [-1, 1]  
-action[1]: steer_norm ∈ [-1, 1]  
+action[0]: speed_norm in [-1, 1] (mapped to m/s by your action mapper)
 
-These are NOT directly executed.
-
-Instead, the pipeline is:
-
-policy → action space → (steering_angle, speed) → constraints → simulator
-
-Key idea:
-
-- The policy operates in a normalized space
-- Different action parameterizations map this into physical commands
-
-This repository supports multiple representations (curvature, lookahead, etc.), all of which ultimately produce:
-
-(steering_angle, speed)
-
-This abstraction is central to the research goal.
-
----
+action[1]: steer_norm in [-1, 1] (mapped to steering radians)
 
 ### Rewards
 
-Defined in configs/vehicle.yaml:
+From configs/vehicle.yaml, reward config often looks like:
 
-reward:
-  progress_gain: 1.0
-  collision_penalty: -10.0
-  offtrack_penalty: -5.0
-
-These shape behavior:
-
-- Encourage forward progress
-- Penalize unsafe states
-
----
+reward:  
+  progress_gain: 1.0  
+  collision_penalty: -10.0  
+  offtrack_penalty: -5.0  
 
 ## Setup
 
@@ -261,11 +248,4 @@ Fixes:
 - Use python -m http.server
 - Reduce size with --stride
 - Validate rollout data:
-
-python - <<'PY'
-import numpy as np
-d=np.load("rollouts/run.npz")
-print(d["pose"].shape)
-PY
-
 ---
