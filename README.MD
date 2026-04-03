@@ -38,45 +38,51 @@ It contains:
 ---
 ## Repo Layout
 
-## Repo Layout
-
 ```text
 akmSteerSim/
-├─ assets/
-│  └─ f1tenth_racetracks/
-│     └─ <TrackName>/
-│        ├─ <TrackName>_map.yaml
-│        ├─ <TrackName>_map.png
-│        └─ <TrackName>_centerline.csv
-├─ configs/
-│  ├─ vehicle.yaml
-│  └─ sac.yaml
-├─ drivers/
-│  └─ driver_spec.py
-├─ envs/
-│  └─ f1tenth_sb3_env.py
-├─ metrics/
-│  └─ metrics.csv
-├─ rl/
-│  ├─ train.py
-│  ├─ eval.py
-│  └─ metrics_logger.py
-├─ scripts/
-│  ├─ simple_drive_vis.py
-│  ├─ replay_rollout_html.py
-│  ├─ metrics_logger.py
-│  ├─ run_eval.py
-│  ├─ run_trained_policy.py
-│  └─ random_pose_gen.py
-├─ utils/
-│  ├─ geometry.py
-│  ├─ normalization.py
-│  ├─ reward.py
-│  ├─ state_processing.py
-│  └─ action_spaces_utils.py
-├─ runs/         # TensorBoard logs (created at runtime)
-├─ checkpoints/  # model weights (created at runtime)
-└─ rollouts/     # recorded npz + HTML replays (created at runtime)
+├─ assets/                  # Static assets for simulation (maps, track data)
+│  └─ f1tenth_racetracks/  # F1TENTH track dataset
+│     └─ <TrackName>/      # Individual track directory
+│        ├─ <TrackName>_map.yaml      # Map metadata (resolution, origin)
+│        ├─ <TrackName>_map.png       # Occupancy grid map
+│        └─ <TrackName>_centerline.csv# Track centerline for evaluation / reward shaping
+│
+├─ configs/                # Experiment and system configuration files
+│  ├─ vehicle.yaml         # Vehicle parameters (wheelbase, limits, etc.)
+│  └─ sac.yaml             # SAC hyperparameters and training settings
+│
+├─ drivers/                # Abstractions for control policies / drivers
+│  └─ driver_spec.py       # Interface defining driver behavior
+│
+├─ envs/                   # RL environments (Gym-compatible)
+│  └─ f1tenth_sb3_env.py   # Main F1TENTH environment for SB3 training
+│
+├─ metrics/                # Evaluation outputs and logged metrics
+│  └─ metrics.csv          # Aggregated performance metrics
+│
+├─ rl/                     # Core RL training and evaluation logic
+│  ├─ train.py             # Training loop (SAC)
+│  ├─ eval.py              # Policy evaluation pipeline
+│  └─ metrics_logger.py    # Logging utilities for training/evaluation metrics
+│
+├─ scripts/                # Standalone scripts for running experiments and visualization
+│  ├─ simple_drive_vis.py      # Visualize agent driving behavior
+│  ├─ replay_rollout_html.py   # Generate HTML replay from rollout data
+│  ├─ metrics_logger.py        # Script-level metric logging utilities
+│  ├─ run_eval.py              # Run evaluation on trained models
+│  ├─ run_trained_policy.py    # Execute trained policy in environment
+│  └─ random_pose_gen.py       # Generate randomized initial poses
+│
+├─ utils/                  # Core utilities (geometry, transformations, reward)
+│  ├─ geometry.py              # Geometric computations (curvature, transforms)
+│  ├─ normalization.py         # Input/output normalization utilities
+│  ├─ reward.py                # Reward function definitions
+│  ├─ state_processing.py      # State representation construction
+│  └─ action_spaces_utils.py   # Action space definitions and conversions
+│
+├─ runs/                   # TensorBoard logs (created at runtime)
+├─ checkpoints/            # Saved model weights (created at runtime)
+└─ rollouts/               # Recorded trajectories + HTML replays (created at runtime)
 ```
 
 
