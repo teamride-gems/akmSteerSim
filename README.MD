@@ -96,52 +96,110 @@ reward:
   collision_penalty: -10.0  
   offtrack_penalty: -5.0  
 
-## Setup
+## Setup (Cross-Platform)
 
 ### Requirements
 
-- Python 3.10
+- Python 3.10 (strongly recommended)
 - Git
 
 ---
 
-### Installation
+### Step 1: Clone
 
+```bash
 git clone https://github.com/teamride-gems/akmSteerSim.git
 cd akmSteerSim
-
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
-
-pip install -r requirements_min.txt
+```
 
 ---
 
-### Install Simulator
+### Step 2: Virtual Environment
 
+#### Windows
+```powershell
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+#### macOS/Linux
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+```
+
+---
+
+### Step 3: Compatibility Fix (IMPORTANT)
+
+```bash
+python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
+```
+
+---
+
+### Step 4: Install Dependencies
+
+```bash
+pip install -r requirements_min.txt
+```
+
+---
+
+### Step 5: Install f110_gym
+
+```bash
 cd ..
 git clone https://github.com/f1tenth/f1tenth_gym.git
 pip install -e f1tenth_gym
 cd akmSteerSim
+```
 
 ---
 
-### Install Tracks
+### Step 6: Install Track Assets
 
+```bash
 cd assets
 git clone https://github.com/f1tenth/f1tenth_racetracks.git
 cd ..
+```
 
 ---
 
-### Verify
+### Step 7: Verify Installation
 
+```bash
 python -c "import f110_gym; print('ok')"
+python -c "import numpy; print(numpy.__version__)"
+```
 
 Expected:
+```
 ok
+1.22.0
+```
+
+---
+
+### Step 8: Sanity Check
+
+```bash
+python scripts/simple_drive_vis.py --vehicle_cfg configs/vehicle.yaml --record --record_path rollouts/heuristic_run.npz
+```
+
+---
+
+### Step 9: Replay
+
+```bash
+python scripts/replay_rollout_html.py --rollout rollouts/heuristic_run.npz --out rollouts/heuristic_run.html
+cd rollouts
+python -m http.server 8000
+```
+
+Open:
+http://localhost:8000/heuristic_run.html
 
 ---
 
