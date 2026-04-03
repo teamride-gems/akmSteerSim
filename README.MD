@@ -130,7 +130,7 @@ source .venv/bin/activate
 
 ---
 
-### Step 3: Compatibility Fix (IMPORTANT)
+### Step 3: Compatibility Fix
 
 ```bash
 python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
