@@ -2,34 +2,24 @@
 """
 Experiment sweep launcher for the action-space paper.
 
-Runs all combinations of:
-  - action spaces (steer_speed, curvature_speed, lookahead_point, [bezier])
-  - observation regimes (full, ablated)
-  - seeds
+Refactored so that one config can be run independently, which makes it
+compatible with Slurm job arrays.
 
-Usage:
-  # full sweep (3 action spaces × 2 obs regimes × 5 seeds = 30 runs)
+Examples:
   python scripts/sweep.py
-
-  # just the main comparison (no ablation)
   python scripts/sweep.py --no-ablation
-
-  # single action space, useful for debugging
   python scripts/sweep.py --action_spaces steer_speed --seeds 0
-
-  # dry run: print commands without executing
-  python scripts/sweep.py --dry-run
-
-  # parallel: run N jobs at once (each job is one training run)
-  python scripts/sweep.py --parallel 3
+  python scripts/sweep.py --emit-array-configs
 """
 
+from __future__ import annotations
+
 import argparse
+import itertools
 import subprocess
 import sys
-import itertools
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,7 +27,7 @@ DEFAULT_ACTION_SPACES = ["steer_speed", "curvature_speed", "lookahead_point"]
 EXTENDED_ACTION_SPACES = DEFAULT_ACTION_SPACES + ["bezier"]
 
 
-def build_commands(
+def build_runs(
     action_spaces: List[str],
     seeds: List[int],
     ablation: bool,
@@ -47,45 +37,49 @@ def build_commands(
     sac_cfg: str,
     n_eval_episodes: int,
     device: str,
-) -> List[dict]:
-    """Build list of {cmd, run_id, description} for all experiment conditions."""
-    obs_regimes = [False]
+    eval_after_train: bool,
+) -> List[Dict]:
+    obs_regimes = ["full"]
     if ablation:
-        obs_regimes.append(True)
+        obs_regimes.append("ablated")
 
     runs = []
-    for action_space, seed, ablate in itertools.product(action_spaces, seeds, obs_regimes):
-        ablate_tag = "ablated" if ablate else "full"
-        run_id = f"{action_space}_{ablate_tag}_s{seed}"
+    for action_space, seed, obs_regime in itertools.product(action_spaces, seeds, obs_regimes):
+        run_id = f"{action_space}_{obs_regime}_s{seed}"
 
         cmd = [
-            sys.executable, str(ROOT / "rl" / "train.py"),
-            "--vehicle_cfg", vehicle_cfg,
-            "--sac_cfg", sac_cfg,
+            sys.executable, str(ROOT / "scripts" / "run_one_experiment.py"),
             "--action_space", action_space,
+            "--obs_regime", obs_regime,
             "--seed", str(seed),
             "--train_track", train_track,
             "--eval_tracks", eval_tracks,
+            "--vehicle_cfg", vehicle_cfg,
+            "--sac_cfg", sac_cfg,
             "--n_eval_episodes", str(n_eval_episodes),
             "--device", device,
-            "--run_id", run_id,
         ]
 
-        if ablate:
-            cmd.append("--ablate_geometry")
+        if eval_after_train:
+            cmd.append("--eval_after_train")
 
-        desc = f"action={action_space}  obs={ablate_tag}  seed={seed}"
-        runs.append({"cmd": cmd, "run_id": run_id, "description": desc})
+        runs.append({
+            "run_id": run_id,
+            "action_space": action_space,
+            "obs_regime": obs_regime,
+            "seed": seed,
+            "cmd": cmd,
+        })
 
     return runs
 
 
-def run_sequential(runs: List[dict], dry_run: bool = False):
+def run_sequential(runs: List[Dict], dry_run: bool = False):
     n = len(runs)
-    for i, run in enumerate(runs):
-        print(f"\n{'='*60}")
-        print(f"[{i+1}/{n}] {run['description']}")
-        print(f"{'='*60}")
+    for i, run in enumerate(runs, start=1):
+        print(f"\n{'='*70}")
+        print(f"[{i}/{n}] {run['run_id']}")
+        print(f"{'='*70}")
 
         if dry_run:
             print("  " + " ".join(run["cmd"]))
@@ -96,48 +90,16 @@ def run_sequential(runs: List[dict], dry_run: bool = False):
             print(f"WARNING: run {run['run_id']} exited with code {result.returncode}")
 
 
-def run_parallel(runs: List[dict], max_parallel: int, dry_run: bool = False):
-    """Run up to max_parallel training jobs concurrently."""
-    if dry_run:
-        for run in runs:
-            print(" ".join(run["cmd"]))
-        return
-
-    active = []
-    remaining = list(runs)
-    completed = 0
-    n = len(runs)
-
-    while remaining or active:
-        # launch new jobs up to limit
-        while remaining and len(active) < max_parallel:
-            run = remaining.pop(0)
-            print(f"[{completed + len(active) + 1}/{n}] LAUNCHING: {run['description']}")
-            proc = subprocess.Popen(
-                run["cmd"],
-                cwd=str(ROOT),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-            )
-            active.append((proc, run))
-
-        # poll active jobs
-        still_active = []
-        for proc, run in active:
-            ret = proc.poll()
-            if ret is None:
-                still_active.append((proc, run))
-            else:
-                completed += 1
-                status = "OK" if ret == 0 else f"FAILED (code {ret})"
-                print(f"[{completed}/{n}] DONE: {run['description']} — {status}")
-        active = still_active
-
-        if active:
-            import time
-            time.sleep(5)
-
-    print(f"\nAll {n} runs complete.")
+def emit_array_configs(runs: List[Dict]):
+    """
+    Print one config per line in a stable format:
+    task_id<TAB>run_id<TAB>action_space<TAB>obs_regime<TAB>seed
+    """
+    for task_id, run in enumerate(runs):
+        print(
+            f"{task_id}\t{run['run_id']}\t{run['action_space']}\t"
+            f"{run['obs_regime']}\t{run['seed']}"
+        )
 
 
 def main():
@@ -155,8 +117,13 @@ def main():
     ap.add_argument("--sac_cfg", default="configs/sac.yaml")
     ap.add_argument("--n_eval_episodes", type=int, default=10)
     ap.add_argument("--device", default="auto")
-    ap.add_argument("--dry-run", action="store_true", help="Print commands without running")
-    ap.add_argument("--parallel", type=int, default=1, help="Max parallel jobs")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--eval_after_train", action="store_true")
+    ap.add_argument(
+        "--emit-array-configs",
+        action="store_true",
+        help="Print array-task mapping instead of running jobs"
+    )
     args = ap.parse_args()
 
     if args.action_spaces:
@@ -169,7 +136,7 @@ def main():
     seeds = [int(s.strip()) for s in args.seeds.split(",")]
     ablation = not args.no_ablation
 
-    runs = build_commands(
+    runs = build_runs(
         action_spaces=action_spaces,
         seeds=seeds,
         ablation=ablation,
@@ -179,6 +146,7 @@ def main():
         sac_cfg=args.sac_cfg,
         n_eval_episodes=args.n_eval_episodes,
         device=args.device,
+        eval_after_train=args.eval_after_train,
     )
 
     n_obs = 2 if ablation else 1
@@ -189,10 +157,11 @@ def main():
     print(f"Train track: {args.train_track}")
     print(f"Eval tracks: {args.eval_tracks}")
 
-    if args.parallel > 1:
-        run_parallel(runs, args.parallel, dry_run=args.dry_run)
-    else:
-        run_sequential(runs, dry_run=args.dry_run)
+    if args.emit_array_configs:
+        emit_array_configs(runs)
+        return
+
+    run_sequential(runs, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
