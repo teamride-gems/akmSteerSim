@@ -16,8 +16,6 @@ Run:
   python rl/train.py --vehicle_cfg configs/vehicle.yaml --sac_cfg configs/sac.yaml
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import math
@@ -29,21 +27,21 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
-import pandas as pd
 import yaml
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+# Import torch/SB3 BEFORE pandas to avoid Windows DLL conflict
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.utils import set_random_seed
 
+import pandas as pd
+
 from envs.f1tenth_sb3_env import F1TenthSACEnv
 from scripts.random_pose_gen import deterministic_hash, generate_start_poses_from_centerline
-from scripts.run_eval import _run_single_episode, run_episodes_parallel, aggregate_results_list
-
 
 # ----------------------------
 # Helpers: map/track resolution
@@ -177,6 +175,7 @@ class ValidationCallback(BaseCallback):
         return float(track_len * self.timeout_per_meter + 5.0)
 
     def _run_cycle(self, cycle_index: int):
+        from scripts.run_eval import run_episodes_parallel, aggregate_results_list
         cycle_seed = deterministic_hash(self.master_seed, cycle_index)
 
         rng = random.Random(cycle_seed)
