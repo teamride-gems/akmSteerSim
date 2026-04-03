@@ -28,26 +28,52 @@ It enables controlled comparisons between different action parameterizations (e.
 ---
 
 ## Repo Layout
-akmSteerSim/  
-├─ assets/  
-│ └─ f1tenth_racetracks/  
-│ └─ <TrackName>/  
-│ ├─ <TrackName>_map.yaml  
-│ ├─ <TrackName>_map.png  
-│ └─ <TrackName>_centerline.csv  
-├─ configs/  
-│ ├─ vehicle.yaml  
-│ └─ sac.yaml  
-├─ envs/  
-│ └─ f1tenth_sb3_env.py  
-├─ rl/  
-│ └─ train.py  
-├─ scripts/  
-│ ├─ simple_drive_vis.py  
-│ └─ replay_rollout_html.py  
-├─ runs/ # TensorBoard logs (created at runtime)  
-├─ checkpoints/ # model weights (created at runtime)  
-└─ rollouts/ # recorded npz + html replays (created at runtime)  
+
+```text
+akmSteerSim/
+├─ assets/                  # Static assets for simulation (maps, track data)
+│  └─ f1tenth_racetracks/  # F1TENTH track dataset
+│     └─ <TrackName>/      # Individual track directory
+│        ├─ <TrackName>_map.yaml       # Map metadata (resolution, origin)
+│        ├─ <TrackName>_map.png        # Occupancy grid map
+│        └─ <TrackName>_centerline.csv # Track centerline (used for reward/eval)
+│
+├─ configs/                # Experiment and system configuration files
+│  ├─ vehicle.yaml         # Vehicle parameters (wheelbase, limits, constraints)
+│  └─ sac.yaml             # SAC hyperparameters and training settings
+│
+├─ drivers/                # Policy/driver abstractions
+│  └─ driver_spec.py       # Interface defining driver behavior
+│
+├─ envs/                   # RL environments (Gym-compatible)
+│  └─ f1tenth_sb3_env.py   # F1TENTH environment for training and evaluation
+│
+├─ metrics/                # Stored evaluation outputs
+│  └─ metrics.csv          # Aggregated performance metrics across runs
+│
+├─ rl/                     # Core RL pipeline (training + evaluation logic)
+│  ├─ train.py             # Training loop (SAC)
+│  └─ eval.py              # Policy evaluation logic
+│
+├─ scripts/                # Entry points for experiments, visualization, and utilities
+│  ├─ simple_drive_vis.py      # Visualize agent behavior in the environment
+│  ├─ replay_rollout_html.py   # Generate HTML replay from rollout data
+│  ├─ metrics_logger.py        # Logging/export utilities for experiment metrics
+│  ├─ run_eval.py              # Run evaluation on trained checkpoints
+│  ├─ run_trained_policy.py    # Execute a trained policy rollout
+│  └─ random_pose_gen.py       # Generate randomized initial conditions
+│
+├─ utils/                  # Core utilities (shared across env, RL, and scripts)
+│  ├─ geometry.py              # Geometric computations (curvature, transforms)
+│  ├─ normalization.py         # Input/output normalization
+│  ├─ reward.py                # Reward function definitions
+│  ├─ state_processing.py      # State representation construction
+│  └─ action_spaces_utils.py   # Action space definitions and mappings
+│
+├─ runs/                   # TensorBoard logs (created at runtime)
+├─ checkpoints/            # Saved model weights (created at runtime)
+└─ rollouts/               # Recorded trajectories + HTML replays (created at runtime)
+```
 
 ---
 ## Core Concepts
