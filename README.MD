@@ -203,44 +203,6 @@ http://localhost:8000/heuristic_run.html
 
 ---
 
-## Quickstart (Minimal Path)
-
-pip install -r requirements_min.txt
-
-python scripts/simple_drive_vis.py \
-  --vehicle_cfg configs/vehicle.yaml \
-  --record --record_path rollouts/test.npz
-
-python scripts/replay_rollout_html.py \
-  --rollout rollouts/test.npz \
-  --out rollouts/test.html
-
-cd rollouts && python -m http.server 8000
-
-Open:
-http://localhost:8000/test.html
-
-Expected:
-
-- rollouts/test.npz created
-- HTML viewer renders trajectory + LiDAR
-
----
-
-## Getting Ready (Dev Context)
-
-Before contributing, ensure you can:
-
-- Run a rollout
-- Replay HTML
-- Train SAC briefly
-
-Key files:
-
-- envs/f1tenth_sb3_env.py
-- rl/train.py
-- scripts/simple_drive_vis.py
-
 Core pipeline:
 
 policy → action space → (steering_angle, speed) → constraints → simulator
