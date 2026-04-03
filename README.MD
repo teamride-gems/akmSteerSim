@@ -47,13 +47,29 @@ akmSteerSim/
 ├─ configs/  
 │ ├─ vehicle.yaml  
 │ └─ sac.yaml  
+├─ drivers/ 
+│ └─ driver_spec.py
 ├─ envs/  
 │ └─ f1tenth_sb3_env.py  
+├─ metrics/
+│ └─ metrics.csv 
 ├─ rl/  
 │ └─ train.py  
+│ └─ eval.py  
+│ └─ metrics_logger.py  
 ├─ scripts/  
 │ ├─ simple_drive_vis.py  
 │ └─ replay_rollout_html.py  
+│ └─ metrics_logger.py
+│ └─ run_eval.py
+│ └─ run_trained_policy.py
+│ └─ random_pose_gen.py
+├─ utils/  
+│ ├─ geometry.py 
+│ └─ normalization.py
+│ └─ reward.py
+│ └─ state_processing.py
+│ └─ action_spaces_utils.py
 ├─ runs/ # TensorBoard logs (created at runtime)  
 ├─ checkpoints/ # model weights (created at runtime)  
 └─ rollouts/ # recorded npz + html replays (created at runtime)  
