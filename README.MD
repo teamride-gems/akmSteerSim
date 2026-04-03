@@ -68,7 +68,6 @@ akmSteerSim/
 ├─ scripts/                # Standalone scripts for running experiments and visualization
 │  ├─ simple_drive_vis.py      # Visualize agent driving behavior
 │  ├─ replay_rollout_html.py   # Generate HTML replay from rollout data
-│  ├─ metrics_logger.py        # Script-level metric logging utilities
 │  ├─ run_eval.py              # Run evaluation on trained models
 │  ├─ run_trained_policy.py    # Execute trained policy in environment
 │  └─ random_pose_gen.py       # Generate randomized initial poses
