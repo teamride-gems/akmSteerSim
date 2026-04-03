@@ -29,9 +29,9 @@ akmSteerSim/
 ├─ scripts/
 │  ├─ simple_drive_vis.py
 │  └─ replay_rollout_html.py
-├─ runs/          # TensorBoard logs
-├─ checkpoints/   # model weights
-└─ rollouts/      # recorded npz + html
+├─ runs/
+├─ checkpoints/
+└─ rollouts/
 
 ---
 
