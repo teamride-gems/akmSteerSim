@@ -283,32 +283,6 @@ http://localhost:8000/heuristic_run.html
 ```
 
 
-
-### Setup
-
-cd ~/akmSteerSim  
-python3 -m venv .venv  
-source .venv/bin/activate  
-python -m pip install -U pip  
-pip install -r requirements.txt  
-
-
-### f110_gym (simulator) is used from a git clone
-
-This repo depends on the `f110_gym` simulator package (`f110_gym` / `f110_gym.envs.F110Env`).
-In our setup, `f110_gym` is not installed from PyPI — it is pulled via `git clone` and then made importable.
-
-Example clone location:
-- `/home/<you>/f1tenth_gym/`
-- Python package lives at: `/home/<you>/f1tenth_gym/gym/f110_gym/`
-
-After cloning, install it into the venv (recommended):  
-
-source .venv/bin/activate  
-pip install -e /path/to/f1tenth_gym/gym
-
-
-
 ### WSL2 Notes (Rendering)
 
 Rendering via pyglet/OpenGL can be flaky on WSL2 depending on WSLg and GPU/OpenGL forwarding.
@@ -319,26 +293,6 @@ record rollouts to .npz
 
 replay in a self-contained HTML viewer
 
-
-### Dependency Compatibility (IMPORTANT)
-
-This stack is sensitive to NumPy constraints:
-
-f110-gym expects NumPy <= 1.22.x
-
-numba requires NumPy >= 1.22
-
-avoid NumPy 2.x for this simulator stack unless everything is rebuilt
-
-Recommended pinned set (Python 3.10):
-
-pip install --no-cache-dir --only-binary=:all:
-  "numpy==1.22.0"
-  "llvmlite==0.39.1" "numba==0.56.4"
-  "pandas==1.5.3" "matplotlib==3.6.3"
-
-pip install "stable-baselines3==2.7.0" tqdm rich pyyaml
-
 ### Quickstart
 A) Verify sim + LiDAR (headless record + HTML replay)
 
@@ -347,7 +301,6 @@ Record:
 mkdir -p rollouts  
 python scripts/simple_drive_vis.py
   --vehicle_cfg configs/vehicle.yaml
-  --no_render
   --record --record_path rollouts/heuristic_run.npz
 
 
