@@ -380,6 +380,9 @@ class F1TenthSACEnv(gym.Env):
             "action_space": self.action_space_name,
         }
 
+        reward, reward_breakdown = reward
+        info["reward_breakdown"] = reward_breakdown
+
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info
 
     def render(self):
