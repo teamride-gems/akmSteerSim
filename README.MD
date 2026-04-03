@@ -128,7 +128,7 @@ If Python 3.10 is not installed, install it before continuing.
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone <https://github.com/teamride-gems/akmSteerSim.git>
 cd akmSteerSim
 ```
 
