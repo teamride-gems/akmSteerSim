@@ -1,155 +1,315 @@
+#!/usr/bin/env python3
+"""
+Standalone evaluation of a trained checkpoint.
+
+Loads a saved SAC model, runs deterministic episodes on specified tracks,
+and outputs full paper-relevant metrics as JSON and printed summary.
+
+Usage:
+  # eval on training track
+  python rl/eval.py --checkpoint checkpoints/steer_speed_full_s0/sac_final.zip
+
+  # eval on specific tracks
+  python rl/eval.py --checkpoint checkpoints/steer_speed_full_s0/sac_final.zip \
+                    --tracks Sakhir,Austin,Budapest
+
+  # use run_meta.json to reconstruct config automatically
+  python rl/eval.py --checkpoint checkpoints/steer_speed_full_s0/sac_final.zip --from_meta
+"""
+
+import argparse
+import json
+import sys
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, Dict, List
+
 import numpy as np
-from typing import Dict, Tuple
+import yaml
 
-from utils.geometry import project_to_centerline
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
-# r = v*cos(e_head) + λ_lat*(a_lat/aref_lat)^2 + λ_long*(a_long/aref_long)^2 + λ_time + λ_crash*(crash)
+from stable_baselines3 import SAC
 
-def compute_reward(obs_raw, centerline, cfg):
-    """
-    Reward = forward progress
-             + accel smoothness penalties
-             + time penalty
-             + crash penalty
+from envs.f1tenth_sb3_env import F1TenthSACEnv
 
-    All weights come from cfg["reward"].
-    """
-    rw = cfg.get("reward", {})
-    w_progress = float(rw.get("w_progress", 1.0))
-    w_a_long   = float(rw.get("w_a_long", -0.1))
-    w_a_lat    = float(rw.get("w_a_lat", -0.1))
-    w_time     = float(rw.get("w_time", -0.01))
-    crash_pen  = float(rw.get("crash_penalty", -10.0))
 
-    ref_a_long = float(rw.get("ref_a_long", 5.0))
-    ref_a_lat  = float(rw.get("ref_a_lat", 8.0))
+# ----------------------------
+# Track helpers (same as train.py)
+# ----------------------------
 
-    v = float(obs_raw.get("speed", 0.0))
-    pose = obs_raw.get("pose", [0.0, 0.0, 0.0])
-    _, e_head = project_to_centerline(pose, centerline)
+def normalize_track_name(track: str) -> str:
+    return str(track).replace("_map", "").strip()
 
-    a_long = float(obs_raw.get("a_long", 0.0))
-    a_lat  = float(obs_raw.get("a_lat", 0.0))
-    crash  = bool(obs_raw.get("crash", False))
-    r_progress = w_progress * v * np.cos(e_head)
 
-    r_along = w_a_long * (a_long / max(1e-6, ref_a_long))**2
-    r_alat  = w_a_lat  * (a_lat  / max(1e-6, ref_a_lat))**2
+def resolve_map_dir(track: str) -> Path:
+    t = normalize_track_name(track)
+    return ROOT / "assets" / "f1tenth_racetracks" / t
 
-    r_time = w_time
 
-    r_crash = crash_pen if crash else 0.0
+def resolve_centerline_csv(track: str) -> Path:
+    t = normalize_track_name(track)
+    return resolve_map_dir(t) / f"{t}_centerline.csv"
 
-    terms = {
-        "progress": float(r_progress),
-        "along": float(r_along),
-        "alat": float(r_alat),
-        "time": float(r_time ),
-        "crash": float(r_crash)
- 
+
+def make_env_for_track(vehicle_cfg: Dict[str, Any], track: str):
+    track = normalize_track_name(track)
+    track_dir = resolve_map_dir(track)
+    cl = resolve_centerline_csv(track)
+
+    if not track_dir.exists():
+        raise FileNotFoundError(f"Track folder not found: {track_dir}")
+    if not cl.exists():
+        raise FileNotFoundError(f"Centerline CSV not found: {cl}")
+
+    cfg = deepcopy(vehicle_cfg)
+    cfg.setdefault("sim", {})
+    cfg["sim"]["map_name"] = f"{track}_map"
+    cfg["sim"]["map_dir"] = str(track_dir)
+    cfg["sim"]["track_name"] = track
+
+    return F1TenthSACEnv(vehicle_cfg=cfg, track_centerline_csv=str(cl), render_mode=None)
+
+
+# ----------------------------
+# Episode runner
+# ----------------------------
+
+def run_episode(model, env, seed: int, spawn_idx: int, deterministic: bool = True) -> Dict[str, Any]:
+    """Run one episode, collect all metrics."""
+    obs, info = env.reset(seed=seed, options={"spawn_index": spawn_idx})
+
+    ep_reward = 0.0
+    ep_len = 0
+    lat_errors = []
+    head_errors = []
+    speeds = []
+    abs_steer_rates = []
+    steer_cmds = []
+    min_lidars = []
+    steer_clips = 0
+    speed_clips = 0
+    steer_clip_mags = []
+    speed_clip_mags = []
+
+    done = False
+    last_info = info
+
+    while not done:
+        action, _ = model.predict(obs, deterministic=deterministic)
+        obs, reward, terminated, truncated, info = env.step(action)
+
+        ep_reward += float(reward)
+        ep_len += 1
+
+        lat_errors.append(abs(float(info.get("lateral_error", 0.0))))
+        head_errors.append(abs(float(info.get("heading_error", 0.0))))
+        speeds.append(float(info.get("speed", 0.0)))
+        abs_steer_rates.append(abs(float(info.get("steer_rate", 0.0))))
+        steer_cmds.append(float(info.get("steer_cmd", 0.0)))
+        min_lidars.append(float(info.get("min_lidar", 10.0)))
+
+        if info.get("steer_clipped", False):
+            steer_clips += 1
+        if info.get("speed_clipped", False):
+            speed_clips += 1
+        steer_clip_mags.append(float(info.get("steer_clip_mag", 0.0)))
+        speed_clip_mags.append(float(info.get("speed_clip_mag", 0.0)))
+
+        last_info = info
+        done = bool(terminated or truncated)
+
+    steer_arr = np.array(steer_cmds)
+    steer_tv = float(np.sum(np.abs(np.diff(steer_arr)))) if len(steer_arr) > 1 else 0.0
+    n = max(1, ep_len)
+
+    return {
+        "reward": ep_reward,
+        "length": ep_len,
+        "term_reason": last_info.get("term_reason", "unknown"),
+        "normalized_progress": float(last_info.get("normalized_progress", 0.0)),
+        "mean_lateral_error": float(np.mean(lat_errors)) if lat_errors else 0.0,
+        "max_lateral_error": float(np.max(lat_errors)) if lat_errors else 0.0,
+        "mean_heading_error": float(np.mean(head_errors)) if head_errors else 0.0,
+        "mean_speed": float(np.mean(speeds)) if speeds else 0.0,
+        "mean_abs_steer_rate": float(np.mean(abs_steer_rates)) if abs_steer_rates else 0.0,
+        "steer_tv": steer_tv,
+        "steer_clip_frac": steer_clips / n,
+        "speed_clip_frac": speed_clips / n,
+        "mean_steer_clip_mag": float(np.mean(steer_clip_mags)) if steer_clip_mags else 0.0,
+        "mean_speed_clip_mag": float(np.mean(speed_clip_mags)) if speed_clip_mags else 0.0,
+        "min_lidar": float(np.min(min_lidars)) if min_lidars else 0.0,
     }
 
-    r = r_progress + r_along + r_alat + r_time + r_crash
 
-    return float(r), terms
+def eval_on_track(model, vehicle_cfg: Dict, track: str, n_episodes: int, deterministic: bool = True) -> List[Dict]:
+    """Run n_episodes on a track with fixed, evenly-spaced spawn points."""
+    env = make_env_for_track(vehicle_cfg, track)
+    results = []
 
-
-
-def compute_reward2(obs_raw: Dict, centerline: np.ndarray, cfg: Dict) -> Tuple[float, Dict]:
-    rw = cfg.get("reward", {})
-
-    v = float(obs_raw.get("speed", 0.0))
-    pose = obs_raw.get("pose", [0.0, 0.0, 0.0])
-    _, e_head = project_to_centerline(pose, centerline)
-
-    crash = bool(obs_raw.get("crash", False))
-
-    offtrack = bool(obs_raw.get("offtrack", False))
-    if "on_track" in obs_raw:
-        offtrack = not bool(obs_raw["on_track"])
-
-    # v_max from config
-    v_max = float(cfg.get("v_max", cfg.get("vehicle", {}).get("max_speed_mps", 1.0)))
-    v_max = max(1e-6, v_max)
-
-    # clearance from lidar
-    clearance = None
-    if "lidar_sectors" in obs_raw:
-        arr = np.asarray(obs_raw["lidar_sectors"], dtype=float).ravel()
-        clearance = float(np.min(arr)) if arr.size else None
-    elif "scan" in obs_raw:
-        arr = np.asarray(obs_raw["scan"], dtype=float).ravel()
-        clearance = float(np.min(arr)) if arr.size else None
-    if clearance is None:
-        clearance = float(rw.get("min_clear_m", 1.0))
-
-    # weights/params
-    w_progress = float(rw.get("w_progress", 1.0))
-    w_speed = float(rw.get("w_speed", 0.0))
-    speed_power = float(rw.get("speed_power", 1.0))
-
-    w_heading = float(rw.get("w_heading", -1.0))
-    crash_penalty = float(rw.get("crash_penalty", -50.0))
-    time_penalty = float(rw.get("time_penalty", -0.01))
-
-    w_accel_long = float(rw.get("w_accel_long", 0.0))
-    w_accel_lat = float(rw.get("w_accel_lat", 0.0))
-    w_steer_rate = float(rw.get("w_steer_rate", 0.0))
-
-    w_clearance = float(rw.get("w_clearance", 0.0))
-    min_clear_m = float(rw.get("min_clear_m", 0.6))
-    crash_clear_m = float(rw.get("crash_clear_m", 0.25))
-
-    progress_if_offtrack = float(rw.get("progress_if_offtrack", 0.0))
-
-    # 1) progress along track direction
-    r_progress_raw = v * float(np.cos(e_head))
-    if offtrack:
-        r_progress_raw *= progress_if_offtrack
-    r_progress = w_progress * r_progress_raw
-
-    # 2) speed bonus (current speed only)
-    # normalize to [0,1], then optionally curve it
-    v_norm = float(np.clip(v / v_max, 0.0, 1.0))
-    r_speed_raw = v_norm ** max(1e-6, speed_power)
-    r_speed = w_speed * r_speed_raw
-
-    # 3) heading penalty (magnitude)
-    r_heading = w_heading * (-abs(float(e_head)))
-
-    # 4) clearance shaping from lidar
-    if clearance >= min_clear_m:
-        r_clear_raw = +1.0
-    else:
-        if clearance <= crash_clear_m:
-            r_clear_raw = -2.0
+    try:
+        n_points = int(env.centerline.shape[0])
+        if n_points <= 3:
+            spawn_indices = [1] * n_episodes
         else:
-            frac = (clearance - crash_clear_m) / max(1e-6, (min_clear_m - crash_clear_m))
-            r_clear_raw = float(-2.0 + 3.0 * frac)  # [-2, +1]
-    r_clear = w_clearance * r_clear_raw
+            spawn_indices = np.linspace(1, n_points - 2, num=n_episodes, dtype=int).tolist()
 
-    # 5) smoothness penalties
-    a_long = float(obs_raw.get("a_long", 0.0))
-    a_lat = float(obs_raw.get("a_lat", 0.0))
-    steer_rate = float(obs_raw.get("steer_rate", 0.0))
-    r_smooth = -(abs(a_long) * w_accel_long + abs(a_lat) * w_accel_lat + abs(steer_rate) * w_steer_rate)
+        for ep_idx, spawn_idx in enumerate(spawn_indices):
+            result = run_episode(model, env, seed=1000 + ep_idx, spawn_idx=spawn_idx, deterministic=deterministic)
+            result["track"] = track
+            result["episode"] = ep_idx
+            result["spawn_idx"] = int(spawn_idx)
+            results.append(result)
+    finally:
+        try:
+            env.close()
+        except Exception:
+            pass
+
+    return results
 
 
-    r_crash = crash_penalty if crash else 0.0
+# ----------------------------
+# Summary
+# ----------------------------
 
-    total = r_progress + r_speed + r_heading + r_clear + r_smooth + time_penalty + r_crash
+def summarize(episodes: List[Dict]) -> Dict[str, float]:
+    """Compute aggregate metrics from a list of episode results."""
+    n = len(episodes)
+    if n == 0:
+        return {}
 
-    terms = {
-        "progress": float(r_progress),
-        "speed": float(r_speed),
-        "heading": float(r_heading),
-        "clearance": float(r_clear),
-        "smooth": float(r_smooth),
-        "time": float(time_penalty),
-        "crash": float(r_crash),
-        "v": float(v),
-        "v_norm": float(v_norm),
-        "e_head": float(e_head),
-        "clear_min": float(clearance),
+    return {
+        "n_episodes": n,
+        "mean_reward": float(np.mean([e["reward"] for e in episodes])),
+        "std_reward": float(np.std([e["reward"] for e in episodes])),
+        "mean_progress": float(np.mean([e["normalized_progress"] for e in episodes])),
+        "completion_rate": sum(1 for e in episodes if e["normalized_progress"] >= 0.95) / n,
+        "crash_rate": sum(1 for e in episodes if e["term_reason"] == "crash") / n,
+        "timeout_rate": sum(1 for e in episodes if e["term_reason"] == "timeout") / n,
+        "mean_length": float(np.mean([e["length"] for e in episodes])),
+        "mean_lateral_error": float(np.mean([e["mean_lateral_error"] for e in episodes])),
+        "mean_heading_error": float(np.mean([e["mean_heading_error"] for e in episodes])),
+        "mean_speed": float(np.mean([e["mean_speed"] for e in episodes])),
+        "mean_steer_rate": float(np.mean([e["mean_abs_steer_rate"] for e in episodes])),
+        "mean_steer_tv": float(np.mean([e["steer_tv"] for e in episodes])),
+        "steer_clip_frac": float(np.mean([e["steer_clip_frac"] for e in episodes])),
+        "speed_clip_frac": float(np.mean([e["speed_clip_frac"] for e in episodes])),
     }
-    return float(total), terms
+
+
+def print_summary(track: str, summary: Dict[str, float]):
+    print(f"\n--- {track} ({summary.get('n_episodes', 0)} episodes) ---")
+    print(f"  Return:         {summary['mean_reward']:.2f} ± {summary['std_reward']:.2f}")
+    print(f"  Progress:       {summary['mean_progress']:.3f}")
+    print(f"  Completion:     {summary['completion_rate']:.1%}")
+    print(f"  Crash rate:     {summary['crash_rate']:.1%}")
+    print(f"  Lat error:      {summary['mean_lateral_error']:.4f} m")
+    print(f"  Head error:     {summary['mean_heading_error']:.4f} rad")
+    print(f"  Speed:          {summary['mean_speed']:.2f} m/s")
+    print(f"  Steer rate:     {summary['mean_steer_rate']:.4f} rad/s")
+    print(f"  Steer TV:       {summary['mean_steer_tv']:.2f}")
+    print(f"  Steer clipped:  {summary['steer_clip_frac']:.1%}")
+    print(f"  Speed clipped:  {summary['speed_clip_frac']:.1%}")
+
+
+# ----------------------------
+# Main
+# ----------------------------
+
+def main():
+    ap = argparse.ArgumentParser(description="Evaluate a trained checkpoint")
+    ap.add_argument("--checkpoint", required=True, help="Path to saved model (.zip)")
+    ap.add_argument("--vehicle_cfg", default=None, help="Vehicle config yaml (auto-detected from run_meta if --from_meta)")
+    ap.add_argument("--tracks", default=None, help="Comma-separated track names")
+    ap.add_argument("--n_episodes", type=int, default=10)
+    ap.add_argument("--from_meta", action="store_true", help="Load config from run_meta.json in checkpoint dir")
+    ap.add_argument("--output", default=None, help="Save results JSON to this path")
+    ap.add_argument("--deterministic", type=bool, default=True)
+    args = ap.parse_args()
+
+    ckpt_path = Path(args.checkpoint)
+    if not ckpt_path.exists():
+        # try with .zip extension
+        if ckpt_path.with_suffix(".zip").exists():
+            ckpt_path = ckpt_path.with_suffix(".zip")
+        else:
+            raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+
+    # --- load config ---
+    if args.from_meta:
+        # look for run_meta.json in the checkpoint's parent directory
+        meta_path = ckpt_path.parent / "run_meta.json"
+        if not meta_path.exists():
+            meta_path = ckpt_path.parent.parent / "run_meta.json"
+        if not meta_path.exists():
+            raise FileNotFoundError(f"run_meta.json not found near {ckpt_path}")
+
+        with open(meta_path) as f:
+            meta = json.load(f)
+        vehicle_cfg = meta["vehicle_cfg"]
+        default_tracks = meta.get("eval_tracks", [])
+    elif args.vehicle_cfg:
+        cfg_path = ROOT / args.vehicle_cfg
+        if not cfg_path.exists():
+            raise FileNotFoundError(f"Vehicle config not found: {cfg_path}")
+        vehicle_cfg = yaml.safe_load(cfg_path.read_text())
+        default_tracks = []
+    else:
+        raise ValueError("Provide --vehicle_cfg or use --from_meta")
+
+    # --- tracks ---
+    if args.tracks:
+        tracks = [normalize_track_name(t) for t in args.tracks.split(",") if t.strip()]
+    elif default_tracks:
+        tracks = [normalize_track_name(t) for t in default_tracks]
+    else:
+        raw_map = vehicle_cfg.get("sim", {}).get("map_name", "Sakhir_map")
+        tracks = [normalize_track_name(raw_map)]
+
+    # --- load model ---
+    print(f"Loading checkpoint: {ckpt_path}")
+    model = SAC.load(str(ckpt_path))
+
+    print(f"Action space: {vehicle_cfg.get('action_space', 'steer_speed')}")
+    print(f"Ablated: {vehicle_cfg.get('ablate_centerline_features', False)}")
+    print(f"Tracks: {tracks}")
+    print(f"Episodes per track: {args.n_episodes}")
+
+    # --- evaluate ---
+    all_results = {}
+    all_episodes = []
+
+    for track in tracks:
+        episodes = eval_on_track(model, vehicle_cfg, track, args.n_episodes, args.deterministic)
+        all_results[track] = {
+            "episodes": episodes,
+            "summary": summarize(episodes),
+        }
+        all_episodes.extend(episodes)
+        print_summary(track, all_results[track]["summary"])
+
+    # overall
+    if len(tracks) > 1:
+        print_summary("OVERALL", summarize(all_episodes))
+
+    # --- save ---
+    output_path = args.output
+    if output_path is None:
+        output_path = str(ckpt_path.parent / "eval_standalone.json")
+
+    # make episodes JSON-serializable (no numpy)
+    serializable = {}
+    for track, data in all_results.items():
+        serializable[track] = {
+            "summary": data["summary"],
+            "episodes": data["episodes"],
+        }
+
+    Path(output_path).write_text(json.dumps(serializable, indent=2))
+    print(f"\nResults saved: {output_path}")
+
+
+if __name__ == "__main__":
+    main()

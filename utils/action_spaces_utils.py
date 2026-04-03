@@ -138,6 +138,7 @@ def apply_policy_output_spec(
 # ============================================================
 
 
+# --- preserve extra keys (e.g. pre_constraint_*) through constraints ---
 
 def apply_ackermann_command_constraints(
     command: Dict[str, float],
@@ -178,10 +179,10 @@ def apply_ackermann_command_constraints(
             )
             speed = clip(speed, min_speed, max_speed)
 
-    return {
-        "steering_angle": steering,
-        "speed": speed,
-    }
+    result = dict(command)  # preserve any extra keys (pre_constraint_*)
+    result["steering_angle"] = steering
+    result["speed"] = speed
+    return result
 
 
 # ============================================================
@@ -490,8 +491,6 @@ def command_from_bezier(representation: Dict[str, Any], config: Dict[str, Any]) 
     num_samples = int(config.get("bezier_num_samples", 60))
     lookahead_distance = _cfg(config, "bezier_lookahead_distance", 1.0)
 
-    # Keep the controller explicit and standardized: the primitive defines a local
-    # path, then a pure-pursuit-style target point induces a curvature command.
     _, points = sample_bezier_curve(p0, p1, p2, p3, num_samples=num_samples)
     target = find_target_point_along_curve(points, lookahead_distance)
 
@@ -503,9 +502,6 @@ def command_from_bezier(representation: Dict[str, Any], config: Dict[str, Any]) 
     curvature = clip(curvature, min_curvature, max_curvature)
     steering_angle = steering_from_curvature(curvature, wheelbase)
 
-    # Use the requested speed directly, then rely on the same final command
-    # constraints as the other action spaces. This keeps the comparison cleaner
-    # than injecting a path-specific speed heuristic here.
     speed = clip(requested_speed, min_speed, max_speed)
 
     return {
@@ -579,8 +575,6 @@ def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
             policy_dim_names=["curvature", "speed"],
             units=["1/m", "m/s"],
             policy_output_spec=[
-                # Placeholder range; refresh_action_space_bounds(config) can tighten
-                # this to the exact robot-feasible curvature interval.
                 {"mode": "tanh", "low": -2.0, "high": 2.0},
                 {"mode": "sigmoid", "low": 0.0, "high": 5.0},
             ],
@@ -676,12 +670,6 @@ def validate_all_action_spaces() -> None:
 
 
 def refresh_action_space_bounds(config: Dict[str, Any]) -> None:
-    """
-    Make config-aware bounds explicit in the registry.
-
-    Important: this mutates ACTION_SPACES so the policy output spec exactly matches
-    the robot's feasible geometry for the current experiment config.
-    """
     min_curvature, max_curvature = get_curvature_bounds(config)
     min_speed, max_speed = get_speed_bounds(config)
     min_steering, max_steering = get_steering_bounds(config)
@@ -870,12 +858,6 @@ def sample_command_statistics(
     raw_action_std: float = 1.0,
     rng: Optional[np.random.Generator] = None,
 ) -> Dict[str, float]:
-    """
-    Sanity check for fair comparisons across action spaces.
-
-    Samples raw Gaussian actions, pushes them through the full pipeline, and
-    summarizes the induced steering/speed distributions.
-    """
     if rng is None:
         rng = np.random.default_rng(0)
 
@@ -959,6 +941,7 @@ def representation_to_command(
     return spec.to_command(representation, config)
 
 
+# --- save pre-constraint values before applying constraints ---
 
 def raw_action_to_command(
     action_space_name: str,
@@ -981,6 +964,10 @@ def raw_action_to_command(
         representation,
         config,
     )
+
+    # save pre-constraint values for analysis
+    command["pre_constraint_steering"] = command["steering_angle"]
+    command["pre_constraint_speed"] = command["speed"]
 
     if apply_final_constraints:
         command = apply_ackermann_command_constraints(
@@ -1013,6 +1000,10 @@ def action_to_command(
         representation,
         config,
     )
+
+    # save pre-constraint values for analysis
+    command["pre_constraint_steering"] = command["steering_angle"]
+    command["pre_constraint_speed"] = command["speed"]
 
     if apply_final_constraints:
         command = apply_ackermann_command_constraints(
