@@ -5,6 +5,8 @@ max_episode_steps: 2000
 v_max: 6.0
 delta_max: 0.4189
 steer_max_deg: 24.0
+aref_long_g: 0.51
+aref_lat_g: 0.82
 
 lidar:
   sectors: 21
