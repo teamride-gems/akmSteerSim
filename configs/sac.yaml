@@ -12,15 +12,33 @@ ent_coef: "auto"
 policy_kwargs:
   net_arch: [256, 256]
 
-heldout_tracks: [Austin, BrandsHatch, Budapest, Hockenheim]
-
 map_schedule:
-  - track: Sakhir
+  - track: Budapest
     steps: 300000
-    eval_freq: 50000
+    eval_freq: 100000
   - track: Montreal
     steps: 300000
-    eval_freq: 50000
+    eval_freq: 100000
   - track: Shanghai
     steps: 300000
-    eval_freq: 50000
+    eval_freq: 100000
+  - track: Spa
+    steps: 300000
+    eval_freq: 100000
+
+evaluation:
+  master_seed: 123456 # change if needed
+  val_pool: [Sakhir, YasMarina, Sochi]
+  val_maps_per_cycle: 3
+  val_attempts_per_map: 10     # per seed (validation)
+  val_seeds: [0,1,2]           # seeds to evaluate (use same seeds across action-space experiments)
+  val_deterministic: true
+  val_timeout_per_meter: 0.5   # seconds per meter, used to compute per-episode timeout
+  val_min_spacing_frac: 0.02   # min spacing fraction of track length between start poses
+  val_yaw_jitter_deg: 5.0
+  val_lateral_jitter_m: 0.05
+  val_workers: 6               # parallel workers during validation
+  selection_weights:
+    success_rate: 1.0
+    feasibility_violations: -0.5
+    normalized_time: -0.2
