@@ -1,0 +1,19 @@
+# Core numerical
+numpy==1.22.0
+scipy==1.8.0
+llvmlite==0.39.1
+numba==0.56.4
+
+# RL / ML
+torch
+stable-baselines3==2.7.0
+
+# Visualization / analysis
+matplotlib==3.6.3
+pandas==1.5.3
+tensorboard
+
+# Utilities
+tqdm
+rich
+pyyaml

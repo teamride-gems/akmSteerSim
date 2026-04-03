@@ -1,0 +1,7 @@
+lap_id,policy_id,action_space_id,track_id,lap_status,lap_time_sec,lap_progress
+0,heuristic_run,steer_speed,Sakhir,SUCCESS,5.6884,0.0
+1,heuristic_run,steer_speed,Sakhir,SUCCESS,6.3462,0.0
+2,heuristic_run,steer_speed,Sakhir,SUCCESS,5.9105,0.0
+3,heuristic_run,steer_speed,Sakhir,SUCCESS,4.2411,0.0
+4,heuristic_run,steer_speed,Sakhir,SUCCESS,0.4614,0.0
+5,heuristic_run,steer_speed,Sakhir,TIMEOUT,3.3389,0.0
