@@ -6,32 +6,26 @@ This repository is designed to study how **action space design affects reinforce
 
 It enables controlled comparisons between different action parameterizations (e.g., direct steering, curvature, trajectory-based representations) while keeping the environment and reward structure fixed.
 
-This makes the repository:
-
-- Paper-aligned
-- Experimentally controlled
-- Reviewer-friendly
-
 ---
 
 ## Repo Layout
 
-akmSteerSim/
-├─ assets/
-│  └─ f1tenth_racetracks/
-├─ configs/
+akmSteerSim /
+├─ assets /
+│  └─ f1tenth_racetracks /
+├─ configs /
 │  ├─ vehicle.yaml
 │  └─ sac.yaml
-├─ envs/
+├─ envs /
 │  └─ f1tenth_sb3_env.py
-├─ rl/
+├─ rl /
 │  └─ train.py
-├─ scripts/
+├─ scripts /
 │  ├─ simple_drive_vis.py
 │  └─ replay_rollout_html.py
-├─ runs/
-├─ checkpoints/
-└─ rollouts/
+├─ runs /
+├─ checkpoints /
+└─ rollouts /
 
 ---
 
