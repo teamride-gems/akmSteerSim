@@ -107,6 +107,199 @@ reward:
   collision_penalty: -10.0  
   offtrack_penalty: -5.0  
 
+## Setup (Cross-Platform)
+
+### 0. Requirements
+
+- Python **3.10** (strongly recommended)
+- Git
+
+Check installed Python versions:
+
+```bash
+py -0p            # Windows
+python3 --version # macOS/Linux
+```
+
+If Python 3.10 is not installed, install it before continuing.
+
+---
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd akmSteerSim
+```
+
+---
+
+### 2. Create and activate a virtual environment
+
+#### Windows (PowerShell)
+
+```powershell
+py -3.10 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+#### macOS / Linux
+
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+```
+
+---
+
+### 3. Install compatible Python tooling
+
+This project depends on older packages (notably `gym==0.19.0`), which are incompatible with newer packaging tools.
+
+```bash
+python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
+```
+
+---
+
+### 4. Install core dependencies (pinned)
+
+This simulator stack is very sensitive to dependency versions, especially NumPy.
+
+```bash
+pip install --no-cache-dir --only-binary=:all: \
+  "numpy==1.22.0" \
+  "llvmlite==0.39.1" \
+  "numba==0.56.4" \
+  "pandas==1.5.3" \
+  "matplotlib==3.6.3"
+```
+
+Then install remaining packages:
+
+```bash
+pip install "stable-baselines3==2.7.0" tqdm rich pyyaml tensorboard torch
+```
+
+---
+
+### 5. Install f110_gym (simulator)
+
+This repository depends on the `f110_gym` simulator, which is not installed via PyPI.
+
+Clone it:
+
+```bash
+cd ..
+git clone https://github.com/f1tenth/f1tenth_gym.git
+```
+
+Install it into your virtual environment:
+
+```bash
+pip install -e f1tenth_gym
+```
+
+Return to the repo:
+
+```bash
+cd akmSteerSim
+```
+
+> Important:
+> - Install from the repo root, not `/gym`
+> - The Python package lives under `/gym/f110_gym`, but installation must be done from the root
+
+---
+
+### 6. Install track assets
+
+This repo requires external racetrack assets.
+
+```bash
+cd assets
+git clone https://github.com/f1tenth/f1tenth_racetracks.git
+```
+
+Ensure the folder structure is:
+
+```text
+assets/
+└─ f1tenth_racetracks/
+   ├─ Sakhir/
+   │  ├─ Sakhir_map.yaml
+   │  ├─ Sakhir_map.png
+   │  └─ Sakhir_centerline.csv
+   ├─ Silverstone/
+   └─ ...
+```
+
+Return to repo root:
+
+```bash
+cd ..
+```
+
+---
+
+### 7. Verify installation
+
+```bash
+python -c "import f110_gym; print('ok')"
+python -c "import numpy; print(numpy.__version__)"
+```
+
+Expected output:
+
+```text
+ok
+1.22.0
+```
+
+---
+
+### 8. First sanity check
+
+Run a short rollout to verify simulation, observation pipeline, and reward computation:
+
+```bash
+python scripts/simple_drive_vis.py \
+  --vehicle_cfg configs/vehicle.yaml \
+  --record --record_path rollouts/heuristic_run.npz
+```
+
+If successful, this will create:
+
+```text
+rollouts/heuristic_run.npz
+```
+
+---
+
+### 9. Replay rollout
+
+```bash
+python scripts/replay_rollout_html.py \
+  --rollout rollouts/heuristic_run.npz \
+  --out rollouts/heuristic_run.html \
+  --stride 1 --lidar
+```
+
+Serve locally:
+
+```bash
+cd rollouts
+python -m http.server 8000
+```
+
+Open in browser:
+
+```
+http://localhost:8000/heuristic_run.html
+```
+
+
+
 ### Setup
 
 cd ~/akmSteerSim  
