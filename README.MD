@@ -35,7 +35,7 @@ It contains:
 - [Contributing Guidelines](#contributing-guidelines)
 - [Recommended Command Cheatsheet](#recommended-command-cheatsheet)
 
-
+---
 ## Repo Layout
 
 akmSteerSim/
