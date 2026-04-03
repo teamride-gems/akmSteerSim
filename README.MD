@@ -162,26 +162,10 @@ python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
 
 ---
 
-### 4. Install core dependencies (pinned)
-
-This simulator stack is very sensitive to dependency versions, especially NumPy.
+### 4. Install core dependencies
 
 ```bash
-pip install --no-cache-dir --only-binary=:all: \
-  "numpy==1.22.0" \
-  "llvmlite==0.39.1" \
-  "numba==0.56.4" \
-  "pandas==1.5.3" \
-  "matplotlib==3.6.3"
-```
-
-Then install remaining packages:
-
-```bash
-pip install "stable-baselines3==2.7.0" tqdm rich pyyaml tensorboard torch
-```
-
----
+pip install -r requirements_min.txt
 
 ### 5. Install f110_gym (simulator)
 
