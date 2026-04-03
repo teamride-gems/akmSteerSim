@@ -10,7 +10,7 @@ import random
 from stable_baselines3 import SAC
 
 
-from rl.train import make_env_for_track  
+from rl.train import make_env_for_track
 
 def set_all_seeds(seed: int):
     random.seed(seed)
