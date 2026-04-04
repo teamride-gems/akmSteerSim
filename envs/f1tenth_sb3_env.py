@@ -1,3 +1,5 @@
+import warnings
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -18,10 +20,25 @@ from utils.action_spaces_utils import (
 )
 
 
+# ------------------------------------------------------------------
+# State vector layout
+# ------------------------------------------------------------------
+# Indices into the state vector returned by make_state().
+# If make_state changes, update these and the assertions below.
+STATE_IDX_V = 0        # longitudinal speed
+STATE_IDX_A_LONG = 1   # longitudinal acceleration
+STATE_IDX_DELTA = 2    # steering angle
+STATE_IDX_R = 3        # yaw rate
+STATE_IDX_E_HEAD = 4   # heading error to centerline
+STATE_IDX_E_LAT = 5    # lateral error to centerline
+STATE_IDX_A_LAT = 6    # lateral acceleration
+STATE_N_SCALARS = 7    # number of scalar features before lidar
+
+
 class F1TenthSACEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
-    def __init__(self, vehicle_cfg, track_centerline_csv, render_mode=None, *args, **kwargs):
+    def __init__(self, vehicle_cfg, track_centerline_csv, render_mode=None):
         if isinstance(vehicle_cfg, dict):
             cfg = vehicle_cfg
         else:
@@ -57,7 +74,6 @@ class F1TenthSACEnv(gym.Env):
         self._reset_head_noise = float(reset_cfg.get("heading_noise_rad", 0.0))
 
         # ---- observation ablation ----
-        # when True, e_head and e_lat are zeroed out in the state vector
         self._ablate_geometry = bool(cfg.get("ablate_centerline_features", False))
 
         # ---- action space setup ----
@@ -79,16 +95,15 @@ class F1TenthSACEnv(gym.Env):
 
         # ---- observation space ----
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
-        self.obs_dim = 7 + self.n_lidar
+        self.obs_dim = STATE_N_SCALARS + self.n_lidar
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32
         )
 
         self.normalizer = StateNormalizer(self.cfg)
 
-        self._dt = 1.0 / 30.0
+        self._dt = 1.0 / 30.0  # fallback, overwritten below if sim exposes dt
         self._last_for_rates = None
-
         self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))
 
         # ---- simulator setup ----
@@ -111,12 +126,22 @@ class F1TenthSACEnv(gym.Env):
         except Exception as e:
             raise RuntimeError("Could not create F110 sim. Check f110_gym + map paths.") from e
 
+        # Detect sim timestep
+        dt_found = False
         for key in ("dt", "_dt", "time_step", "timestep"):
             if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
                 val = float(getattr(self.sim, key))
                 if val > 0:
                     self._dt = val
+                    dt_found = True
                     break
+        if not dt_found:
+            warnings.warn(
+                f"Could not detect sim timestep from F110Env attributes. "
+                f"Falling back to dt={self._dt:.4f}s (1/{1.0/self._dt:.0f} Hz). "
+                f"Steering rate and finite-difference kinematics may be inaccurate.",
+                stacklevel=2,
+            )
 
         # ---- per-episode tracking ----
         self._step_i = 0
@@ -124,13 +149,32 @@ class F1TenthSACEnv(gym.Env):
         self._prev_progress = 0.0
         self._prev_steer_cmd = 0.0
 
+        # ---- validate state layout ----
+        # Run make_state once with dummy data to verify obs_dim matches
+        self._validate_state_layout()
+
         print(
             f"[F1TenthSACEnv] action_space={self.action_space_name} "
             f"policy_dim={self._policy_dim} "
             f"obs_dim={self.obs_dim} "
+            f"dt={self._dt:.4f}s "
             f"max_steps={self._max_steps} "
             f"ablate_geometry={self._ablate_geometry}"
         )
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def track_length(self) -> float:
+        """Total arc length of the centerline in meters."""
+        return self._track_length
+
+    @property
+    def dt(self) -> float:
+        """Simulation timestep in seconds."""
+        return self._dt
 
     # ------------------------------------------------------------------
     # Config helpers
@@ -180,11 +224,42 @@ class F1TenthSACEnv(gym.Env):
 
         return rc
 
+    def _validate_state_layout(self):
+        """Check that make_state output matches our expected obs_dim."""
+        dummy_obs = {
+            "pose": np.zeros(3),
+            "speed": 0.0,
+            "scan": np.ones(1080),
+            "steer": 0.0,
+            "yaw_rate": 0.0,
+            "a_long": 0.0,
+            "a_lat": 0.0,
+            "crash": False,
+        }
+        try:
+            state = make_state(dummy_obs, self.centerline, self.cfg)
+            if state.shape[0] != self.obs_dim:
+                raise ValueError(
+                    f"make_state returned {state.shape[0]} dims but obs_dim={self.obs_dim} "
+                    f"(STATE_N_SCALARS={STATE_N_SCALARS} + n_lidar={self.n_lidar}). "
+                    f"State layout constants may be out of sync with make_state()."
+                )
+        except Exception as e:
+            if "obs_dim" in str(e) or "dims" in str(e):
+                raise
+            # If make_state fails for other reasons (e.g. centerline too short),
+            # skip validation — it will fail properly on first real reset.
+            pass
+
     # ------------------------------------------------------------------
     # Observation helpers
     # ------------------------------------------------------------------
 
     def _downsample_scan(self, scan: np.ndarray) -> np.ndarray:
+        """
+        Preliminary scan reduction from raw sensor beams to raw_beams count.
+        The final reduction to n_lidar sectors happens inside make_state().
+        """
         scan = np.asarray(scan, dtype=float).ravel()
         if self._raw_beams and self._raw_beams > 0 and scan.size > self._raw_beams:
             stride = max(1, int(np.floor(scan.size / self._raw_beams)))
@@ -313,6 +388,20 @@ class F1TenthSACEnv(gym.Env):
     # Reset
     # ------------------------------------------------------------------
 
+    def _spawn_pose(self, idx: int):
+        """Compute (x, y, theta) for spawning at centerline index `idx`."""
+        N = self.centerline.shape[0]
+        idx = int(np.clip(idx, 1, N - 2))
+
+        x = float(self.centerline[idx, 0])
+        y = float(self.centerline[idx, 1])
+        dx = float(self.centerline[idx + 1, 0] - self.centerline[idx, 0])
+        dy = float(self.centerline[idx + 1, 1] - self.centerline[idx, 1])
+        theta = float(np.arctan2(dy, dx))
+
+        # optional reset perturbation (only during training, not fixed eval spawns)
+        return x, y, theta
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self._step_i = 0
@@ -320,30 +409,34 @@ class F1TenthSACEnv(gym.Env):
         self._prev_command = None
         self._prev_steer_cmd = 0.0
 
-        # random spawn on centerline
+        options = options or {}
         N = self.centerline.shape[0]
-        i = int(self.np_random.integers(1, N - 1))
-        x = float(self.centerline[i, 0])
-        y = float(self.centerline[i, 1])
-        dx = float(self.centerline[i + 1, 0] - self.centerline[i, 0])
-        dy = float(self.centerline[i + 1, 1] - self.centerline[i, 1])
-        theta = float(np.arctan2(dy, dx))
 
-        # optional reset perturbation
-        if self._reset_lat_noise > 0:
-            lat_offset = float(self.np_random.uniform(
-                -self._reset_lat_noise, self._reset_lat_noise
-            ))
-            # perpendicular to centerline tangent
-            perp_x = -np.sin(theta)
-            perp_y = np.cos(theta)
-            x += lat_offset * perp_x
-            y += lat_offset * perp_y
+        # ---- spawn index selection ----
+        if "spawn_index" in options:
+            # Fixed spawn for deterministic evaluation
+            spawn_idx = int(np.clip(options["spawn_index"], 1, N - 2))
+        else:
+            # Random spawn for training
+            spawn_idx = int(self.np_random.integers(1, N - 1))
 
-        if self._reset_head_noise > 0:
-            theta += float(self.np_random.uniform(
-                -self._reset_head_noise, self._reset_head_noise
-            ))
+        x, y, theta = self._spawn_pose(spawn_idx)
+
+        # Apply perturbation only for random spawns (not fixed eval spawns)
+        if "spawn_index" not in options:
+            if self._reset_lat_noise > 0:
+                lat_offset = float(self.np_random.uniform(
+                    -self._reset_lat_noise, self._reset_lat_noise
+                ))
+                perp_x = -np.sin(theta)
+                perp_y = np.cos(theta)
+                x += lat_offset * perp_x
+                y += lat_offset * perp_y
+
+            if self._reset_head_noise > 0:
+                theta += float(self.np_random.uniform(
+                    -self._reset_head_noise, self._reset_head_noise
+                ))
 
         poses = np.array([[x, y, theta]], dtype=np.float32)
 
@@ -364,6 +457,7 @@ class F1TenthSACEnv(gym.Env):
             "crash": bool(obs_raw.get("crash", False)),
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
+            "spawn_index": spawn_idx,
         }
         return state_norm.astype(np.float32), info
 
@@ -421,7 +515,6 @@ class F1TenthSACEnv(gym.Env):
 
         # ---- progress tracking ----
         current_progress = self._centerline_progress(obs_raw["pose"])
-        # handle wrap-around
         delta_progress = current_progress - self._prev_progress
         if delta_progress < -self._track_length / 2:
             delta_progress += self._track_length
@@ -433,7 +526,7 @@ class F1TenthSACEnv(gym.Env):
         if total_progress < -self._track_length / 2:
             total_progress += self._track_length
 
-        # ---- centerline errors for logging (always computed, even if ablated from state) ----
+        # ---- centerline errors (always computed, even if ablated from state) ----
         e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
 
         # ---- termination reason ----
@@ -446,7 +539,7 @@ class F1TenthSACEnv(gym.Env):
         else:
             term_reason = "running"
 
-        # ---- info dict: everything needed for paper analysis ----
+        # ---- info dict ----
         info = {
             # episode metadata
             "step": self._step_i,
@@ -493,12 +586,12 @@ class F1TenthSACEnv(gym.Env):
 
     def _zero_geometry_features(self, state: np.ndarray) -> np.ndarray:
         """
-        Zero out e_head (index 4) and e_lat (index 5) in the state vector.
-        State layout: [v, a_long, d, r, e_head, e_lat, a_lat, lidar...]
+        Zero out e_head and e_lat in the state vector.
+        Uses module-level constants to avoid magic indices.
         """
         state = state.copy()
-        state[4] = 0.0  # e_head
-        state[5] = 0.0  # e_lat
+        state[STATE_IDX_E_HEAD] = 0.0
+        state[STATE_IDX_E_LAT] = 0.0
         return state
 
     # ------------------------------------------------------------------

@@ -1,17 +1,50 @@
-policy: "MlpPolicy"
-learning_rate: 0.0003
-batch_size: 256
-tau: 0.005
-gamma: 0.99
-seed: 42
-train_steps: 500000
-save_every_steps: 25000
-eval_interval_steps: 10000
-ent_coef: "auto"
+# ============================================================
+# SAC configuration for Ackermann action-space comparison
+# ============================================================
+# Design: single training track, multiple held-out eval tracks.
+# The action space parameterization is the independent variable;
+# all other hyperparameters are held constant across conditions.
+# ============================================================
 
+seed: 42
+
+# --- Policy ---
+policy: "MlpPolicy"
 policy_kwargs:
   net_arch: [256, 256]
 
-max_episode_steps: 3000
+# --- SAC hyperparameters ---
+learning_rate:
+  schedule: linear
+  initial: 3.0e-4
+  final: 1.0e-5
+batch_size: 256
+tau: 0.005
+gamma: 0.995
+buffer_size: 1_000_000
+learning_starts: 10000
+ent_coef: "auto"
 
-heldout_tracks: [Austin, BrandsHatch, Budapest, Hockenheim]
+# Fixed across both action-space conditions to avoid confounding
+target_entropy: -1.0
+
+# --- Training ---
+train_steps: 1_000_000
+train_track: Sakhir
+
+# --- Evaluation ---
+eval_interval_steps: 10000
+
+heldout_tracks:
+  - Austin
+  - BrandsHatch
+  - Budapest
+  - Hockenheim
+
+# --- Checkpointing ---
+save_every_steps: 25000
+
+# --- Early stopping ---
+# Stop after 15 eval windows (150k steps) with no reward improvement
+early_stop_patience: 15
+early_stop_min_delta: 0.0
