@@ -1,13 +1,15 @@
+import warnings
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from pathlib import Path
 import yaml
-import os
 
 from utils.state_processing import make_state
 from utils.reward import compute_reward
 from utils.normalization import StateNormalizer
+from utils.geometry import project_to_centerline
 from utils.action_spaces_utils import (
     get_policy_dim,
     get_action_space_spec,
@@ -18,10 +20,25 @@ from utils.action_spaces_utils import (
 )
 
 
+# ------------------------------------------------------------------
+# State vector layout
+# ------------------------------------------------------------------
+# Indices into the state vector returned by make_state().
+# If make_state changes, update these and the assertions below.
+STATE_IDX_V = 0        # longitudinal speed
+STATE_IDX_A_LONG = 1   # longitudinal acceleration
+STATE_IDX_DELTA = 2    # steering angle
+STATE_IDX_R = 3        # yaw rate
+STATE_IDX_E_HEAD = 4   # heading error to centerline
+STATE_IDX_E_LAT = 5    # lateral error to centerline
+STATE_IDX_A_LAT = 6    # lateral acceleration
+STATE_N_SCALARS = 7    # number of scalar features before lidar
+
+
 class F1TenthSACEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
-    def __init__(self, vehicle_cfg, track_centerline_csv, render_mode=None, *args, **kwargs):
+    def __init__(self, vehicle_cfg, track_centerline_csv, render_mode=None):
         if isinstance(vehicle_cfg, dict):
             cfg = vehicle_cfg
         else:
@@ -40,33 +57,33 @@ class F1TenthSACEnv(gym.Env):
             raise FileNotFoundError(f"Centerline CSV not found at {cl_path}")
         self.centerline = np.loadtxt(cl_path, delimiter=",", ndmin=2)
 
+        # precompute cumulative arc length for progress tracking
+        diffs = np.diff(self.centerline[:, :2], axis=0)
+        seg_lengths = np.linalg.norm(diffs, axis=1)
+        self._cl_cumlen = np.concatenate([[0.0], np.cumsum(seg_lengths)])
+        self._track_length = float(self._cl_cumlen[-1])
+
         self.render_mode = render_mode
 
-        # ---- action space setup via action_spaces_utils ----
+        # ---- episode horizon ----
+        self._max_steps = int(cfg.get("max_episode_steps", 3000))
+
+        # ---- reset perturbation ----
+        reset_cfg = cfg.get("reset", {})
+        self._reset_lat_noise = float(reset_cfg.get("lateral_noise_m", 0.0))
+        self._reset_head_noise = float(reset_cfg.get("heading_noise_rad", 0.0))
+
+        # ---- observation ablation ----
+        self._ablate_geometry = bool(cfg.get("ablate_centerline_features", False))
+
+        # ---- action space setup ----
         self.action_space_name = str(cfg.get("action_space", "steer_speed"))
-
-        # Build the robot config dict that action_spaces_utils expects.
-        # It reads keys like min_steering_angle, max_steering_angle, min_speed,
-        # max_speed, wheelbase from a flat dict. We assemble this from the
-        # vehicle_cfg structure.
         self._robot_config = self._build_robot_config(cfg)
-
-        # Refresh the registry bounds to match this robot's geometry
         refresh_action_space_bounds(self._robot_config)
 
         spec = get_action_space_spec(self.action_space_name)
         self._policy_dim = spec.policy_dim
 
-        # Gym action space: policy outputs are unconstrained reals that get
-        # squashed by the policy_output_spec (tanh/sigmoid). SB3 SAC already
-        # applies tanh squashing internally, so we expose a [-1, 1]^dim box
-        # and let the pipeline's squashing handle the rest.
-        # NOTE: if you use SB3's squash_output=True (default for SAC), the
-        # raw network output is already in [-1, 1]. The action_spaces_utils
-        # pipeline then maps these through its own tanh/sigmoid to physical
-        # bounds. This double-squash is intentional and well-behaved: the
-        # outer tanh from SB3 bounds the raw value, and the inner
-        # tanh/sigmoid in the spec maps to physical limits.
         self.action_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -74,24 +91,22 @@ class F1TenthSACEnv(gym.Env):
             dtype=np.float32,
         )
 
-        # Track previous command for rate limiting
         self._prev_command = None
 
         # ---- observation space ----
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
-        self.obs_dim = 7 + self.n_lidar
+        self.obs_dim = STATE_N_SCALARS + self.n_lidar
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.obs_dim,), dtype=np.float32
         )
 
         self.normalizer = StateNormalizer(self.cfg)
 
-        self._dt = 1.0 / 30.0
+        self._dt = 1.0 / 30.0  # fallback, overwritten below if sim exposes dt
         self._last_for_rates = None
-
-        # OPTIONAL: reduce raw scan beams before sectorization (CPU saver)
         self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))
 
+        # ---- simulator setup ----
         sim_cfg = self.cfg.get("sim", {})
         raw_map_name = sim_cfg.get("map_name", "Sakhir")
         track_name = str(raw_map_name).replace("_map", "").strip()
@@ -106,68 +121,98 @@ class F1TenthSACEnv(gym.Env):
             raise FileNotFoundError(f"Map file not found: {map_yaml_check}")
 
         try:
-            from f110_gym.envs import F110Env  # type: ignore
+            from f110_gym.envs import F110Env
             self.sim = F110Env(map=str(map_path_no_ext), num_agents=1)
         except Exception as e:
             raise RuntimeError("Could not create F110 sim. Check f110_gym + map paths.") from e
 
-        # best-effort dt inference
+        # Detect sim timestep
+        dt_found = False
         for key in ("dt", "_dt", "time_step", "timestep"):
             if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
                 val = float(getattr(self.sim, key))
                 if val > 0:
                     self._dt = val
+                    dt_found = True
                     break
+        if not dt_found:
+            warnings.warn(
+                f"Could not detect sim timestep from F110Env attributes. "
+                f"Falling back to dt={self._dt:.4f}s (1/{1.0/self._dt:.0f} Hz). "
+                f"Steering rate and finite-difference kinematics may be inaccurate.",
+                stacklevel=2,
+            )
 
+        # ---- per-episode tracking ----
         self._step_i = 0
+        self._start_progress = 0.0
+        self._prev_progress = 0.0
+        self._prev_steer_cmd = 0.0
+
+        # ---- validate state layout ----
+        # Run make_state once with dummy data to verify obs_dim matches
+        self._validate_state_layout()
 
         print(
             f"[F1TenthSACEnv] action_space={self.action_space_name} "
             f"policy_dim={self._policy_dim} "
-            f"obs_dim={self.obs_dim}"
+            f"obs_dim={self.obs_dim} "
+            f"dt={self._dt:.4f}s "
+            f"max_steps={self._max_steps} "
+            f"ablate_geometry={self._ablate_geometry}"
         )
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def track_length(self) -> float:
+        """Total arc length of the centerline in meters."""
+        return self._track_length
+
+    @property
+    def dt(self) -> float:
+        """Simulation timestep in seconds."""
+        return self._dt
+
+    # ------------------------------------------------------------------
+    # Config helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _build_robot_config(cfg: dict) -> dict:
-        """
-        Translate vehicle_cfg keys into the flat config dict that
-        action_spaces_utils expects.
-        """
         vehicle = cfg.get("vehicle", {})
         rc = {}
 
-        # Speed bounds
         rc["min_speed"] = float(
             cfg.get("v_min", vehicle.get("min_speed_mps", 0.0))
         )
-        v_max = cfg.get("v_max", vehicle.get("max_speed_mps", 5.0))
-        rc["max_speed"] = float(v_max)
+        rc["max_speed"] = float(
+            cfg.get("v_max", vehicle.get("max_speed_mps", 5.0))
+        )
 
-        # Steering bounds
         delta_max = cfg.get("delta_max", None)
         if delta_max is None:
             delta_max = vehicle.get("max_steer_rad", None)
         if delta_max is None and "steer_max_deg" in cfg:
             delta_max = np.deg2rad(float(cfg["steer_max_deg"]))
         if delta_max is None:
-            delta_max = 0.4189  # ~24 deg default
+            delta_max = 0.4189
         delta_max = float(delta_max)
         delta_min = float(cfg.get("delta_min", -delta_max))
-
         rc["min_steering_angle"] = delta_min
         rc["max_steering_angle"] = delta_max
 
-        # Wheelbase (accept wheelbase or wheelbase_m)
-        wb = vehicle.get("wheelbase", vehicle.get("wheelbase_m", cfg.get("wheelbase", cfg.get("wheelbase_m", 0.33))))
+        wb = vehicle.get("wheelbase", vehicle.get("wheelbase_m",
+             cfg.get("wheelbase", cfg.get("wheelbase_m", 0.33))))
         rc["wheelbase"] = float(wb)
 
-        # Rate limits (optional)
         if "max_steering_rate" in vehicle:
             rc["max_steering_rate"] = float(vehicle["max_steering_rate"])
         if "max_acceleration" in vehicle:
             rc["max_acceleration"] = float(vehicle["max_acceleration"])
 
-        # Lookahead / bezier bounds (optional overrides)
         for key in (
             "lookahead_min_x", "lookahead_max_x", "lookahead_max_abs_y",
             "bezier_min_x", "bezier_max_x", "bezier_max_abs_y",
@@ -179,8 +224,42 @@ class F1TenthSACEnv(gym.Env):
 
         return rc
 
+    def _validate_state_layout(self):
+        """Check that make_state output matches our expected obs_dim."""
+        dummy_obs = {
+            "pose": np.zeros(3),
+            "speed": 0.0,
+            "scan": np.ones(1080),
+            "steer": 0.0,
+            "yaw_rate": 0.0,
+            "a_long": 0.0,
+            "a_lat": 0.0,
+            "crash": False,
+        }
+        try:
+            state = make_state(dummy_obs, self.centerline, self.cfg)
+            if state.shape[0] != self.obs_dim:
+                raise ValueError(
+                    f"make_state returned {state.shape[0]} dims but obs_dim={self.obs_dim} "
+                    f"(STATE_N_SCALARS={STATE_N_SCALARS} + n_lidar={self.n_lidar}). "
+                    f"State layout constants may be out of sync with make_state()."
+                )
+        except Exception as e:
+            if "obs_dim" in str(e) or "dims" in str(e):
+                raise
+            # If make_state fails for other reasons (e.g. centerline too short),
+            # skip validation — it will fail properly on first real reset.
+            pass
+
+    # ------------------------------------------------------------------
+    # Observation helpers
+    # ------------------------------------------------------------------
+
     def _downsample_scan(self, scan: np.ndarray) -> np.ndarray:
-        """Optionally downsample raw scan beams to cfg lidar.raw_beams (uniform stride)."""
+        """
+        Preliminary scan reduction from raw sensor beams to raw_beams count.
+        The final reduction to n_lidar sectors happens inside make_state().
+        """
         scan = np.asarray(scan, dtype=float).ravel()
         if self._raw_beams and self._raw_beams > 0 and scan.size > self._raw_beams:
             stride = max(1, int(np.floor(scan.size / self._raw_beams)))
@@ -188,8 +267,6 @@ class F1TenthSACEnv(gym.Env):
         return scan
 
     def _pack_obs_dict(self, d):
-        """Support f110_gym keys (arrays per agent)."""
-
         def first_scalar(x, default=0.0):
             if x is None:
                 return float(default)
@@ -198,7 +275,6 @@ class F1TenthSACEnv(gym.Env):
                 return float(default)
             return float(a.ravel()[0])
 
-        # pose
         if "pose" in d and np.asarray(d["pose"]).size >= 3:
             pose = np.asarray(d["pose"], dtype=float).ravel()
             x, y, yaw = float(pose[0]), float(pose[1]), float(pose[2])
@@ -211,7 +287,6 @@ class F1TenthSACEnv(gym.Env):
             y = float(d.get("y", 0.0))
             yaw = float(d.get("yaw", d.get("theta", 0.0)))
 
-        # speed
         v = None
         for k in ("speed", "v", "linear_vels_x", "linear_vel_x", "vels_x", "vel_x", "speeds"):
             if k in d:
@@ -220,7 +295,6 @@ class F1TenthSACEnv(gym.Env):
         if v is None:
             v = 0.0
 
-        # steering
         steer = None
         for k in ("steer", "delta", "steering_delta", "steering_deltas", "deltas"):
             if k in d:
@@ -229,7 +303,6 @@ class F1TenthSACEnv(gym.Env):
         if steer is None:
             steer = 0.0
 
-        # lidar scan
         scan = None
         if "scans" in d:
             scans = np.asarray(d["scans"], dtype=float)
@@ -240,7 +313,6 @@ class F1TenthSACEnv(gym.Env):
             scan = np.asarray(d["lidar"], dtype=float)
         elif "ranges" in d:
             scan = np.asarray(d["ranges"], dtype=float)
-
         if scan is None:
             scan = np.ones(1080, dtype=float)
 
@@ -264,7 +336,6 @@ class F1TenthSACEnv(gym.Env):
             return self._pack_obs_dict(sim_obs)
         if isinstance(sim_obs, (list, tuple)) and len(sim_obs) > 0 and isinstance(sim_obs[0], dict):
             return self._pack_obs_dict(sim_obs[0])
-        # fallback
         return {
             "pose": np.zeros(3, dtype=float),
             "speed": 0.0,
@@ -302,20 +373,70 @@ class F1TenthSACEnv(gym.Env):
         self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
         return obs_raw
 
+    # ------------------------------------------------------------------
+    # Progress tracking
+    # ------------------------------------------------------------------
+
+    def _centerline_progress(self, pose) -> float:
+        """Return arc-length progress along centerline (handles wrap)."""
+        xy = np.array([pose[0], pose[1]])
+        dists = np.linalg.norm(self.centerline[:, :2] - xy, axis=1)
+        idx = int(np.argmin(dists))
+        return float(self._cl_cumlen[idx])
+
+    # ------------------------------------------------------------------
+    # Reset
+    # ------------------------------------------------------------------
+
+    def _spawn_pose(self, idx: int):
+        """Compute (x, y, theta) for spawning at centerline index `idx`."""
+        N = self.centerline.shape[0]
+        idx = int(np.clip(idx, 1, N - 2))
+
+        x = float(self.centerline[idx, 0])
+        y = float(self.centerline[idx, 1])
+        dx = float(self.centerline[idx + 1, 0] - self.centerline[idx, 0])
+        dy = float(self.centerline[idx + 1, 1] - self.centerline[idx, 1])
+        theta = float(np.arctan2(dy, dx))
+
+        # optional reset perturbation (only during training, not fixed eval spawns)
+        return x, y, theta
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self._step_i = 0
         self._last_for_rates = None
         self._prev_command = None
+        self._prev_steer_cmd = 0.0
 
-        # random spawn on centerline
+        options = options or {}
         N = self.centerline.shape[0]
-        i = int(self.np_random.integers(1, N - 1))
-        x = float(self.centerline[i, 0])
-        y = float(self.centerline[i, 1])
-        dx = float(self.centerline[i + 1, 0] - self.centerline[i, 0])
-        dy = float(self.centerline[i + 1, 1] - self.centerline[i, 1])
-        theta = float(np.arctan2(dy, dx))
+
+        # ---- spawn index selection ----
+        if "spawn_index" in options:
+            # Fixed spawn for deterministic evaluation
+            spawn_idx = int(np.clip(options["spawn_index"], 1, N - 2))
+        else:
+            # Random spawn for training
+            spawn_idx = int(self.np_random.integers(1, N - 1))
+
+        x, y, theta = self._spawn_pose(spawn_idx)
+
+        # Apply perturbation only for random spawns (not fixed eval spawns)
+        if "spawn_index" not in options:
+            if self._reset_lat_noise > 0:
+                lat_offset = float(self.np_random.uniform(
+                    -self._reset_lat_noise, self._reset_lat_noise
+                ))
+                perp_x = -np.sin(theta)
+                perp_y = np.cos(theta)
+                x += lat_offset * perp_x
+                y += lat_offset * perp_y
+
+            if self._reset_head_noise > 0:
+                theta += float(self.np_random.uniform(
+                    -self._reset_head_noise, self._reset_head_noise
+                ))
 
         poses = np.array([[x, y, theta]], dtype=np.float32)
 
@@ -324,21 +445,30 @@ class F1TenthSACEnv(gym.Env):
         obs_raw = self._finite_difference_kin(obs_raw)
 
         state = make_state(obs_raw, self.centerline, self.cfg)
+        if self._ablate_geometry:
+            state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
+
+        # initialize progress tracking
+        self._start_progress = self._centerline_progress(obs_raw["pose"])
+        self._prev_progress = self._start_progress
 
         info = {
             "crash": bool(obs_raw.get("crash", False)),
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
+            "spawn_index": spawn_idx,
         }
         return state_norm.astype(np.float32), info
+
+    # ------------------------------------------------------------------
+    # Step
+    # ------------------------------------------------------------------
 
     def step(self, action):
         self._step_i += 1
 
-        # ---- action space pipeline ----
-        # action is the raw policy output (shape = policy_dim, values in [-1, 1])
-        # raw_action_to_command: squash -> interpret -> constrain -> robot command
+        # ---- action pipeline ----
         command = raw_action_to_command(
             self.action_space_name,
             action,
@@ -350,43 +480,125 @@ class F1TenthSACEnv(gym.Env):
 
         steering_angle = float(command["steering_angle"])
         speed = float(command["speed"])
+
+        # constraint analysis: compare pre vs post constraint
+        pre_steer = float(command.get("pre_constraint_steering", steering_angle))
+        pre_speed = float(command.get("pre_constraint_speed", speed))
+        steer_clipped = abs(pre_steer - steering_angle) > 1e-6
+        speed_clipped = abs(pre_speed - speed) > 1e-6
+
+        # steering rate
+        steer_rate = (steering_angle - self._prev_steer_cmd) / self._dt
+        self._prev_steer_cmd = steering_angle
         self._prev_command = command
 
-        # f110_gym expects [[steering, speed]]
+        # ---- simulator step ----
         sim_action = np.array([[steering_angle, speed]], dtype=float)
         sim_obs, _, done, _ = self.sim.step(sim_action)
 
-        # handle done as array/bool safely
         sim_done = bool(np.asarray(done).ravel()[0]) if isinstance(done, (list, tuple, np.ndarray)) else bool(done)
 
         obs_raw = self._extract_obs(sim_obs)
         obs_raw = self._finite_difference_kin(obs_raw)
 
         state = make_state(obs_raw, self.centerline, self.cfg)
+        if self._ablate_geometry:
+            state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
 
-        reward = compute_reward(obs_raw, self.centerline, self.cfg)
+        reward, reward_terms = compute_reward(obs_raw, self.centerline, self.cfg)
+
+        # ---- termination logic ----
         crash = bool(obs_raw.get("crash", False))
         terminated = bool(crash or sim_done)
-        truncated = False
+        truncated = (self._step_i >= self._max_steps) and not terminated
 
+        # ---- progress tracking ----
+        current_progress = self._centerline_progress(obs_raw["pose"])
+        delta_progress = current_progress - self._prev_progress
+        if delta_progress < -self._track_length / 2:
+            delta_progress += self._track_length
+        elif delta_progress > self._track_length / 2:
+            delta_progress -= self._track_length
+        self._prev_progress = current_progress
+
+        total_progress = current_progress - self._start_progress
+        if total_progress < -self._track_length / 2:
+            total_progress += self._track_length
+
+        # ---- centerline errors (always computed, even if ablated from state) ----
+        e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
+
+        # ---- termination reason ----
+        if crash:
+            term_reason = "crash"
+        elif sim_done and not crash:
+            term_reason = "sim_done"
+        elif truncated:
+            term_reason = "timeout"
+        else:
+            term_reason = "running"
+
+        # ---- info dict ----
         info = {
+            # episode metadata
+            "step": self._step_i,
+            "term_reason": term_reason,
+            "action_space": self.action_space_name,
+
+            # vehicle state
             "crash": crash,
-            "sim_done": sim_done,
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
-            "steer": steering_angle,
-            "commanded_speed": speed,
-            "action_space": self.action_space_name,
-        }
 
-        reward, reward_breakdown = reward
-        info["reward_breakdown"] = reward_breakdown
+            # commands
+            "steer_cmd": steering_angle,
+            "speed_cmd": speed,
+            "steer_rate": float(steer_rate),
+
+            # constraint analysis
+            "pre_constraint_steer": pre_steer,
+            "pre_constraint_speed": pre_speed,
+            "steer_clipped": steer_clipped,
+            "speed_clipped": speed_clipped,
+            "steer_clip_mag": abs(pre_steer - steering_angle),
+            "speed_clip_mag": abs(pre_speed - speed),
+
+            # tracking quality
+            "lateral_error": float(e_lat),
+            "heading_error": float(e_head),
+            "min_lidar": float(np.min(obs_raw["scan"])),
+
+            # progress
+            "delta_progress": float(delta_progress),
+            "total_progress": float(total_progress),
+            "normalized_progress": float(total_progress / self._track_length),
+
+            # reward decomposition
+            "reward_breakdown": reward_terms,
+        }
 
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info
 
+    # ------------------------------------------------------------------
+    # Observation ablation
+    # ------------------------------------------------------------------
+
+    def _zero_geometry_features(self, state: np.ndarray) -> np.ndarray:
+        """
+        Zero out e_head and e_lat in the state vector.
+        Uses module-level constants to avoid magic indices.
+        """
+        state = state.copy()
+        state[STATE_IDX_E_HEAD] = 0.0
+        state[STATE_IDX_E_LAT] = 0.0
+        return state
+
+    # ------------------------------------------------------------------
+    # Render / close
+    # ------------------------------------------------------------------
+
     def render(self):
-        """WSL2 can hang in pyglet/OpenGL. Try, but fail-open."""
         if self.render_mode != "human":
             return
         try:

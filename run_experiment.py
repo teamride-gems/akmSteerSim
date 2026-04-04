@@ -237,7 +237,6 @@ def main():
 
     if args.train_only:
         print("\n=== Train-only mode. Skipping evaluation. ===")
-        print(f"Results in: {exp_dir}")
         return
 
     # =====================================================================

@@ -1,9 +1,6 @@
 import numpy as np
 from .geometry import project_to_centerline
 
-
-
-
 def lidar_to_sectors(scan, cfg):
     clip_min = cfg["lidar"]["clip_min_m"]
     clip_max = cfg["lidar"]["clip_max_m"]
