@@ -12,7 +12,7 @@ class LapMetricsLogger:
         "lap_progress",
     ]
 
-    def __init__(self, csv_path: str = "metrics/lap_metrics.csv", timestep_csv_path: str | None = None):
+    def __init__(self, csv_path: str = "metrics/lap_metrics.csv", timestep_csv_path: str or None = None):
         self.csv_path = Path(csv_path)
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
         self.csv_file = open(self.csv_path, "w", newline="")

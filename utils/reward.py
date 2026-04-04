@@ -1,21 +1,50 @@
+"""
+Reward function for F1TenthSACEnv.
+
+Design principles for the action-space comparison paper:
+  - Action-space-agnostic: no steering angle, steering rate, or
+    action-dependent terms. Smoothness differences between action spaces
+    are emergent, not trained — this strengthens the paper's claims.
+  - Progress-dominant: at typical speeds, the progress term outweighs
+    acceleration penalties by ~30x. The penalties provide a gentle
+    smoothness nudge without overriding the "drive fast" objective.
+  - Lateral error (e_lat) is computed but NOT used in the reward.
+    Centerline tracking emerges from the heading-aligned progress term.
+
+Reward components:
+  progress:   w_progress * v * cos(e_head)
+  a_long_pen: w_a_long * (a_long / ref_a_long)^2
+  a_lat_pen:  w_a_lat  * (a_lat  / ref_a_lat)^2
+  time_pen:   w_time   (constant per step)
+  crash_pen:  crash_penalty (on collision)
+"""
+
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from utils.geometry import project_to_centerline
 
 
-def compute_reward(obs_raw: Dict, centerline: np.ndarray, cfg: Dict) -> Tuple[float, Dict[str, float]]:
+def compute_reward(
+    obs_raw: Dict,
+    centerline: np.ndarray,
+    cfg: Dict,
+    e_lat: Optional[float] = None,
+    e_head: Optional[float] = None,
+) -> Tuple[float, Dict[str, float]]:
     """
-    Reward = forward progress along centerline
-           + acceleration smoothness penalties
-           + time penalty
-           + crash penalty
+    Compute the scalar reward and a detailed breakdown dict.
 
-    Progress:   w_progress * v * cos(e_head)
-    Smoothness: w_a_long * (a_long / ref_a_long)^2
-                w_a_lat  * (a_lat  / ref_a_lat)^2
-    Time:       w_time   (constant per step)
-    Crash:      crash_penalty (on collision)
+    Args:
+        obs_raw: raw observation dict from the simulator
+        centerline: Nx2+ track centerline array
+        cfg: vehicle/environment config dict
+        e_lat: pre-computed lateral error (if None, computed here)
+        e_head: pre-computed heading error (if None, computed here)
+
+    Returns:
+        total: scalar reward
+        terms: dict with reward decomposition and raw quantities
     """
     rw = cfg.get("reward", {})
 
@@ -37,8 +66,9 @@ def compute_reward(obs_raw: Dict, centerline: np.ndarray, cfg: Dict) -> Tuple[fl
     a_lat  = float(obs_raw.get("a_lat", 0.0))
     crash  = bool(obs_raw.get("crash", False))
 
-    # --- centerline projection (needed for reward + logged for analysis) ---
-    e_lat, e_head = project_to_centerline(pose, centerline)
+    # --- centerline projection (reuse if pre-computed) ---
+    if e_lat is None or e_head is None:
+        e_lat, e_head = project_to_centerline(pose, centerline)
 
     # --- reward components ---
     r_progress = w_progress * v * np.cos(e_head)

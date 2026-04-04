@@ -93,14 +93,34 @@ def get_curvature_bounds(config: Dict[str, Any]) -> Tuple[float, float]:
 # ============================================================
 # Per-dimension policy output mapping
 # ============================================================
+#
+# IMPORTANT: SB3's SAC uses SquashedDiagGaussianDistribution, which
+# applies tanh internally to squash Gaussian samples to [-1, 1].
+# The raw_action arriving at env.step() is ALREADY in [-1, 1].
+#
+# The "linear" mode performs a simple affine rescaling from [-1, 1]
+# to [low, high] with no additional nonlinearity. This is the correct
+# default for SB3 — it gives the agent equal access to the full
+# physical range of each dimension.
+#
+# The "tanh" and "sigmoid" modes apply ADDITIONAL nonlinearities on
+# top of SB3's tanh, creating double-squashing that compresses the
+# effective action range. These are retained for compatibility but
+# should NOT be used with SB3's default SAC.
+# ============================================================
 
 
 
 def map_dimension_from_spec(raw_value: float, dim_spec: Dict[str, Any]) -> float:
-    mode = dim_spec.get("mode", "tanh")
+    mode = dim_spec.get("mode", "linear")
 
     if mode == "identity":
         return float(raw_value)
+
+    if mode == "linear":
+        low = float(dim_spec["low"])
+        high = float(dim_spec["high"])
+        return scale_from_signed_unit(clip(float(raw_value), -1.0, 1.0), low, high)
 
     if mode == "tanh":
         low = float(dim_spec["low"])
@@ -550,6 +570,17 @@ class ActionSpaceSpec:
     representation_constraints: Optional[Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]] = None
 
 
+# ============================================================
+# Action space definitions
+# ============================================================
+# All dimensions use "linear" mode: affine rescaling from [-1, 1]
+# to [low, high] with no additional nonlinearity. This is the correct
+# pairing with SB3's SAC, which already applies tanh squashing
+# internally. Using "tanh" or "sigmoid" here would double-squash,
+# compressing the effective action range and creating unequal
+# coverage across action spaces.
+# ============================================================
+
 
 def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
     return {
@@ -558,8 +589,8 @@ def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
             policy_dim_names=["steering_angle", "speed"],
             units=["rad", "m/s"],
             policy_output_spec=[
-                {"mode": "tanh", "low": -0.4189, "high": 0.4189},
-                {"mode": "sigmoid", "low": 0.0, "high": 5.0},
+                {"mode": "linear", "low": -0.4189, "high": 0.4189},
+                {"mode": "linear", "low": 0.0, "high": 5.0},
             ],
             interpret=interpret_steer_speed,
             to_command=command_from_steer_speed,
@@ -575,8 +606,8 @@ def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
             policy_dim_names=["curvature", "speed"],
             units=["1/m", "m/s"],
             policy_output_spec=[
-                {"mode": "tanh", "low": -2.0, "high": 2.0},
-                {"mode": "sigmoid", "low": 0.0, "high": 5.0},
+                {"mode": "linear", "low": -2.0, "high": 2.0},
+                {"mode": "linear", "low": 0.0, "high": 5.0},
             ],
             interpret=interpret_curvature_speed,
             to_command=command_from_curvature_speed,
@@ -592,9 +623,9 @@ def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
             policy_dim_names=["lookahead_x", "lookahead_y", "speed"],
             units=["m", "m", "m/s"],
             policy_output_spec=[
-                {"mode": "sigmoid", "low": 0.5, "high": 5.0},
-                {"mode": "tanh", "low": -2.0, "high": 2.0},
-                {"mode": "sigmoid", "low": 0.0, "high": 5.0},
+                {"mode": "linear", "low": 0.5, "high": 5.0},
+                {"mode": "linear", "low": -2.0, "high": 2.0},
+                {"mode": "linear", "low": 0.0, "high": 5.0},
             ],
             interpret=interpret_lookahead_point,
             representation_constraints=enforce_lookahead_validity,
@@ -612,11 +643,11 @@ def _make_action_spaces() -> Dict[str, ActionSpaceSpec]:
             policy_dim_names=["p1_x", "p1_y", "p2_x", "p2_y", "speed"],
             units=["m", "m", "m", "m", "m/s"],
             policy_output_spec=[
-                {"mode": "sigmoid", "low": 0.5, "high": 5.0},
-                {"mode": "tanh", "low": -2.0, "high": 2.0},
-                {"mode": "sigmoid", "low": 0.5, "high": 5.0},
-                {"mode": "tanh", "low": -2.0, "high": 2.0},
-                {"mode": "sigmoid", "low": 0.0, "high": 5.0},
+                {"mode": "linear", "low": 0.5, "high": 5.0},
+                {"mode": "linear", "low": -2.0, "high": 2.0},
+                {"mode": "linear", "low": 0.5, "high": 5.0},
+                {"mode": "linear", "low": -2.0, "high": 2.0},
+                {"mode": "linear", "low": 0.0, "high": 5.0},
             ],
             interpret=interpret_bezier,
             representation_constraints=enforce_bezier_validity,
@@ -678,8 +709,8 @@ def refresh_action_space_bounds(config: Dict[str, Any]) -> None:
         **{
             **ACTION_SPACES["steer_speed"].__dict__,
             "policy_output_spec": [
-                {"mode": "tanh", "low": min_steering, "high": max_steering},
-                {"mode": "sigmoid", "low": min_speed, "high": max_speed},
+                {"mode": "linear", "low": min_steering, "high": max_steering},
+                {"mode": "linear", "low": min_speed, "high": max_speed},
             ],
         }
     )
@@ -688,8 +719,8 @@ def refresh_action_space_bounds(config: Dict[str, Any]) -> None:
         **{
             **ACTION_SPACES["curvature_speed"].__dict__,
             "policy_output_spec": [
-                {"mode": "tanh", "low": min_curvature, "high": max_curvature},
-                {"mode": "sigmoid", "low": min_speed, "high": max_speed},
+                {"mode": "linear", "low": min_curvature, "high": max_curvature},
+                {"mode": "linear", "low": min_speed, "high": max_speed},
             ],
         }
     )
@@ -699,16 +730,16 @@ def refresh_action_space_bounds(config: Dict[str, Any]) -> None:
             **ACTION_SPACES["lookahead_point"].__dict__,
             "policy_output_spec": [
                 {
-                    "mode": "sigmoid",
+                    "mode": "linear",
                     "low": _cfg(config, "lookahead_min_x", 0.5),
                     "high": _cfg(config, "lookahead_max_x", 5.0),
                 },
                 {
-                    "mode": "tanh",
+                    "mode": "linear",
                     "low": -_cfg(config, "lookahead_max_abs_y", 2.0),
                     "high": _cfg(config, "lookahead_max_abs_y", 2.0),
                 },
-                {"mode": "sigmoid", "low": min_speed, "high": max_speed},
+                {"mode": "linear", "low": min_speed, "high": max_speed},
             ],
         }
     )
@@ -718,26 +749,26 @@ def refresh_action_space_bounds(config: Dict[str, Any]) -> None:
             **ACTION_SPACES["bezier"].__dict__,
             "policy_output_spec": [
                 {
-                    "mode": "sigmoid",
+                    "mode": "linear",
                     "low": _cfg(config, "bezier_min_x", 0.5),
                     "high": _cfg(config, "bezier_max_x", 5.0),
                 },
                 {
-                    "mode": "tanh",
+                    "mode": "linear",
                     "low": -_cfg(config, "bezier_max_abs_y", 2.0),
                     "high": _cfg(config, "bezier_max_abs_y", 2.0),
                 },
                 {
-                    "mode": "sigmoid",
+                    "mode": "linear",
                     "low": _cfg(config, "bezier_min_x", 0.5),
                     "high": _cfg(config, "bezier_max_x", 5.0),
                 },
                 {
-                    "mode": "tanh",
+                    "mode": "linear",
                     "low": -_cfg(config, "bezier_max_abs_y", 2.0),
                     "high": _cfg(config, "bezier_max_abs_y", 2.0),
                 },
-                {"mode": "sigmoid", "low": min_speed, "high": max_speed},
+                {"mode": "linear", "low": min_speed, "high": max_speed},
             ],
         }
     )
