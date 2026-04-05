@@ -15,24 +15,17 @@ from utils.action_spaces_utils import (
     get_action_space_spec,
     raw_action_to_command,
     refresh_action_space_bounds,
-    get_speed_bounds,
-    get_steering_bounds,
 )
 
 
-# ------------------------------------------------------------------
-# State vector layout
-# ------------------------------------------------------------------
-# Indices into the state vector returned by make_state().
-# If make_state changes, update these and the assertions below.
-STATE_IDX_V = 0        # longitudinal speed
-STATE_IDX_A_LONG = 1   # longitudinal acceleration
-STATE_IDX_DELTA = 2    # steering angle
-STATE_IDX_R = 3        # yaw rate
-STATE_IDX_E_HEAD = 4   # heading error to centerline
-STATE_IDX_E_LAT = 5    # lateral error to centerline
-STATE_IDX_A_LAT = 6    # lateral acceleration
-STATE_N_SCALARS = 7    # number of scalar features before lidar
+STATE_IDX_V = 0
+STATE_IDX_A_LONG = 1
+STATE_IDX_DELTA = 2
+STATE_IDX_R = 3
+STATE_IDX_E_HEAD = 4
+STATE_IDX_E_LAT = 5
+STATE_IDX_A_LAT = 6
+STATE_N_SCALARS = 7
 
 
 class F1TenthSACEnv(gym.Env):
@@ -56,33 +49,45 @@ class F1TenthSACEnv(gym.Env):
         if not cl_path.exists():
             raise FileNotFoundError(f"Centerline CSV not found at {cl_path}")
         self.centerline = np.loadtxt(cl_path, delimiter=",", ndmin=2)
+        if self.centerline.ndim != 2 or self.centerline.shape[0] < 2 or self.centerline.shape[1] < 2:
+            raise ValueError(
+                f"Centerline must be an array of shape (N, >=2); got {self.centerline.shape}"
+            )
 
-        # precompute cumulative arc length for progress tracking
         diffs = np.diff(self.centerline[:, :2], axis=0)
         seg_lengths = np.linalg.norm(diffs, axis=1)
+        if np.any(seg_lengths <= 0.0):
+            warnings.warn(
+                "Centerline contains zero-length segments. Progress projection may be unstable.",
+                stacklevel=2,
+            )
+        self._cl_seg_lengths = seg_lengths
         self._cl_cumlen = np.concatenate([[0.0], np.cumsum(seg_lengths)])
         self._track_length = float(self._cl_cumlen[-1])
+        if self._track_length <= 0.0:
+            raise ValueError("Track length must be positive.")
 
         self.render_mode = render_mode
-
-        # ---- episode horizon ----
         self._max_steps = int(cfg.get("max_episode_steps", 3000))
 
-        # ---- reset perturbation ----
         reset_cfg = cfg.get("reset", {})
         self._reset_lat_noise = float(reset_cfg.get("lateral_noise_m", 0.0))
         self._reset_head_noise = float(reset_cfg.get("heading_noise_rad", 0.0))
 
-        # ---- observation ablation ----
         self._ablate_geometry = bool(cfg.get("ablate_centerline_features", False))
 
-        # ---- action space setup ----
         self.action_space_name = str(cfg.get("action_space", "steer_speed"))
         self._robot_config = self._build_robot_config(cfg)
         refresh_action_space_bounds(self._robot_config)
 
         spec = get_action_space_spec(self.action_space_name)
         self._policy_dim = spec.policy_dim
+        expected_policy_dim = int(get_policy_dim(self.action_space_name))
+        if self._policy_dim != expected_policy_dim:
+            raise ValueError(
+                f"Policy dim mismatch for action space '{self.action_space_name}': "
+                f"spec={self._policy_dim}, get_policy_dim={expected_policy_dim}"
+            )
 
         self.action_space = spaces.Box(
             low=-1.0,
@@ -93,7 +98,6 @@ class F1TenthSACEnv(gym.Env):
 
         self._prev_command = None
 
-        # ---- observation space ----
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
         self.obs_dim = STATE_N_SCALARS + self.n_lidar
         self.observation_space = spaces.Box(
@@ -102,11 +106,11 @@ class F1TenthSACEnv(gym.Env):
 
         self.normalizer = StateNormalizer(self.cfg)
 
-        self._dt = 1.0 / 30.0  # fallback, overwritten below if sim exposes dt
+        self._dt = 1.0 / 30.0
         self._last_for_rates = None
         self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))
+        self._sim_obs_schema_validated = False
 
-        # ---- simulator setup ----
         sim_cfg = self.cfg.get("sim", {})
         raw_map_name = sim_cfg.get("map_name", "Sakhir")
         track_name = str(raw_map_name).replace("_map", "").strip()
@@ -126,7 +130,6 @@ class F1TenthSACEnv(gym.Env):
         except Exception as e:
             raise RuntimeError("Could not create F110 sim. Check f110_gym + map paths.") from e
 
-        # Detect sim timestep
         dt_found = False
         for key in ("dt", "_dt", "time_step", "timestep"):
             if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
@@ -138,19 +141,16 @@ class F1TenthSACEnv(gym.Env):
         if not dt_found:
             warnings.warn(
                 f"Could not detect sim timestep from F110Env attributes. "
-                f"Falling back to dt={self._dt:.4f}s (1/{1.0/self._dt:.0f} Hz). "
+                f"Falling back to dt={self._dt:.4f}s (1/{1.0 / self._dt:.0f} Hz). "
                 f"Steering rate and finite-difference kinematics may be inaccurate.",
                 stacklevel=2,
             )
 
-        # ---- per-episode tracking ----
         self._step_i = 0
         self._start_progress = 0.0
         self._prev_progress = 0.0
         self._prev_steer_cmd = 0.0
 
-        # ---- validate state layout ----
-        # Run make_state once with dummy data to verify obs_dim matches
         self._validate_state_layout()
 
         print(
@@ -162,35 +162,21 @@ class F1TenthSACEnv(gym.Env):
             f"ablate_geometry={self._ablate_geometry}"
         )
 
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
     @property
     def track_length(self) -> float:
-        """Total arc length of the centerline in meters."""
         return self._track_length
 
     @property
     def dt(self) -> float:
-        """Simulation timestep in seconds."""
         return self._dt
-
-    # ------------------------------------------------------------------
-    # Config helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _build_robot_config(cfg: dict) -> dict:
         vehicle = cfg.get("vehicle", {})
         rc = {}
 
-        rc["min_speed"] = float(
-            cfg.get("v_min", vehicle.get("min_speed_mps", 0.0))
-        )
-        rc["max_speed"] = float(
-            cfg.get("v_max", vehicle.get("max_speed_mps", 5.0))
-        )
+        rc["min_speed"] = float(cfg.get("v_min", vehicle.get("min_speed_mps", 0.0)))
+        rc["max_speed"] = float(cfg.get("v_max", vehicle.get("max_speed_mps", 5.0)))
 
         delta_max = cfg.get("delta_max", None)
         if delta_max is None:
@@ -204,8 +190,10 @@ class F1TenthSACEnv(gym.Env):
         rc["min_steering_angle"] = delta_min
         rc["max_steering_angle"] = delta_max
 
-        wb = vehicle.get("wheelbase", vehicle.get("wheelbase_m",
-             cfg.get("wheelbase", cfg.get("wheelbase_m", 0.33))))
+        wb = vehicle.get(
+            "wheelbase",
+            vehicle.get("wheelbase_m", cfg.get("wheelbase", cfg.get("wheelbase_m", 0.33))),
+        )
         rc["wheelbase"] = float(wb)
 
         if "max_steering_rate" in vehicle:
@@ -214,10 +202,16 @@ class F1TenthSACEnv(gym.Env):
             rc["max_acceleration"] = float(vehicle["max_acceleration"])
 
         for key in (
-            "lookahead_min_x", "lookahead_max_x", "lookahead_max_abs_y",
-            "bezier_min_x", "bezier_max_x", "bezier_max_abs_y",
-            "bezier_end_x", "bezier_min_dx",
-            "bezier_num_samples", "bezier_lookahead_distance",
+            "lookahead_min_x",
+            "lookahead_max_x",
+            "lookahead_max_abs_y",
+            "bezier_min_x",
+            "bezier_max_x",
+            "bezier_max_abs_y",
+            "bezier_end_x",
+            "bezier_min_dx",
+            "bezier_num_samples",
+            "bezier_lookahead_distance",
         ):
             if key in cfg:
                 rc[key] = float(cfg[key])
@@ -225,7 +219,6 @@ class F1TenthSACEnv(gym.Env):
         return rc
 
     def _validate_state_layout(self):
-        """Check that make_state output matches our expected obs_dim."""
         dummy_obs = {
             "pose": np.zeros(3),
             "speed": 0.0,
@@ -236,31 +229,20 @@ class F1TenthSACEnv(gym.Env):
             "a_lat": 0.0,
             "crash": False,
         }
-        try:
-            state = make_state(dummy_obs, self.centerline, self.cfg)
-            if state.shape[0] != self.obs_dim:
-                raise ValueError(
-                    f"make_state returned {state.shape[0]} dims but obs_dim={self.obs_dim} "
-                    f"(STATE_N_SCALARS={STATE_N_SCALARS} + n_lidar={self.n_lidar}). "
-                    f"State layout constants may be out of sync with make_state()."
-                )
-        except Exception as e:
-            if "obs_dim" in str(e) or "dims" in str(e):
-                raise
-            # If make_state fails for other reasons (e.g. centerline too short),
-            # skip validation — it will fail properly on first real reset.
-            pass
-
-    # ------------------------------------------------------------------
-    # Observation helpers
-    # ------------------------------------------------------------------
+        state = make_state(dummy_obs, self.centerline, self.cfg)
+        if state.shape[0] != self.obs_dim:
+            raise ValueError(
+                f"make_state returned {state.shape[0]} dims but obs_dim={self.obs_dim} "
+                f"(STATE_N_SCALARS={STATE_N_SCALARS} + n_lidar={self.n_lidar}). "
+                f"State layout constants may be out of sync with make_state()."
+            )
 
     def _downsample_scan(self, scan: np.ndarray) -> np.ndarray:
-        """
-        Preliminary scan reduction from raw sensor beams to raw_beams count.
-        The final reduction to n_lidar sectors happens inside make_state().
-        """
         scan = np.asarray(scan, dtype=float).ravel()
+        if scan.size == 0:
+            raise ValueError("Simulator returned an empty lidar scan.")
+        if not np.all(np.isfinite(scan)):
+            raise ValueError("Simulator returned a non-finite lidar scan.")
         if self._raw_beams and self._raw_beams > 0 and scan.size > self._raw_beams:
             stride = max(1, int(np.floor(scan.size / self._raw_beams)))
             scan = scan[::stride]
@@ -314,13 +296,15 @@ class F1TenthSACEnv(gym.Env):
         elif "ranges" in d:
             scan = np.asarray(d["ranges"], dtype=float)
         if scan is None:
-            scan = np.ones(1080, dtype=float)
+            raise KeyError(
+                f"Simulator observation is missing lidar data. Available keys: {sorted(d.keys())}"
+            )
 
         scan = self._downsample_scan(scan)
 
         crash = bool(d.get("crash", d.get("done", False)))
         yr = d.get("yaw_rate", d.get("r", d.get("ang_vels_z", 0.0)))
-        return {
+        packed = {
             "pose": np.array([x, y, yaw], dtype=float),
             "speed": float(v),
             "scan": scan,
@@ -330,22 +314,29 @@ class F1TenthSACEnv(gym.Env):
             "a_lat": float(d.get("a_lat", d.get("ay", 0.0))),
             "crash": crash,
         }
+        if not np.all(np.isfinite(packed["pose"])):
+            raise ValueError(f"Simulator returned non-finite pose: {packed['pose']}")
+        return packed
 
     def _extract_obs(self, sim_obs):
         if isinstance(sim_obs, dict):
-            return self._pack_obs_dict(sim_obs)
-        if isinstance(sim_obs, (list, tuple)) and len(sim_obs) > 0 and isinstance(sim_obs[0], dict):
-            return self._pack_obs_dict(sim_obs[0])
-        return {
-            "pose": np.zeros(3, dtype=float),
-            "speed": 0.0,
-            "scan": np.ones(1080, dtype=float),
-            "steer": 0.0,
-            "yaw_rate": 0.0,
-            "a_long": 0.0,
-            "a_lat": 0.0,
-            "crash": False,
-        }
+            obs = self._pack_obs_dict(sim_obs)
+        elif isinstance(sim_obs, (list, tuple)) and len(sim_obs) > 0 and isinstance(sim_obs[0], dict):
+            obs = self._pack_obs_dict(sim_obs[0])
+        else:
+            raise TypeError(
+                f"Unrecognized simulator observation type: {type(sim_obs).__name__}. "
+                "Expected dict or sequence whose first element is a dict. "
+                f"Raw value preview: {repr(sim_obs)[:300]}"
+            )
+
+        if not self._sim_obs_schema_validated:
+            self._sim_obs_schema_validated = True
+            required = {"pose", "speed", "scan", "steer", "yaw_rate", "a_long", "a_lat", "crash"}
+            missing = [k for k in required if k not in obs]
+            if missing:
+                raise KeyError(f"Packed simulator observation missing required fields: {missing}")
+        return obs
 
     def _finite_difference_kin(self, obs_raw):
         x, y, yaw = obs_raw["pose"]
@@ -373,23 +364,29 @@ class F1TenthSACEnv(gym.Env):
         self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
         return obs_raw
 
-    # ------------------------------------------------------------------
-    # Progress tracking
-    # ------------------------------------------------------------------
+    def _projected_arc_progress(self, pose) -> float:
+        xy = np.asarray(pose[:2], dtype=float)
+        pts = self.centerline[:, :2]
 
-    def _centerline_progress(self, pose) -> float:
-        """Return arc-length progress along centerline (handles wrap)."""
-        xy = np.array([pose[0], pose[1]])
-        dists = np.linalg.norm(self.centerline[:, :2] - xy, axis=1)
-        idx = int(np.argmin(dists))
-        return float(self._cl_cumlen[idx])
-
-    # ------------------------------------------------------------------
-    # Reset
-    # ------------------------------------------------------------------
+        best_s = 0.0
+        best_dist_sq = float("inf")
+        for i in range(len(pts) - 1):
+            p0 = pts[i]
+            p1 = pts[i + 1]
+            seg = p1 - p0
+            seg_len_sq = float(np.dot(seg, seg))
+            if seg_len_sq <= 1e-12:
+                continue
+            t = float(np.dot(xy - p0, seg) / seg_len_sq)
+            t = float(np.clip(t, 0.0, 1.0))
+            proj = p0 + t * seg
+            dist_sq = float(np.sum((xy - proj) ** 2))
+            if dist_sq < best_dist_sq:
+                best_dist_sq = dist_sq
+                best_s = float(self._cl_cumlen[i] + t * self._cl_seg_lengths[i])
+        return best_s
 
     def _spawn_pose(self, idx: int):
-        """Compute (x, y, theta) for spawning at centerline index `idx`."""
         N = self.centerline.shape[0]
         idx = int(np.clip(idx, 1, N - 2))
 
@@ -398,8 +395,6 @@ class F1TenthSACEnv(gym.Env):
         dx = float(self.centerline[idx + 1, 0] - self.centerline[idx, 0])
         dy = float(self.centerline[idx + 1, 1] - self.centerline[idx, 1])
         theta = float(np.arctan2(dy, dx))
-
-        # optional reset perturbation (only during training, not fixed eval spawns)
         return x, y, theta
 
     def reset(self, seed=None, options=None):
@@ -412,34 +407,25 @@ class F1TenthSACEnv(gym.Env):
         options = options or {}
         N = self.centerline.shape[0]
 
-        # ---- spawn index selection ----
         if "spawn_index" in options:
-            # Fixed spawn for deterministic evaluation
             spawn_idx = int(np.clip(options["spawn_index"], 1, N - 2))
         else:
-            # Random spawn for training
             spawn_idx = int(self.np_random.integers(1, N - 1))
 
         x, y, theta = self._spawn_pose(spawn_idx)
 
-        # Apply perturbation only for random spawns (not fixed eval spawns)
         if "spawn_index" not in options:
             if self._reset_lat_noise > 0:
-                lat_offset = float(self.np_random.uniform(
-                    -self._reset_lat_noise, self._reset_lat_noise
-                ))
+                lat_offset = float(self.np_random.uniform(-self._reset_lat_noise, self._reset_lat_noise))
                 perp_x = -np.sin(theta)
                 perp_y = np.cos(theta)
                 x += lat_offset * perp_x
                 y += lat_offset * perp_y
 
             if self._reset_head_noise > 0:
-                theta += float(self.np_random.uniform(
-                    -self._reset_head_noise, self._reset_head_noise
-                ))
+                theta += float(self.np_random.uniform(-self._reset_head_noise, self._reset_head_noise))
 
         poses = np.array([[x, y, theta]], dtype=np.float32)
-
         sim_obs, _, _, _ = self.sim.reset(poses=poses)
         obs_raw = self._extract_obs(sim_obs)
         obs_raw = self._finite_difference_kin(obs_raw)
@@ -449,8 +435,7 @@ class F1TenthSACEnv(gym.Env):
             state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
 
-        # initialize progress tracking
-        self._start_progress = self._centerline_progress(obs_raw["pose"])
+        self._start_progress = self._projected_arc_progress(obs_raw["pose"])
         self._prev_progress = self._start_progress
 
         info = {
@@ -461,14 +446,9 @@ class F1TenthSACEnv(gym.Env):
         }
         return state_norm.astype(np.float32), info
 
-    # ------------------------------------------------------------------
-    # Step
-    # ------------------------------------------------------------------
-
     def step(self, action):
         self._step_i += 1
 
-        # ---- action pipeline ----
         command = raw_action_to_command(
             self.action_space_name,
             action,
@@ -481,21 +461,17 @@ class F1TenthSACEnv(gym.Env):
         steering_angle = float(command["steering_angle"])
         speed = float(command["speed"])
 
-        # constraint analysis: compare pre vs post constraint
         pre_steer = float(command.get("pre_constraint_steering", steering_angle))
         pre_speed = float(command.get("pre_constraint_speed", speed))
         steer_clipped = abs(pre_steer - steering_angle) > 1e-6
         speed_clipped = abs(pre_speed - speed) > 1e-6
 
-        # steering rate
         steer_rate = (steering_angle - self._prev_steer_cmd) / self._dt
         self._prev_steer_cmd = steering_angle
         self._prev_command = command
 
-        # ---- simulator step ----
         sim_action = np.array([[steering_angle, speed]], dtype=float)
         sim_obs, _, done, _ = self.sim.step(sim_action)
-
         sim_done = bool(np.asarray(done).ravel()[0]) if isinstance(done, (list, tuple, np.ndarray)) else bool(done)
 
         obs_raw = self._extract_obs(sim_obs)
@@ -508,13 +484,11 @@ class F1TenthSACEnv(gym.Env):
 
         reward, reward_terms = compute_reward(obs_raw, self.centerline, self.cfg)
 
-        # ---- termination logic ----
         crash = bool(obs_raw.get("crash", False))
         terminated = bool(crash or sim_done)
         truncated = (self._step_i >= self._max_steps) and not terminated
 
-        # ---- progress tracking ----
-        current_progress = self._centerline_progress(obs_raw["pose"])
+        current_progress = self._projected_arc_progress(obs_raw["pose"])
         delta_progress = current_progress - self._prev_progress
         if delta_progress < -self._track_length / 2:
             delta_progress += self._track_length
@@ -525,11 +499,11 @@ class F1TenthSACEnv(gym.Env):
         total_progress = current_progress - self._start_progress
         if total_progress < -self._track_length / 2:
             total_progress += self._track_length
+        elif total_progress > self._track_length / 2:
+            total_progress -= self._track_length
 
-        # ---- centerline errors (always computed, even if ablated from state) ----
         e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
 
-        # ---- termination reason ----
         if crash:
             term_reason = "crash"
         elif sim_done and not crash:
@@ -539,64 +513,38 @@ class F1TenthSACEnv(gym.Env):
         else:
             term_reason = "running"
 
-        # ---- info dict ----
         info = {
-            # episode metadata
             "step": self._step_i,
             "term_reason": term_reason,
             "action_space": self.action_space_name,
-
-            # vehicle state
             "crash": crash,
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
-
-            # commands
             "steer_cmd": steering_angle,
             "speed_cmd": speed,
             "steer_rate": float(steer_rate),
-
-            # constraint analysis
             "pre_constraint_steer": pre_steer,
             "pre_constraint_speed": pre_speed,
             "steer_clipped": steer_clipped,
             "speed_clipped": speed_clipped,
             "steer_clip_mag": abs(pre_steer - steering_angle),
             "speed_clip_mag": abs(pre_speed - speed),
-
-            # tracking quality
             "lateral_error": float(e_lat),
             "heading_error": float(e_head),
             "min_lidar": float(np.min(obs_raw["scan"])),
-
-            # progress
             "delta_progress": float(delta_progress),
             "total_progress": float(total_progress),
             "normalized_progress": float(total_progress / self._track_length),
-
-            # reward decomposition
             "reward_breakdown": reward_terms,
         }
 
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info
 
-    # ------------------------------------------------------------------
-    # Observation ablation
-    # ------------------------------------------------------------------
-
     def _zero_geometry_features(self, state: np.ndarray) -> np.ndarray:
-        """
-        Zero out e_head and e_lat in the state vector.
-        Uses module-level constants to avoid magic indices.
-        """
         state = state.copy()
         state[STATE_IDX_E_HEAD] = 0.0
         state[STATE_IDX_E_LAT] = 0.0
         return state
-
-    # ------------------------------------------------------------------
-    # Render / close
-    # ------------------------------------------------------------------
 
     def render(self):
         if self.render_mode != "human":

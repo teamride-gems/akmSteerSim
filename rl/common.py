@@ -1,16 +1,14 @@
 """
-Shared utilities for training and evaluation.
-
-Single source of truth for track resolution, spawn computation,
-episode running, and metric collection. Imported by both
-rl/train.py and rl/eval.py.
+Shared training/evaluation utilities.
 """
+
+from __future__ import annotations
 
 import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import numpy as np
 
@@ -20,10 +18,6 @@ if str(ROOT) not in sys.path:
 
 from envs.f1tenth_sb3_env import F1TenthSACEnv
 
-
-# ----------------------------
-# Track resolution
-# ----------------------------
 
 def normalize_track_name(track: str) -> str:
     return str(track).replace("_map", "").strip()
@@ -42,7 +36,6 @@ def resolve_centerline_csv(track: str) -> Path:
 def make_env_for_track(vehicle_cfg: Dict[str, Any], track: str, render_mode=None):
     track = normalize_track_name(track)
     track_dir = resolve_map_dir(track)
-
     if not track_dir.exists():
         raise FileNotFoundError(f"Track folder not found: {track_dir}")
 
@@ -63,25 +56,7 @@ def make_env_for_track(vehicle_cfg: Dict[str, Any], track: str, render_mode=None
     )
 
 
-# ----------------------------
-# Learning rate schedules
-# ----------------------------
-
 def make_lr_schedule(cfg: Dict[str, Any]) -> Union[float, Callable[[float], float]]:
-    """
-    Build a learning rate schedule from config.
-
-    Supported formats:
-      learning_rate: 3e-4                        -> constant
-      learning_rate:
-        schedule: "linear"
-        initial: 3e-4
-        final: 1e-5
-      learning_rate:
-        schedule: "cosine"
-        initial: 3e-4
-        final: 1e-5
-    """
     lr = cfg.get("learning_rate", 3e-4)
 
     if isinstance(lr, (int, float)):
@@ -93,56 +68,41 @@ def make_lr_schedule(cfg: Dict[str, Any]) -> Union[float, Callable[[float], floa
 
     if schedule_type == "constant":
         return initial
-    elif schedule_type == "linear":
+    if schedule_type == "linear":
         def linear_schedule(progress_remaining: float) -> float:
             return final + (initial - final) * progress_remaining
         return linear_schedule
-    elif schedule_type == "cosine":
+    if schedule_type == "cosine":
         def cosine_schedule(progress_remaining: float) -> float:
             return final + 0.5 * (initial - final) * (1.0 + np.cos(np.pi * (1.0 - progress_remaining)))
         return cosine_schedule
-    else:
-        raise ValueError(f"Unknown LR schedule type: {schedule_type}")
 
+    raise ValueError(f"Unknown LR schedule type: {schedule_type}")
 
-# ----------------------------
-# Arc-length utilities
-# ----------------------------
 
 def compute_arc_length_cumulative(centerline: np.ndarray) -> np.ndarray:
-    """Compute cumulative arc length along a centerline (N x 2+ array)."""
     diffs = np.diff(centerline[:, :2], axis=0)
     seg_lengths = np.linalg.norm(diffs, axis=1)
     return np.concatenate([[0.0], np.cumsum(seg_lengths)])
 
 
 def arc_length_spawn_indices(centerline: np.ndarray, n_spawns: int) -> List[int]:
-    """
-    Return spawn indices uniformly spaced by arc length along the centerline,
-    avoiding the very first and last points.
-    """
     n_points = centerline.shape[0]
     if n_points <= 3:
         return [1] * n_spawns
 
     cum_arc = compute_arc_length_cumulative(centerline)
     total_length = cum_arc[-1]
-
     margin = total_length * 0.01
     target_lengths = np.linspace(margin, total_length - margin, num=n_spawns)
 
     indices = []
     for target in target_lengths:
         idx = int(np.searchsorted(cum_arc, target, side="right"))
-        idx = np.clip(idx, 1, n_points - 2)
+        idx = int(np.clip(idx, 1, n_points - 2))
         indices.append(idx)
-
     return indices
 
-
-# ----------------------------
-# Episode result container
-# ----------------------------
 
 MIN_LIDAR_SENTINEL = float("inf")
 
@@ -165,11 +125,15 @@ class EpisodeResult:
     mean_steer_clip_mag: float = 0.0
     mean_speed_clip_mag: float = 0.0
     min_lidar: float = 0.0
+    mean_reward_progress: float = 0.0
+    mean_reward_a_long_pen: float = 0.0
+    mean_reward_a_lat_pen: float = 0.0
+    mean_reward_time_pen: float = 0.0
+    mean_reward_crash_pen: float = 0.0
 
 
 def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool = True) -> EpisodeResult:
-    """Run one evaluation episode and collect all paper-relevant metrics."""
-    obs, info = env.reset(seed=seed, options={"spawn_index": spawn_idx})
+    obs, _ = env.reset(seed=seed, options={"spawn_index": spawn_idx})
 
     ep_reward = 0.0
     ep_len = 0
@@ -183,8 +147,14 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
     speed_clips = 0
     steer_clip_mags = []
     speed_clip_mags = []
+    reward_progress = []
+    reward_a_long_pen = []
+    reward_a_lat_pen = []
+    reward_time_pen = []
+    reward_crash_pen = []
 
     done = False
+    info: Dict[str, Any] = {}
     while not done:
         action, _ = model.predict(obs, deterministic=deterministic)
         obs, reward, terminated, truncated, info = env.step(action)
@@ -206,9 +176,16 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         steer_clip_mags.append(float(info.get("steer_clip_mag", 0.0)))
         speed_clip_mags.append(float(info.get("speed_clip_mag", 0.0)))
 
+        rb = info.get("reward_breakdown", {})
+        reward_progress.append(float(rb.get("progress", 0.0)))
+        reward_a_long_pen.append(float(rb.get("a_long_pen", 0.0)))
+        reward_a_lat_pen.append(float(rb.get("a_lat_pen", 0.0)))
+        reward_time_pen.append(float(rb.get("time_pen", 0.0)))
+        reward_crash_pen.append(float(rb.get("crash_pen", 0.0)))
+
         done = bool(terminated or truncated)
 
-    steer_arr = np.array(steer_cmds)
+    steer_arr = np.array(steer_cmds, dtype=float)
     steer_tv = float(np.sum(np.abs(np.diff(steer_arr)))) if len(steer_arr) > 1 else 0.0
     n = max(1, ep_len)
     real_lidars = [v for v in min_lidars if v < MIN_LIDAR_SENTINEL]
@@ -230,30 +207,30 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         mean_steer_clip_mag=float(np.mean(steer_clip_mags)) if steer_clip_mags else 0.0,
         mean_speed_clip_mag=float(np.mean(speed_clip_mags)) if speed_clip_mags else 0.0,
         min_lidar=float(np.min(real_lidars)) if real_lidars else 0.0,
+        mean_reward_progress=float(np.mean(reward_progress)) if reward_progress else 0.0,
+        mean_reward_a_long_pen=float(np.mean(reward_a_long_pen)) if reward_a_long_pen else 0.0,
+        mean_reward_a_lat_pen=float(np.mean(reward_a_lat_pen)) if reward_a_lat_pen else 0.0,
+        mean_reward_time_pen=float(np.mean(reward_time_pen)) if reward_time_pen else 0.0,
+        mean_reward_crash_pen=float(np.mean(reward_crash_pen)) if reward_crash_pen else 0.0,
     )
 
 
-# ----------------------------
-# Metric logging helper
-# ----------------------------
-
-def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]):
-    """Log the full metric set under `prefix/` to a TensorBoard logger."""
+def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> None:
     n = len(episodes)
     if n == 0:
         return
 
-    def _mean(attr):
+    def _mean(attr: str) -> float:
         return float(np.mean([getattr(e, attr) for e in episodes]))
 
-    def _std(attr):
+    def _std(attr: str) -> float:
         return float(np.std([getattr(e, attr) for e in episodes]))
 
     logger.record(f"{prefix}/mean_reward", _mean("reward"))
     logger.record(f"{prefix}/std_reward", _std("reward"))
     logger.record(f"{prefix}/mean_progress", _mean("normalized_progress"))
-    logger.record(f"{prefix}/crash_rate", sum(1 for e in episodes if e.term_reason == "crash") / n)
     logger.record(f"{prefix}/completion_rate", sum(1 for e in episodes if e.normalized_progress >= 0.95) / n)
+    logger.record(f"{prefix}/crash_rate", sum(1 for e in episodes if e.term_reason == "crash") / n)
     logger.record(f"{prefix}/mean_lateral_error", _mean("mean_lateral_error"))
     logger.record(f"{prefix}/std_lateral_error", _std("mean_lateral_error"))
     logger.record(f"{prefix}/mean_heading_error", _mean("mean_heading_error"))
@@ -264,18 +241,22 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]):
     logger.record(f"{prefix}/steer_clip_frac", _mean("steer_clip_frac"))
     logger.record(f"{prefix}/speed_clip_frac", _mean("speed_clip_frac"))
     logger.record(f"{prefix}/mean_ep_len", _mean("length"))
+    logger.record(f"{prefix}/mean_reward_progress", _mean("mean_reward_progress"))
+    logger.record(f"{prefix}/mean_reward_a_long_pen", _mean("mean_reward_a_long_pen"))
+    logger.record(f"{prefix}/mean_reward_a_lat_pen", _mean("mean_reward_a_lat_pen"))
+    logger.record(f"{prefix}/mean_reward_time_pen", _mean("mean_reward_time_pen"))
+    logger.record(f"{prefix}/mean_reward_crash_pen", _mean("mean_reward_crash_pen"))
 
 
 def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
-    """Compute aggregate metrics dict from a list of EpisodeResults."""
     n = len(episodes)
     if n == 0:
         return {}
 
-    def _mean(attr):
+    def _mean(attr: str) -> float:
         return float(np.mean([getattr(e, attr) for e in episodes]))
 
-    def _std(attr):
+    def _std(attr: str) -> float:
         return float(np.std([getattr(e, attr) for e in episodes]))
 
     return {
@@ -297,4 +278,34 @@ def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
         "mean_steer_tv_per_step": _mean("steer_tv_per_step"),
         "steer_clip_frac": _mean("steer_clip_frac"),
         "speed_clip_frac": _mean("speed_clip_frac"),
+        "mean_reward_progress": _mean("mean_reward_progress"),
+        "mean_reward_a_long_pen": _mean("mean_reward_a_long_pen"),
+        "mean_reward_a_lat_pen": _mean("mean_reward_a_lat_pen"),
+        "mean_reward_time_pen": _mean("mean_reward_time_pen"),
+        "mean_reward_crash_pen": _mean("mean_reward_crash_pen"),
     }
+
+
+def model_selection_score(summary: Dict[str, float]) -> float:
+    """
+    Scalarized lexicographic score:
+      1) completion rate
+      2) mean progress
+      3) lower crash rate
+      4) reward as weak tie-breaker
+    """
+    return (
+        1_000_000.0 * float(summary.get("completion_rate", 0.0))
+        + 1_000.0 * float(summary.get("mean_progress", 0.0))
+        - 10.0 * float(summary.get("crash_rate", 0.0))
+        + 0.001 * float(summary.get("mean_reward", 0.0))
+    )
+
+
+def aggregate_track_group(episodes_by_track: Dict[str, List[EpisodeResult]]) -> Tuple[List[EpisodeResult], Dict[str, Dict[str, float]]]:
+    flat: List[EpisodeResult] = []
+    per_track_summary: Dict[str, Dict[str, float]] = {}
+    for track, episodes in episodes_by_track.items():
+        flat.extend(episodes)
+        per_track_summary[track] = summarize_episodes(episodes)
+    return flat, per_track_summary

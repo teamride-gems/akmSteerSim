@@ -9,6 +9,8 @@ Features:
 - Optional embedded map PNG background (auto from track_centerline_csv)
 - Supports any action space dimensionality (steer_speed, curvature_speed,
   lookahead_point, bezier) with automatic label detection
+- Compatible with both old (.npz with e_head/e_lat) and new
+  (.npz with heading_error/lateral_error) recording formats
 """
 
 import argparse
@@ -38,7 +40,6 @@ def _parse_simple_yaml_map(yaml_text: str) -> dict:
       image: Sakhir_map.png
       resolution: 0.050000
       origin: [-12.345, -67.890, 0.0]
-    We keep it intentionally simple/robust for this use-case.
     """
     out = {}
     for line in yaml_text.splitlines():
@@ -52,17 +53,14 @@ def _parse_simple_yaml_map(yaml_text: str) -> dict:
         v = v.strip()
         out[k] = v
 
-    # parse resolution
     if "resolution" in out:
         try:
             out["resolution"] = float(out["resolution"])
         except Exception:
             pass
 
-    # parse origin
     if "origin" in out:
         v = out["origin"].strip()
-        # expect like: [-12.3, -45.6, 0.0]
         if v.startswith("[") and v.endswith("]"):
             inner = v[1:-1]
             parts = [p.strip() for p in inner.split(",")]
@@ -75,15 +73,8 @@ def _parse_simple_yaml_map(yaml_text: str) -> dict:
 
 
 def _guess_map_files_from_centerline(centerline_csv: Path):
-    """
-    Given:
-      assets/f1tenth_racetracks/Sakhir/Sakhir_centerline.csv
-    Guess:
-      assets/f1tenth_racetracks/Sakhir/Sakhir_map.png
-      assets/f1tenth_racetracks/Sakhir/Sakhir_map.yaml (or .yml)
-    """
     track_dir = centerline_csv.parent
-    track_name = centerline_csv.stem.replace("_centerline", "")  # "Sakhir"
+    track_name = centerline_csv.stem.replace("_centerline", "")
     png = track_dir / f"{track_name}_map.png"
     yaml1 = track_dir / f"{track_name}_map.yaml"
     yaml2 = track_dir / f"{track_name}_map.yml"
@@ -99,10 +90,6 @@ def _embed_png_data_uri(png_path: Path) -> str:
 
 
 def _get_action_dim_names(data) -> list:
-    """
-    Determine action dimension labels from the .npz metadata.
-    Tries: action_space field -> known lookup, then falls back to generic labels.
-    """
     action_space = None
     if "action_space" in data:
         action_space = str(data["action_space"])
@@ -110,10 +97,19 @@ def _get_action_dim_names(data) -> list:
     if action_space and action_space in ACTION_DIM_NAMES:
         return ACTION_DIM_NAMES[action_space]
 
-    # Fallback: infer from action array width
     action = np.asarray(data["action"], dtype=float)
     ndim = action.shape[1] if action.ndim == 2 else 1
     return [f"a{i}" for i in range(ndim)]
+
+
+def _load_field(data, *candidate_names, default_shape=None):
+    """Load a field from npz, trying multiple candidate names for compatibility."""
+    for name in candidate_names:
+        if name in data:
+            return np.asarray(data[name], dtype=float)
+    if default_shape is not None:
+        return np.zeros(default_shape, dtype=float)
+    raise KeyError(f"None of {candidate_names} found in npz file")
 
 
 def main():
@@ -121,24 +117,43 @@ def main():
     ap.add_argument("--rollout", required=True, help="Path to .npz recorded rollout")
     ap.add_argument("--out", default="rollouts/replay.html", help="Output HTML path")
     ap.add_argument("--stride", type=int, default=1, help="Use every Nth frame to reduce size")
-    ap.add_argument("--max_frames", type=int, default=20000, help="Hard cap frames to keep HTML reasonable")
+    ap.add_argument("--max_frames", type=int, default=20000, help="Hard cap frames")
     ap.add_argument("--lidar", action="store_true", help="Include lidar sector plot")
-    ap.add_argument("--no_map", action="store_true", help="Disable drawing the map PNG background")
+    ap.add_argument("--no_map", action="store_true", help="Disable map PNG background")
     args = ap.parse_args()
 
     data = np.load(args.rollout, allow_pickle=True)
 
-    pose = np.asarray(data["pose"], dtype=float)          # [T, 3]
-    action = np.asarray(data["action"], dtype=float)       # [T, action_dim]
-    e_head = np.asarray(data["e_head"], dtype=float)       # [T]
-    e_lat = np.asarray(data["e_lat"], dtype=float)         # [T]
-    centerline_csv = Path(str(data["track_centerline_csv"]))
+    pose = np.asarray(data["pose"], dtype=float)
+    action = np.asarray(data["action"], dtype=float)
+
+    # Handle both old and new field names
+    e_head = _load_field(data, "heading_error", "e_head", default_shape=pose.shape[0])
+    e_lat = _load_field(data, "lateral_error", "e_lat", default_shape=pose.shape[0])
+
+    # Optional per-step command data (new format)
+    has_cmds = "steer_cmd" in data
+    steer_cmd = _load_field(data, "steer_cmd", default_shape=pose.shape[0]) if has_cmds else None
+    speed_cmd = _load_field(data, "speed_cmd", default_shape=pose.shape[0]) if has_cmds else None
+
+    # Centerline path — handle both string and array storage
+    cl_raw = data.get("track_centerline_csv", None)
+    if cl_raw is not None:
+        centerline_csv = Path(str(cl_raw))
+    else:
+        # Try to find it from track name
+        track = str(data.get("track", "unknown"))
+        centerline_csv = Path(f"assets/f1tenth_racetracks/{track}/{track}_centerline.csv")
 
     dim_names = _get_action_dim_names(data)
     action_space_name = str(data["action_space"]) if "action_space" in data else "unknown"
 
-    # Ensure centerline is Nx2 even if CSV has extra columns
-    centerline = np.loadtxt(centerline_csv, delimiter=",", ndmin=2)[:, :2]
+    # Load centerline
+    if centerline_csv.exists():
+        centerline = np.loadtxt(centerline_csv, delimiter=",", ndmin=2)[:, :2]
+    else:
+        print(f"WARNING: centerline not found at {centerline_csv}, using pose trajectory")
+        centerline = pose[:, :2]
 
     # Stride + cap
     idx = np.arange(0, pose.shape[0], max(1, args.stride), dtype=int)
@@ -149,18 +164,21 @@ def main():
     action = action[idx]
     e_head = e_head[idx]
     e_lat = e_lat[idx]
+    if steer_cmd is not None:
+        steer_cmd = steer_cmd[idx]
+    if speed_cmd is not None:
+        speed_cmd = speed_cmd[idx]
 
     lidar = None
     if args.lidar and "lidar_sectors" in data:
         lidar = np.asarray(data["lidar_sectors"], dtype=float)[idx]
 
-    # --- map background (PNG + YAML) ---
+    # --- map background ---
     map_payload = None
-    if not args.no_map:
+    if not args.no_map and centerline_csv.exists():
         png_path, yaml_path, track_name, track_dir = _guess_map_files_from_centerline(centerline_csv)
         if png_path is not None and yaml_path is not None:
             y = _parse_simple_yaml_map(_read_text(yaml_path))
-            # require origin + resolution to place image in world
             if isinstance(y.get("origin", None), list) and isinstance(y.get("resolution", None), float):
                 data_uri = _embed_png_data_uri(png_path)
                 map_payload = {
@@ -178,6 +196,8 @@ def main():
         "action": action.tolist(),
         "e_head": e_head.tolist(),
         "e_lat": e_lat.tolist(),
+        "steer_cmd": steer_cmd.tolist() if steer_cmd is not None else None,
+        "speed_cmd": speed_cmd.tolist() if speed_cmd is not None else None,
         "lidar": None if lidar is None else lidar.tolist(),
         "map": map_payload,
         "dim_names": dim_names,
@@ -186,6 +206,14 @@ def main():
 
     payload_json = json.dumps(payload)
     lidar_display = "block" if args.lidar else "none"
+
+    # Build extra info lines for steer_cmd/speed_cmd display
+    steer_cmd_js = """
+    let cmdLine = "";
+    if (DATA.steer_cmd && DATA.speed_cmd) {
+      cmdLine = "commands: steer=" + DATA.steer_cmd[k].toFixed(4) + " speed=" + DATA.speed_cmd[k].toFixed(2) + "\\n";
+    }
+    """ if has_cmds else 'let cmdLine = "";'
 
     html = f"""<!doctype html>
 <html>
@@ -268,7 +296,6 @@ const actionSpaceName = DATA.action_space;
 
 slider.max = String(pose.length - 1);
 
-// ---- geometry helpers ----
 function bounds(points) {{
   let xmin=Infinity, xmax=-Infinity, ymin=Infinity, ymax=-Infinity;
   for (const p of points) {{
@@ -283,22 +310,18 @@ function bounds(points) {{
 
 const b = bounds(pose.map(p => [p[0], p[1]]));
 
-// Add padding around extents
 const pad = 0.25;
 const w = (b.xmax - b.xmin) * (1 + pad);
 const h = (b.ymax - b.ymin) * (1 + pad);
 
-// baseScale so whole rollout fits
 const baseScale = Math.min(canvas.width / w, canvas.height / h);
 
-// camera state
 const cam = {{
   scale: baseScale,
-  tx: 0, // pixels
-  ty: 0, // pixels
+  tx: 0,
+  ty: 0,
 }};
 
-// world center we start at; "follow" will override each frame
 const worldCenter = {{
   x: (b.xmin + b.xmax) / 2,
   y: (b.ymin + b.ymax) / 2,
@@ -316,7 +339,6 @@ function screenToWorld(X, Y) {{
   return [x, y];
 }}
 
-// ---- pan + zoom controls ----
 let dragging = false;
 let lastX = 0;
 let lastY = 0;
@@ -337,32 +359,22 @@ window.addEventListener("mousemove", (e) => {{
   const dy = e.clientY - lastY;
   lastX = e.clientX;
   lastY = e.clientY;
-
   cam.tx += dx;
   cam.ty += dy;
-
   renderFrame(Number(slider.value));
 }});
 
-// zoom around cursor
 canvas.addEventListener("wheel", (e) => {{
   e.preventDefault();
-
   const zoomFactor = Math.exp(-e.deltaY * 0.001);
   const mouseX = e.offsetX;
   const mouseY = e.offsetY;
-
-  // world under cursor before zoom
   const w0 = screenToWorld(mouseX, mouseY);
-
   cam.scale *= zoomFactor;
   cam.scale = Math.max(baseScale * 0.15, Math.min(baseScale * 40.0, cam.scale));
-
-  // keep world under cursor stable
   const s1 = worldToScreen(w0[0], w0[1]);
   cam.tx += (mouseX - s1[0]);
   cam.ty += (mouseY - s1[1]);
-
   renderFrame(Number(slider.value));
 }}, {{ passive: false }});
 
@@ -373,7 +385,6 @@ canvas.addEventListener("dblclick", () => {{
   renderFrame(Number(slider.value));
 }});
 
-// ---- map background image (optional) ----
 let mapImg = null;
 let mapImgLoaded = false;
 
@@ -391,43 +402,32 @@ if (mapInfo && mapInfo.data_uri) {{
 
 function drawMapBackground() {{
   if (!mapInfo || !mapImgLoaded || !showMapInput.checked) return;
-
   const res = mapInfo.resolution;
   const ox = mapInfo.origin[0];
   const oy = mapInfo.origin[1];
-
   const iw = mapImg.width;
   const ih = mapImg.height;
-
   const world_min_x = ox;
   const world_min_y = oy;
   const world_max_x = ox + iw * res;
   const world_max_y = oy + ih * res;
-
   const p00 = worldToScreen(world_min_x, world_min_y);
   const p10 = worldToScreen(world_max_x, world_min_y);
   const p01 = worldToScreen(world_min_x, world_max_y);
-
   const vx = [p10[0] - p00[0], p10[1] - p00[1]];
   const vy = [p01[0] - p00[0], p01[1] - p00[1]];
-
   ctx.save();
-
   ctx.translate(p00[0], p00[1]);
-
   ctx.transform(
     vx[0] / iw, vx[1] / iw,
     -vy[0] / ih, -vy[1] / ih,
     0, 0
   );
-
   ctx.globalAlpha = 0.90;
   ctx.drawImage(mapImg, 0, -ih, iw, ih);
-
   ctx.restore();
 }}
 
-// ---- drawing ----
 function clear() {{
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -463,28 +463,21 @@ function drawTrail(k, trailLen) {{
 function drawCarTriangle(k) {{
   const x = pose[k][0], y = pose[k][1], yaw = pose[k][2];
   const P = worldToScreen(x,y);
-
   const tipLen = 22;
   const baseLen = 14;
   const baseHalfWidth = 11;
-
   const dx = Math.cos(yaw);
   const dy = -Math.sin(yaw);
-
   const px = -dy;
   const py = dx;
-
   const tipX = P[0] + dx * tipLen;
   const tipY = P[1] + dy * tipLen;
-
   const baseCX = P[0] - dx * baseLen;
   const baseCY = P[1] - dy * baseLen;
-
   const leftX  = baseCX + px * baseHalfWidth;
   const leftY  = baseCY + py * baseHalfWidth;
   const rightX = baseCX - px * baseHalfWidth;
   const rightY = baseCY - py * baseHalfWidth;
-
   ctx.fillStyle = "#d62728";
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
@@ -492,7 +485,6 @@ function drawCarTriangle(k) {{
   ctx.lineTo(rightX, rightY);
   ctx.closePath();
   ctx.fill();
-
   ctx.strokeStyle = "#8c1b1b";
   ctx.lineWidth = 2;
   ctx.stroke();
@@ -500,27 +492,21 @@ function drawCarTriangle(k) {{
 
 function drawLidar(k) {{
   if (!lidar) return;
-
   const vals = lidar[k];
   const W = lidarCanvas.width, H = lidarCanvas.height;
-
   lctx.fillStyle = "#fff";
   lctx.fillRect(0,0,W,H);
-
   lctx.fillStyle = "#000";
   lctx.font = "12px Arial";
   lctx.fillText("LiDAR sectors (normalized)", 8, 14);
-
   const n = vals.length;
   const barW = (W - 16) / n;
   const y0 = H - 16;
-
   lctx.strokeStyle = "#ccc";
   lctx.beginPath();
   lctx.moveTo(8, y0);
   lctx.lineTo(W-8, y0);
   lctx.stroke();
-
   for (let i=0;i<n;i++) {{
     const v = Math.max(0, Math.min(1, vals[i]));
     const hh = v * (H - 40);
@@ -557,6 +543,8 @@ function renderFrame(k) {{
   const el = e_lat[k].toFixed(3);
   const x = pose[k][0], y = pose[k][1], yaw = pose[k][2];
 
+  {steer_cmd_js}
+
   let mapLine = "map: (none)\\n";
   if (mapInfo && mapInfo.png_name) {{
     mapLine = "map: " + mapInfo.png_name + " (" + mapInfo.yaml_name + ")\\n";
@@ -567,12 +555,12 @@ function renderFrame(k) {{
     "action_space: " + actionSpaceName + "\\n" +
     "pose: x=" + x.toFixed(3) + " y=" + y.toFixed(3) + " yaw=" + yaw.toFixed(3) + "\\n" +
     "action: " + formatAction(k) + "\\n" +
+    cmdLine +
     "errors: e_head=" + eh + " e_lat=" + el + "\\n" +
     mapLine +
     "view: scale=" + cam.scale.toFixed(3) + " pan=(" + cam.tx.toFixed(1) + "," + cam.ty.toFixed(1) + ")\\n";
 }}
 
-// ---- playback controls ----
 let timer = null;
 
 function play() {{
@@ -613,10 +601,9 @@ renderFrame(0);
     print(f"Action space: {action_space_name} (dims: {dim_names})")
     if map_payload is None and not args.no_map:
         print("Note: map PNG/YAML not embedded (could not auto-find or missing origin/resolution).")
-        print("Expected next to centerline: <Track>_map.png and <Track>_map.yaml")
     print("Open via local server:")
     print("  python3 -m http.server 8000")
-    print("  then in Windows: http://localhost:8000/" + out_path.as_posix())
+    print(f"  then: http://localhost:8000/{out_path.as_posix()}")
 
 
 if __name__ == "__main__":
