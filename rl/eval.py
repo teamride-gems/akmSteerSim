@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 Standalone evaluation with explicit split semantics.
+
+FIX (M1): Verifies normalizer reference values match training config.
+FIX (m4): Explicitly logs deterministic mode.
 """
 
 from __future__ import annotations
@@ -9,6 +12,7 @@ import argparse
 import json
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -27,8 +31,47 @@ from rl.common import (
 )
 
 
-def eval_on_track(model, vehicle_cfg: Dict[str, Any], track: str, n_episodes: int, deterministic: bool = True):
+def _check_normalizer_consistency(env, meta: Dict[str, Any]) -> None:
+    """FIX (M1): Verify normalizer reference values match what was used during training."""
+    saved_refs = meta.get("normalizer_refs")
+    if saved_refs is None:
+        warnings.warn(
+            "run_meta.json does not contain normalizer_refs. "
+            "Cannot verify normalizer consistency (trained with older code?).",
+            stacklevel=2,
+        )
+        return
+
+    normalizer = env.normalizer
+    checks = {
+        "v_max": normalizer.v_max,
+        "d_max": normalizer.d_max,
+        "a_long_ref": normalizer.a_long_ref,
+        "a_lat_ref": normalizer.a_lat_ref,
+        "r_max": normalizer.r_max,
+        "e_head_max": normalizer.e_head_max,
+        "e_lat_max": normalizer.e_lat_max,
+        "lidar_max": normalizer.lidar_max,
+    }
+    mismatches = []
+    for key, current_val in checks.items():
+        saved_val = saved_refs.get(key)
+        if saved_val is not None and abs(float(saved_val) - float(current_val)) > 1e-6:
+            mismatches.append(f"  {key}: train={saved_val}, eval={current_val}")
+
+    if mismatches:
+        msg = "Normalizer mismatch between training and eval:\n" + "\n".join(mismatches)
+        raise ValueError(msg)
+
+
+def eval_on_track(model, vehicle_cfg: Dict[str, Any], track: str, n_episodes: int,
+                  deterministic: bool = True, meta: Dict[str, Any] = None):
     env = make_env_for_track(vehicle_cfg, track, render_mode=None)
+
+    # FIX (M1): Check normalizer on first env creation
+    if meta is not None:
+        _check_normalizer_consistency(env, meta)
+
     results = []
     try:
         spawn_indices = arc_length_spawn_indices(env.centerline, n_episodes)
@@ -96,6 +139,7 @@ def main() -> None:
     train_track = None
     validation_tracks: List[str] = []
     test_tracks: List[str] = []
+    meta: Dict[str, Any] = None
 
     if args.from_meta:
         meta_path = ckpt_path.parent / "run_meta.json"
@@ -176,16 +220,21 @@ def main() -> None:
     print(f"Evaluation split: {args.evaluation_split}")
     print(f"Tracks: {tracks}")
     print(f"Episodes per track: {args.n_episodes}")
-    print(f"Deterministic: {deterministic}")
+    print(f"Deterministic: {deterministic}")   # FIX (m4)
 
     all_results: Dict[str, Any] = {}
     split_episodes: Dict[str, list] = {"train": [], "validation": [], "test": [], "custom": []}
     all_episodes = []
     total_start = time.time()
 
+    first_track = True
     for track in tracks:
         track_start = time.time()
-        episodes = eval_on_track(model, vehicle_cfg, track, args.n_episodes, deterministic)
+        episodes = eval_on_track(
+            model, vehicle_cfg, track, args.n_episodes, deterministic,
+            meta=meta if first_track else None,  # check normalizer on first track only
+        )
+        first_track = False
         elapsed = time.time() - track_start
         group = track_groups.get(track, "custom")
         summary = summarize_episodes(episodes)

@@ -27,6 +27,14 @@ STATE_IDX_E_LAT = 5
 STATE_IDX_A_LAT = 6
 STATE_N_SCALARS = 7
 
+# Ablation modes:
+#   "exteroceptive" — zero centerline-derived features (e_head, e_lat) only.
+#                     Proprioceptive kinematics (r, a_lat) are preserved.
+#   "all_geometry"  — zero e_head, e_lat AND r, a_lat.
+# The default is "all_geometry" to prevent leaking track geometry
+# through a_lat ≈ v * yaw_rate. See audit item M3.
+ABLATION_MODE = "all_geometry"
+
 
 class F1TenthSACEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 30}
@@ -147,7 +155,7 @@ class F1TenthSACEnv(gym.Env):
             )
 
         self._step_i = 0
-        self._start_progress = 0.0
+        self._cumulative_progress = 0.0       # FIX (M7): cumulative delta tracking
         self._prev_progress = 0.0
         self._prev_steer_cmd = 0.0
 
@@ -403,6 +411,7 @@ class F1TenthSACEnv(gym.Env):
         self._last_for_rates = None
         self._prev_command = None
         self._prev_steer_cmd = 0.0
+        self._cumulative_progress = 0.0       # FIX (M7)
 
         options = options or {}
         N = self.centerline.shape[0]
@@ -435,8 +444,7 @@ class F1TenthSACEnv(gym.Env):
             state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
 
-        self._start_progress = self._projected_arc_progress(obs_raw["pose"])
-        self._prev_progress = self._start_progress
+        self._prev_progress = self._projected_arc_progress(obs_raw["pose"])
 
         info = {
             "crash": bool(obs_raw.get("crash", False)),
@@ -488,6 +496,7 @@ class F1TenthSACEnv(gym.Env):
         terminated = bool(crash or sim_done)
         truncated = (self._step_i >= self._max_steps) and not terminated
 
+        # FIX (M7): cumulative delta tracking instead of current - start
         current_progress = self._projected_arc_progress(obs_raw["pose"])
         delta_progress = current_progress - self._prev_progress
         if delta_progress < -self._track_length / 2:
@@ -495,12 +504,7 @@ class F1TenthSACEnv(gym.Env):
         elif delta_progress > self._track_length / 2:
             delta_progress -= self._track_length
         self._prev_progress = current_progress
-
-        total_progress = current_progress - self._start_progress
-        if total_progress < -self._track_length / 2:
-            total_progress += self._track_length
-        elif total_progress > self._track_length / 2:
-            total_progress -= self._track_length
+        self._cumulative_progress += delta_progress
 
         e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
 
@@ -533,17 +537,28 @@ class F1TenthSACEnv(gym.Env):
             "heading_error": float(e_head),
             "min_lidar": float(np.min(obs_raw["scan"])),
             "delta_progress": float(delta_progress),
-            "total_progress": float(total_progress),
-            "normalized_progress": float(total_progress / self._track_length),
+            "total_progress": float(self._cumulative_progress),
+            "normalized_progress": float(self._cumulative_progress / self._track_length),
             "reward_breakdown": reward_terms,
         }
 
         return state_norm.astype(np.float32), float(reward), terminated, truncated, info
 
     def _zero_geometry_features(self, state: np.ndarray) -> np.ndarray:
+        """Zero geometry-leaking features in the ablated observation regime.
+
+        FIX (M3): also zeros yaw_rate (r) and lateral acceleration (a_lat),
+        which are proprioceptive proxies for track curvature (a_lat ≈ v * r).
+        Controlled by the module-level ABLATION_MODE constant.
+        """
         state = state.copy()
+        # Always zero centerline-derived features
         state[STATE_IDX_E_HEAD] = 0.0
         state[STATE_IDX_E_LAT] = 0.0
+        # Also zero kinematic proxies for geometry
+        if ABLATION_MODE == "all_geometry":
+            state[STATE_IDX_R] = 0.0
+            state[STATE_IDX_A_LAT] = 0.0
         return state
 
     def render(self):

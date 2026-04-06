@@ -49,50 +49,40 @@ def project_to_centerline(pose: np.ndarray, centerline: np.ndarray) -> Tuple[flo
 
     # Build segment start/end arrays
     if is_closed:
-        # Include closing segment: last -> first
-        starts = centerline[:, :2]                           # (N, 2)
-        ends = np.roll(centerline[:, :2], -1, axis=0)       # (N, 2)
+        starts = centerline[:, :2]
+        ends = np.roll(centerline[:, :2], -1, axis=0)
     else:
-        starts = centerline[:-1, :2]                         # (N-1, 2)
-        ends = centerline[1:, :2]                            # (N-1, 2)
+        starts = centerline[:-1, :2]
+        ends = centerline[1:, :2]
 
     # Vectorized projection onto all segments
-    seg = ends - starts                                      # segment vectors
-    seg_len_sq = seg[:, 0] ** 2 + seg[:, 1] ** 2            # |seg|^2
+    seg = ends - starts
+    seg_len_sq = seg[:, 0] ** 2 + seg[:, 1] ** 2
 
-    # Vector from segment start to query point
-    to_pt = np.array([x, y]) - starts                        # (M, 2)
+    to_pt = np.array([x, y]) - starts
 
-    # Projection parameter t, clamped to [0, 1]
-    # Avoid division by zero for degenerate segments
     safe_len_sq = np.maximum(seg_len_sq, 1e-12)
     t = (to_pt[:, 0] * seg[:, 0] + to_pt[:, 1] * seg[:, 1]) / safe_len_sq
     t = np.clip(t, 0.0, 1.0)
 
-    # Closest points on each segment
-    closest = starts + t[:, None] * seg                      # (M, 2)
+    closest = starts + t[:, None] * seg
 
-    # Squared distances to closest points
     dx = x - closest[:, 0]
     dy = y - closest[:, 1]
     dist_sq = dx * dx + dy * dy
 
-    # Best segment
     best = int(np.argmin(dist_sq))
 
-    # Track heading from best segment
     seg_dx = float(seg[best, 0])
     seg_dy = float(seg[best, 1])
     track_heading = np.arctan2(seg_dy, seg_dx)
 
-    # Signed lateral error via cross product: seg x to_point / |seg|
     seg_len = np.sqrt(float(seg_len_sq[best]))
     if seg_len > 1e-6:
         e_lat = (seg_dx * float(to_pt[best, 1]) - seg_dy * float(to_pt[best, 0])) / seg_len
     else:
         e_lat = float(np.sqrt(dist_sq[best]))
 
-    # Heading error, wrapped to [-pi, pi]
     e_head = yaw - track_heading
     e_head = (e_head + np.pi) % (2 * np.pi) - np.pi
 

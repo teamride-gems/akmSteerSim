@@ -292,13 +292,18 @@ def model_selection_score(summary: Dict[str, float]) -> float:
       1) completion rate
       2) mean progress
       3) lower crash rate
-      4) reward as weak tie-breaker
+      4) reward as weak tie-breaker (clamped to prevent overflow)
     """
+    # Clamp reward contribution so it can never override the completion
+    # or progress tiers even at extreme episode lengths / reward scales.
+    reward_contribution = float(np.clip(
+        summary.get("mean_reward", 0.0), -1e4, 1e4
+    ))
     return (
         1_000_000.0 * float(summary.get("completion_rate", 0.0))
         + 1_000.0 * float(summary.get("mean_progress", 0.0))
         - 10.0 * float(summary.get("crash_rate", 0.0))
-        + 0.001 * float(summary.get("mean_reward", 0.0))
+        + 0.001 * reward_contribution
     )
 
 

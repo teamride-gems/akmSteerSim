@@ -1,5 +1,3 @@
-# Patched config for leakage-free evaluation.
-
 policy: MlpPolicy
 seed: 0
 
@@ -17,9 +15,6 @@ gamma: 0.99
 ent_coef: auto
 target_entropy: auto
 
-# Scientific split semantics:
-# - validation_tracks are the ONLY tracks touched during training-time model selection
-# - test_tracks are reserved for the final report
 train_track: Sakhir
 validation_tracks:
   - Austin

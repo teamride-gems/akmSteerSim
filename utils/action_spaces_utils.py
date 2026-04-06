@@ -99,14 +99,7 @@ def get_curvature_bounds(config: Dict[str, Any]) -> Tuple[float, float]:
 # The raw_action arriving at env.step() is ALREADY in [-1, 1].
 #
 # The "linear" mode performs a simple affine rescaling from [-1, 1]
-# to [low, high] with no additional nonlinearity. This is the correct
-# default for SB3 — it gives the agent equal access to the full
-# physical range of each dimension.
-#
-# The "tanh" and "sigmoid" modes apply ADDITIONAL nonlinearities on
-# top of SB3's tanh, creating double-squashing that compresses the
-# effective action range. These are retained for compatibility but
-# should NOT be used with SB3's default SAC.
+# to [low, high] with no additional nonlinearity.
 # ============================================================
 
 
@@ -158,8 +151,6 @@ def apply_policy_output_spec(
 # ============================================================
 
 
-# --- preserve extra keys (e.g. pre_constraint_*) through constraints ---
-
 def apply_ackermann_command_constraints(
     command: Dict[str, float],
     config: Dict[str, Any],
@@ -199,7 +190,7 @@ def apply_ackermann_command_constraints(
             )
             speed = clip(speed, min_speed, max_speed)
 
-    result = dict(command)  # preserve any extra keys (pre_constraint_*)
+    result = dict(command)
     result["steering_angle"] = steering
     result["speed"] = speed
     return result
@@ -255,13 +246,6 @@ def interpret_lookahead_point(action: Any, config: Dict[str, Any]) -> Dict[str, 
 
 
 def interpret_bezier(action: Any, config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    action = [p1_x, p1_y, p2_x, p2_y, speed]
-
-    Endpoint is fixed on the forward axis to keep the primitive local and
-    comparable across rollouts. The receding-horizon follower determines the
-    immediate steering command from the primitive.
-    """
     a = _require_dim(action, 5, name="action")
     end_x = _cfg(config, "bezier_end_x", 4.0)
 
@@ -573,12 +557,11 @@ class ActionSpaceSpec:
 # ============================================================
 # Action space definitions
 # ============================================================
-# All dimensions use "linear" mode: affine rescaling from [-1, 1]
-# to [low, high] with no additional nonlinearity. This is the correct
-# pairing with SB3's SAC, which already applies tanh squashing
-# internally. Using "tanh" or "sigmoid" here would double-squash,
-# compressing the effective action range and creating unequal
-# coverage across action spaces.
+# NOTE (m1): The hardcoded bounds below are PLACEHOLDER defaults.
+# refresh_action_space_bounds() is ALWAYS called during env init with
+# the actual vehicle config, overwriting these before any action mapping
+# occurs. The placeholders exist only so validate_all_action_spaces()
+# passes at import time.
 # ============================================================
 
 
@@ -972,7 +955,6 @@ def representation_to_command(
     return spec.to_command(representation, config)
 
 
-# --- save pre-constraint values before applying constraints ---
 
 def raw_action_to_command(
     action_space_name: str,
@@ -996,7 +978,6 @@ def raw_action_to_command(
         config,
     )
 
-    # save pre-constraint values for analysis
     command["pre_constraint_steering"] = command["steering_angle"]
     command["pre_constraint_speed"] = command["speed"]
 
@@ -1032,7 +1013,6 @@ def action_to_command(
         config,
     )
 
-    # save pre-constraint values for analysis
     command["pre_constraint_steering"] = command["steering_angle"]
     command["pre_constraint_speed"] = command["speed"]
 

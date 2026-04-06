@@ -31,19 +31,17 @@ class StateNormalizer:
         self.d_max = float(delta_max)
 
         # --- Accelerations ---
-        # Reference values for normalization. These are in m/s², NOT g-units.
         reward_cfg = cfg.get("reward", {})
         self.a_long_ref = float(reward_cfg.get("ref_a_long", 5.0))
         self.a_lat_ref = float(reward_cfg.get("ref_a_lat", 8.0))
 
         # --- Yaw rate ---
-        # Derived from Ackermann kinematics: r_max = v_max * tan(delta_max) / wheelbase
         wheelbase = float(cfg.get("vehicle", {}).get("wheelbase", cfg.get("wheelbase", 0.33)))
         self.r_max = self.v_max * np.tan(self.d_max) / max(wheelbase, 1e-6)
 
         # --- Errors ---
-        self.e_head_max = np.pi     # radians (maximum possible heading error)
-        self.e_lat_max = 2.0        # meters (approximate half-track-width)
+        self.e_head_max = np.pi
+        self.e_lat_max = 2.0
 
         # --- Lidar ---
         self.lidar_max = float(cfg.get("lidar", {}).get("clip_max_m", 10.0))
@@ -51,14 +49,14 @@ class StateNormalizer:
     def __call__(self, state):
         s = np.asarray(state, dtype=float).copy()
 
-        s[0] /= max(1e-6, self.v_max)         # speed -> [0, 1]
-        s[1] /= max(1e-6, self.a_long_ref)     # a_long -> ~[-1, 1]
-        s[2] /= max(1e-6, self.d_max)          # steering -> [-1, 1]
-        s[3] /= max(1e-6, self.r_max)          # yaw rate -> ~[-1, 1]
-        s[4] /= self.e_head_max                # heading error -> [-1, 1]
-        s[5] /= self.e_lat_max                 # lateral error -> ~[-1, 1]
-        s[6] /= max(1e-6, self.a_lat_ref)      # a_lat -> ~[-1, 1]
-        s[7:] /= max(1e-6, self.lidar_max)     # lidar -> [~0, 1]
+        s[0] /= max(1e-6, self.v_max)
+        s[1] /= max(1e-6, self.a_long_ref)
+        s[2] /= max(1e-6, self.d_max)
+        s[3] /= max(1e-6, self.r_max)
+        s[4] /= self.e_head_max
+        s[5] /= self.e_lat_max
+        s[6] /= max(1e-6, self.a_lat_ref)
+        s[7:] /= max(1e-6, self.lidar_max)
 
         return s
 

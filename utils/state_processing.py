@@ -18,22 +18,10 @@ import numpy as np
 
 from .geometry import project_to_centerline
 
-# Number of scalar features before lidar sectors.
-# Must stay in sync with STATE_N_SCALARS in f1tenth_sb3_env.py.
 N_SCALARS = 7
 
 
 def lidar_to_sectors(scan, cfg):
-    """
-    Reduce a raw lidar scan to per-sector minimum distances.
-
-    Steps:
-      1. Clip raw ranges to [clip_min, clip_max].
-      2. Extract the FOV window from the full 360° scan.
-      3. Split into `sectors` angular bins.
-      4. Per bin: remove outliers above `outlier_quantile`, take the min
-         of remaining readings (closest obstacle in sector).
-    """
     clip_min = cfg["lidar"]["clip_min_m"]
     clip_max = cfg["lidar"]["clip_max_m"]
     sectors = cfg["lidar"]["sectors"]
@@ -68,11 +56,6 @@ def lidar_to_sectors(scan, cfg):
 
 
 def make_state(obs_raw, centerline, cfg):
-    """
-    Construct the full state vector from raw observations.
-
-    Returns an array of shape (N_SCALARS + n_lidar_sectors,).
-    """
     x, y, yaw = obs_raw["pose"]
     v = float(obs_raw["speed"])
     d = float(obs_raw["steer"])

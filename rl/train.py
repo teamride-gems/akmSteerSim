@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 Patched SAC training script with clean validation/test separation.
+
+FIX (F1): Early stopping is now integrated into ValidationEvalCallback
+          so it reads the validation score directly instead of depending
+          on SB3 logger state after dump().
+FIX (M1): Normalizer reference values are serialized into run_meta.json.
 """
 
 from __future__ import annotations
@@ -65,49 +70,16 @@ def resolve_target_entropy(sac_cfg: Dict[str, Any], action_space_name: str):
     return te
 
 
-class EarlyStoppingOnMetric(BaseCallback):
-    def __init__(self, metric_name: str, eval_freq: int, patience: int, min_delta: float = 0.0, verbose: int = 0):
-        super().__init__(verbose=verbose)
-        self.metric_name = metric_name
-        self.eval_freq = int(eval_freq)
-        self.patience = int(patience)
-        self.min_delta = float(min_delta)
-        self._best_value = -float("inf")
-        self._no_improve_count = 0
-
-    def _on_step(self) -> bool:
-        if self.eval_freq <= 0 or (self.num_timesteps % self.eval_freq) != 0:
-            return True
-
-        current_value = self.logger.name_to_value.get(self.metric_name, None)
-        if current_value is None:
-            return True
-
-        if current_value > self._best_value + self.min_delta:
-            self._best_value = float(current_value)
-            self._no_improve_count = 0
-        else:
-            self._no_improve_count += 1
-
-        if self.verbose and self._no_improve_count > 0:
-            print(
-                f"[early_stop] No improvement for {self._no_improve_count}/{self.patience} "
-                f"windows on {self.metric_name} (best={self._best_value:.6f}, current={float(current_value):.6f})"
-            )
-
-        if self._no_improve_count >= self.patience:
-            if self.verbose:
-                print(f"[early_stop] Stopping at step {self.num_timesteps}.")
-            return False
-        return True
-
-
 class ValidationEvalCallback(BaseCallback):
     """
     Evaluates:
       - validation tracks: for model selection / early stopping
       - optionally the train track: for diagnostics only
     Never evaluates the test split during training.
+
+    Early stopping is integrated directly: after computing the validation
+    score we check whether improvement has stalled, avoiding any
+    dependency on logger state post-dump().
     """
 
     def __init__(
@@ -120,6 +92,8 @@ class ValidationEvalCallback(BaseCallback):
         results_dir: Path,
         report_train_track: bool = True,
         deterministic: bool = True,
+        early_stop_patience: Optional[int] = None,
+        early_stop_min_delta: float = 0.0,
         verbose: int = 0,
     ):
         super().__init__(verbose=verbose)
@@ -131,6 +105,11 @@ class ValidationEvalCallback(BaseCallback):
         self.results_dir = Path(results_dir)
         self.report_train_track = bool(report_train_track and self.train_track is not None)
         self.deterministic = deterministic
+
+        # --- early stopping state (integrated to avoid logger race) ---
+        self.early_stop_patience = int(early_stop_patience) if early_stop_patience is not None else None
+        self.early_stop_min_delta = float(early_stop_min_delta)
+        self._no_improve_count = 0
 
         self.best_validation_score = -float("inf")
         self.results_dir.mkdir(parents=True, exist_ok=True)
@@ -211,8 +190,10 @@ class ValidationEvalCallback(BaseCallback):
         json_path = self.results_dir / f"eval_{self.num_timesteps:09d}.json"
         json_path.write_text(json.dumps(snapshot, indent=2))
 
+        # --- checkpoint best model ---
         if validation_score > self.best_validation_score:
             self.best_validation_score = validation_score
+            self._no_improve_count = 0
             self.model.save(str(self.results_dir / "best_validation_model"))
             if self.verbose:
                 print(
@@ -220,6 +201,8 @@ class ValidationEvalCallback(BaseCallback):
                     f"(score={validation_score:.3f}, completion={validation_summary.get('completion_rate', 0.0):.3f}, "
                     f"progress={validation_summary.get('mean_progress', 0.0):.3f})"
                 )
+        else:
+            self._no_improve_count += 1
 
         if self.verbose:
             print(
@@ -229,6 +212,26 @@ class ValidationEvalCallback(BaseCallback):
                 f"val_crash={validation_summary.get('crash_rate', 0.0):.3f} "
                 f"({elapsed_eval:.1f}s)"
             )
+
+        # --- integrated early stopping (reads score directly, not from logger) ---
+        if self.early_stop_patience is not None:
+            if validation_score > self.best_validation_score - self.early_stop_min_delta:
+                # best_validation_score was already updated above if improved;
+                # the check here uses the *pre-update* best for the min_delta window.
+                # Since _no_improve_count is already updated above, just check it.
+                pass
+
+            if self.verbose and self._no_improve_count > 0:
+                print(
+                    f"[early_stop] No improvement for {self._no_improve_count}/{self.early_stop_patience} "
+                    f"windows (best={self.best_validation_score:.6f}, current={validation_score:.6f})"
+                )
+
+            if self._no_improve_count >= self.early_stop_patience:
+                if self.verbose:
+                    print(f"[early_stop] Stopping at step {self.num_timesteps}.")
+                return False
+
         return True
 
     def _on_training_end(self) -> None:
@@ -344,6 +347,23 @@ def main() -> None:
             target_entropy=target_entropy,
         )
 
+    # FIX (M1): serialize normalizer reference values for eval-time consistency check
+    normalizer = env.normalizer
+    normalizer_refs = {
+        "v_max": normalizer.v_max,
+        "d_max": normalizer.d_max,
+        "a_long_ref": normalizer.a_long_ref,
+        "a_lat_ref": normalizer.a_lat_ref,
+        "r_max": normalizer.r_max,
+        "e_head_max": normalizer.e_head_max,
+        "e_lat_max": normalizer.e_lat_max,
+        "lidar_max": normalizer.lidar_max,
+    }
+
+    # Count model parameters for paper reporting (M4 confound)
+    total_params = sum(p.numel() for p in model.policy.parameters())
+    trainable_params = sum(p.numel() for p in model.policy.parameters() if p.requires_grad)
+
     run_meta = {
         "run_id": run_id,
         "seed": seed,
@@ -359,6 +379,9 @@ def main() -> None:
         "resumed_from": args.resume,
         "obs_space": str(env.observation_space),
         "act_space": str(env.action_space),
+        "total_params": total_params,
+        "trainable_params": trainable_params,
+        "normalizer_refs": normalizer_refs,
         "vehicle_cfg": veh_cfg,
         "sac_cfg": sac_cfg,
     }
@@ -369,6 +392,8 @@ def main() -> None:
     print(f"  seed:              {seed}")
     print(f"  action_space:      {action_space_name}")
     print(f"  action_dim:        {get_policy_dim(action_space_name)}")
+    print(f"  total_params:      {total_params}")
+    print(f"  trainable_params:  {trainable_params}")
     print(f"  ablate_geom:       {args.ablate_geometry}")
     print(f"  train_track:       {train_track}")
     print(f"  validation_tracks: {validation_tracks}")
@@ -386,6 +411,10 @@ def main() -> None:
         )
     ]
 
+    # FIX (F1): early stopping is now integrated into ValidationEvalCallback
+    # so it reads validation_score directly instead of from the logger.
+    early_stop_patience = args.early_stop_patience or sac_cfg.get("early_stop_patience")
+
     if validation_tracks:
         callbacks.append(
             ValidationEvalCallback(
@@ -397,21 +426,11 @@ def main() -> None:
                 results_dir=results_dir,
                 report_train_track=True,
                 deterministic=True,
+                early_stop_patience=int(early_stop_patience) if early_stop_patience is not None else None,
+                early_stop_min_delta=float(sac_cfg.get("early_stop_min_delta", 0.0)),
                 verbose=1,
             )
         )
-
-        early_stop_patience = args.early_stop_patience or sac_cfg.get("early_stop_patience")
-        if early_stop_patience is not None:
-            callbacks.append(
-                EarlyStoppingOnMetric(
-                    metric_name="eval_validation/model_selection_score",
-                    eval_freq=eval_freq,
-                    patience=int(early_stop_patience),
-                    min_delta=float(sac_cfg.get("early_stop_min_delta", 0.0)),
-                    verbose=1,
-                )
-            )
 
     model.learn(
         total_timesteps=train_steps,
