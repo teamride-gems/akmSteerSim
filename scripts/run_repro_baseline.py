@@ -213,6 +213,10 @@ def validate_run(
         "run_id": run_dir.name,
         "action_space": action_space,
         "seed": 0,
+        "training_code_commit": training_commit,
+        "evaluation_code_commit": evaluation_commit,
+        "checkpoint_sha256": checkpoint_digest,
+        "interruption_recovered": bool(meta.get("interruption_recovery")),
         "train_steps": meta.get("final_num_timesteps"),
         "training_wall_clock_seconds": meta.get("training_wall_clock_seconds"),
         "evaluation_wall_clock_seconds": eval_data.get("wall_clock_seconds"),
@@ -239,6 +243,8 @@ def write_summary_csv(path: Path, rows: Iterable[Dict[str, Any]]) -> None:
     rows = list(rows)
     fields = [
         "run_id", "action_space", "seed", "train_steps",
+        "training_code_commit", "evaluation_code_commit", "checkpoint_sha256",
+        "interruption_recovered",
         "training_wall_clock_seconds", "evaluation_wall_clock_seconds",
         "n_test_episodes", "crash_count", "crash_penalty_count",
         "max_abs_observed_steer", "max_abs_a_long", "max_abs_a_lat",
@@ -264,6 +270,11 @@ def main() -> None:
         "--training-commit",
         default=None,
         help="Expected training revision (required only when aggregating an older run)",
+    )
+    parser.add_argument(
+        "--evaluation-commit",
+        default=None,
+        help="Expected standalone-evaluation revision (otherwise inferred from artifacts)",
     )
     args = parser.parse_args()
 
@@ -335,12 +346,38 @@ def main() -> None:
     else:
         training_commit = report_commit
 
+    if args.evaluation_commit:
+        evaluation_commit = git_output("rev-parse", args.evaluation_commit)
+    else:
+        recorded_eval_commits = set()
+        for action_space in ACTION_SPACES:
+            eval_path = (
+                checkpoints_dir
+                / f"{run_prefix}_{action_space}_full_s0"
+                / "eval_standalone_test.json"
+            )
+            if eval_path.exists():
+                eval_data = json.loads(eval_path.read_text(encoding="utf-8"))
+                commit = (
+                    eval_data.get("evaluation_provenance", {})
+                    .get("git", {})
+                    .get("commit")
+                )
+                if commit:
+                    recorded_eval_commits.add(commit)
+        if len(recorded_eval_commits) != 1:
+            raise SystemExit(
+                "Could not infer one shared evaluation commit; "
+                "pass --evaluation-commit explicitly."
+            )
+        evaluation_commit = recorded_eval_commits.pop()
+
     rows = [
         validate_run(
             checkpoints_dir / f"{run_prefix}_{action_space}_full_s0",
             action_space,
             training_commit,
-            report_commit,
+            evaluation_commit,
         )
         for action_space in ACTION_SPACES
     ]
@@ -354,6 +391,7 @@ def main() -> None:
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "code_commit": training_commit,
         "training_code_commit": training_commit,
+        "evaluation_code_commit": evaluation_commit,
         "report_code_commit": report_commit,
         "run_prefix": run_prefix,
         "debug_config": "configs/sac_debug.yaml",

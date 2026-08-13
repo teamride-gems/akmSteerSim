@@ -163,6 +163,11 @@ python scripts\run_repro_baseline.py `
   --run-prefix <run-prefix>
 ```
 
+For recovered or post-hoc reports, the manifest records separate immutable
+training, standalone-evaluation, and reporting commits. The first two are
+inferred from the run artifacts and must each be identical across all four
+conditions, or aggregation fails closed.
+
 If orchestration is interrupted after an exact 20,000-step checkpoint is
 written but before its final validation finishes, recover without adding any
 training steps:
