@@ -9,6 +9,7 @@ from pathlib import Path
 
 from scripts.preflight import tracked_artifact_violations
 from scripts.run_repro_baseline import finite_numbers
+from rl.common import run_eval_episode
 from utils.provenance import git_provenance, package_versions
 
 
@@ -16,6 +17,38 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReproducibilityTests(unittest.TestCase):
+    def test_terminal_collision_impulse_is_separate_from_actuator_acceleration(self):
+        class Model:
+            def predict(self, _obs, deterministic=True):
+                return [0.0], None
+
+        class Env:
+            centerline = None
+
+            def __init__(self):
+                self.step_index = 0
+
+            def reset(self, seed=None, options=None):
+                return [0.0], {}
+
+            def step(self, _action):
+                self.step_index += 1
+                crash = self.step_index == 2
+                info = {
+                    "term_reason": "crash" if crash else "running",
+                    "crash": crash,
+                    "a_long": 300.0 if crash else 2.0,
+                    "a_lat": 120.0 if crash else 3.0,
+                    "reward_breakdown": {"total": 0.0},
+                }
+                return [0.0], 0.0, crash, False, info
+
+        result = run_eval_episode(Model(), Env(), seed=0, spawn_idx=1)
+        self.assertEqual(result.max_abs_a_long, 300.0)
+        self.assertEqual(result.max_abs_nonterminal_a_long, 2.0)
+        self.assertEqual(result.max_abs_a_lat, 120.0)
+        self.assertEqual(result.max_abs_nonterminal_a_lat, 3.0)
+
     def test_generated_artifact_detector(self):
         violations = tracked_artifact_violations([
             "envs/f1tenth_sb3_env.py",

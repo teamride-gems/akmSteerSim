@@ -85,7 +85,7 @@ def finite_numbers(value: Any, path: str = "root") -> List[str]:
     return failures
 
 
-def validate_run(run_dir: Path, action_space: str, code_commit: str) -> Dict[str, Any]:
+def validate_run(run_dir: Path, action_space: str, training_commit: str) -> Dict[str, Any]:
     failures: List[str] = []
     required_files = (
         "run_meta.json",
@@ -118,7 +118,7 @@ def validate_run(run_dir: Path, action_space: str, code_commit: str) -> Dict[str
         failures.append("training did not finish exactly 20,000 timesteps")
 
     git_meta = meta.get("provenance", {}).get("git", {})
-    if git_meta.get("commit") != code_commit:
+    if git_meta.get("commit") != training_commit:
         failures.append("training Git commit does not match baseline commit")
     if git_meta.get("dirty"):
         failures.append(f"training began from a dirty tree: {git_meta.get('status_porcelain')}")
@@ -140,6 +140,8 @@ def validate_run(run_dir: Path, action_space: str, code_commit: str) -> Dict[str
     max_steer = 0.0
     max_a_long = 0.0
     max_a_lat = 0.0
+    max_nonterminal_a_long = 0.0
+    max_nonterminal_a_lat = 0.0
     for index, episode in enumerate(episodes):
         reason = episode.get("term_reason")
         if reason not in ALLOWED_TERM_REASONS:
@@ -165,13 +167,29 @@ def validate_run(run_dir: Path, action_space: str, code_commit: str) -> Dict[str
         max_steer = max(max_steer, abs(float(episode.get("max_abs_observed_steer", 0.0))))
         max_a_long = max(max_a_long, abs(float(episode.get("max_abs_a_long", 0.0))))
         max_a_lat = max(max_a_lat, abs(float(episode.get("max_abs_a_lat", 0.0))))
+        if "max_abs_nonterminal_a_long" not in episode:
+            failures.append(f"episode {index}: nonterminal acceleration diagnostic missing")
+        max_nonterminal_a_long = max(
+            max_nonterminal_a_long,
+            abs(float(episode.get("max_abs_nonterminal_a_long", 0.0))),
+        )
+        max_nonterminal_a_lat = max(
+            max_nonterminal_a_lat,
+            abs(float(episode.get("max_abs_nonterminal_a_lat", 0.0))),
+        )
 
     if max_steer <= 1e-6:
         failures.append("realized steering remained zero throughout test evaluation")
-    if max_a_long > 100.0:
-        failures.append(f"longitudinal acceleration exceeded diagnostic bound: {max_a_long}")
-    if max_a_lat > 100.0:
-        failures.append(f"lateral acceleration exceeded diagnostic bound: {max_a_lat}")
+    if max_nonterminal_a_long > 100.0:
+        failures.append(
+            "nonterminal longitudinal acceleration exceeded diagnostic bound: "
+            f"{max_nonterminal_a_long}"
+        )
+    if max_nonterminal_a_lat > 100.0:
+        failures.append(
+            "nonterminal lateral acceleration exceeded diagnostic bound: "
+            f"{max_nonterminal_a_lat}"
+        )
 
     summary = eval_data.get("test_summary", eval_data.get("overall_summary", {}))
     return {
@@ -189,6 +207,8 @@ def validate_run(run_dir: Path, action_space: str, code_commit: str) -> Dict[str
         "max_abs_observed_steer": max_steer,
         "max_abs_a_long": max_a_long,
         "max_abs_a_lat": max_a_lat,
+        "max_abs_nonterminal_a_long": max_nonterminal_a_long,
+        "max_abs_nonterminal_a_lat": max_nonterminal_a_lat,
         "test_mean_reward": summary.get("mean_reward"),
         "test_mean_progress": summary.get("mean_progress"),
         "test_completion_rate": summary.get("completion_rate"),
@@ -207,6 +227,7 @@ def write_summary_csv(path: Path, rows: Iterable[Dict[str, Any]]) -> None:
         "training_wall_clock_seconds", "evaluation_wall_clock_seconds",
         "n_test_episodes", "crash_count", "crash_penalty_count",
         "max_abs_observed_steer", "max_abs_a_long", "max_abs_a_lat",
+        "max_abs_nonterminal_a_long", "max_abs_nonterminal_a_lat",
         "test_mean_reward", "test_mean_progress", "test_completion_rate",
         "test_crash_rate", "test_mean_lateral_error", "total_params", "passed",
     ]
@@ -224,10 +245,15 @@ def main() -> None:
     parser.add_argument("--aggregate-only", action="store_true")
     parser.add_argument("--skip-preflight", action="store_true")
     parser.add_argument("--n-eval-episodes", type=int, default=2)
+    parser.add_argument(
+        "--training-commit",
+        default=None,
+        help="Expected training revision (required only when aggregating an older run)",
+    )
     args = parser.parse_args()
 
-    code_commit = git_output("rev-parse", "HEAD")
-    run_prefix = args.run_prefix or f"rung2_{code_commit[:7]}"
+    report_commit = git_output("rev-parse", "HEAD")
+    run_prefix = args.run_prefix or f"rung2_{report_commit[:7]}"
     checkpoints_dir = ROOT / "checkpoints"
     report_dir = ROOT / "reproducibility" / "rung2" / run_prefix
 
@@ -275,11 +301,30 @@ def main() -> None:
             ]
             run_and_tee(command, run_dir / "baseline_driver.log")
 
+    if args.training_commit:
+        training_commit = git_output("rev-parse", args.training_commit)
+    elif args.aggregate_only:
+        recorded_commits = set()
+        for action_space in ACTION_SPACES:
+            meta_path = checkpoints_dir / f"{run_prefix}_{action_space}_full_s0" / "run_meta.json"
+            if meta_path.exists():
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                commit = meta.get("provenance", {}).get("git", {}).get("commit")
+                if commit:
+                    recorded_commits.add(commit)
+        if len(recorded_commits) != 1:
+            raise SystemExit(
+                "Could not infer one shared training commit; pass --training-commit explicitly."
+            )
+        training_commit = recorded_commits.pop()
+    else:
+        training_commit = report_commit
+
     rows = [
         validate_run(
             checkpoints_dir / f"{run_prefix}_{action_space}_full_s0",
             action_space,
-            code_commit,
+            training_commit,
         )
         for action_space in ACTION_SPACES
     ]
@@ -291,7 +336,9 @@ def main() -> None:
     manifest = {
         "schema_version": 1,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "code_commit": code_commit,
+        "code_commit": training_commit,
+        "training_code_commit": training_commit,
+        "report_code_commit": report_commit,
         "run_prefix": run_prefix,
         "debug_config": "configs/sac_debug.yaml",
         "vehicle_config": "configs/vehicle.yaml",
@@ -299,8 +346,9 @@ def main() -> None:
         "seed": 0,
         "device_request": args.device,
         "validation_thresholds": {
-            "max_abs_a_long": 100.0,
-            "max_abs_a_lat": 100.0,
+            "max_abs_nonterminal_a_long": 100.0,
+            "max_abs_nonterminal_a_lat": 100.0,
+            "raw_collision_impulse_reported_but_not_actuator_gated": True,
             "min_nonzero_realized_steer": 1e-6,
             "reward_component_tolerance": 1e-7,
         },

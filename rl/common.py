@@ -134,6 +134,8 @@ class EpisodeResult:
     max_abs_observed_steer: float = 0.0
     max_abs_a_long: float = 0.0
     max_abs_a_lat: float = 0.0
+    max_abs_nonterminal_a_long: float = 0.0
+    max_abs_nonterminal_a_lat: float = 0.0
 
 
 def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool = True) -> EpisodeResult:
@@ -160,6 +162,8 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
     observed_steers = []
     a_longs = []
     a_lats = []
+    nonterminal_a_longs = []
+    nonterminal_a_lats = []
 
     done = False
     info: Dict[str, Any] = {}
@@ -194,6 +198,12 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         observed_steers.append(float(info.get("realized_steer", 0.0)))
         a_longs.append(float(info.get("a_long", 0.0)))
         a_lats.append(float(info.get("a_lat", 0.0)))
+        # A collision can instantaneously zero the F1TENTH velocity.  Keep
+        # that raw impulse above for transparent crash diagnostics, but do
+        # not treat it as actuator acceleration in the plausibility gate.
+        if not bool(info.get("crash", False)):
+            nonterminal_a_longs.append(float(info.get("a_long", 0.0)))
+            nonterminal_a_lats.append(float(info.get("a_lat", 0.0)))
 
         done = bool(terminated or truncated)
 
@@ -228,6 +238,12 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         max_abs_observed_steer=float(np.max(np.abs(observed_steers))) if observed_steers else 0.0,
         max_abs_a_long=float(np.max(np.abs(a_longs))) if a_longs else 0.0,
         max_abs_a_lat=float(np.max(np.abs(a_lats))) if a_lats else 0.0,
+        max_abs_nonterminal_a_long=(
+            float(np.max(np.abs(nonterminal_a_longs))) if nonterminal_a_longs else 0.0
+        ),
+        max_abs_nonterminal_a_lat=(
+            float(np.max(np.abs(nonterminal_a_lats))) if nonterminal_a_lats else 0.0
+        ),
     )
 
 
@@ -269,6 +285,14 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> N
     logger.record(f"{prefix}/max_abs_observed_steer", max(e.max_abs_observed_steer for e in episodes))
     logger.record(f"{prefix}/max_abs_a_long", max(e.max_abs_a_long for e in episodes))
     logger.record(f"{prefix}/max_abs_a_lat", max(e.max_abs_a_lat for e in episodes))
+    logger.record(
+        f"{prefix}/max_abs_nonterminal_a_long",
+        max(e.max_abs_nonterminal_a_long for e in episodes),
+    )
+    logger.record(
+        f"{prefix}/max_abs_nonterminal_a_lat",
+        max(e.max_abs_nonterminal_a_lat for e in episodes),
+    )
 
 
 def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
@@ -310,6 +334,12 @@ def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
         "max_abs_observed_steer": float(np.max([e.max_abs_observed_steer for e in episodes])),
         "max_abs_a_long": float(np.max([e.max_abs_a_long for e in episodes])),
         "max_abs_a_lat": float(np.max([e.max_abs_a_lat for e in episodes])),
+        "max_abs_nonterminal_a_long": float(
+            np.max([e.max_abs_nonterminal_a_long for e in episodes])
+        ),
+        "max_abs_nonterminal_a_lat": float(
+            np.max([e.max_abs_nonterminal_a_lat for e in episodes])
+        ),
     }
 
 

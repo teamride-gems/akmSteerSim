@@ -51,6 +51,8 @@ METRIC_KEYS = [
     "max_abs_observed_steer",
     "max_abs_a_long",
     "max_abs_a_lat",
+    "max_abs_nonterminal_a_long",
+    "max_abs_nonterminal_a_lat",
 ]
 
 

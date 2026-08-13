@@ -149,7 +149,9 @@ Each run records:
 - initialization, running, completion, or failure status;
 - training/evaluation wall time and final timestep;
 - reward-component, collision-penalty, realized-steering, acceleration, and
-  termination diagnostics.
+  termination diagnostics. Raw collision impulses are reported separately
+  from nonterminal acceleration; only nonterminal acceleration is used as the
+  actuator-plausibility gate.
 
 The generated report lives under `reproducibility/rung2/<run-prefix>/`. It can
 be regenerated without retraining using:
@@ -159,6 +161,22 @@ python scripts\run_repro_baseline.py `
   --aggregate-only `
   --run-prefix <run-prefix>
 ```
+
+If orchestration is interrupted after an exact 20,000-step checkpoint is
+written but before its final validation finishes, recover without adding any
+training steps:
+
+```powershell
+python scripts\finalize_interrupted_run.py `
+  --run-id <run-id> `
+  --device cpu `
+  --eval-test
+```
+
+The recovery command verifies the checkpoint timestep, reproduces the fixed
+Austin validation and Sakhir diagnostic spawns, re-applies the declared model-
+selection score, records separate recovery provenance, and only then evaluates
+the selected model on Budapest.
 
 The root-level `run_experiment.py` is intentionally retired and fails closed.
 It must not be restored as an experiment path because it used obsolete and
