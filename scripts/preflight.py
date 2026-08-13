@@ -16,11 +16,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def tracked_artifact_violations(paths: Iterable[str]) -> List[str]:
     violations = []
+    generated_roots = (
+        "checkpoints/",
+        "runs/",
+        "rollouts/",
+        "metrics/",
+        "experiments/",
+        "figures/",
+    )
     for raw in paths:
         path = raw.replace("\\", "/")
         if (
-            path.startswith("checkpoints/")
-            or path.startswith("runs/")
+            path.startswith(generated_roots)
             or "/__pycache__/" in f"/{path}"
             or path.endswith((".pyc", ".pyo"))
         ):

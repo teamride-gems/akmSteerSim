@@ -1,6 +1,0 @@
-lap_id,policy_id,action_space_id,track_id,lap_status,lap_time_sec,lap_progress
-0,checkpoints\curvature_speed_full_s0\sac_250000_steps.zip,steer_speed,Sakhir,TIMEOUT,12.2107,0.0
-1,checkpoints\curvature_speed_full_s0\sac_250000_steps.zip,steer_speed,Sakhir,TIMEOUT,21.6736,0.0
-2,checkpoints\curvature_speed_full_s0\sac_250000_steps.zip,steer_speed,Sakhir,TIMEOUT,1.2885,0.0
-3,checkpoints\curvature_speed_full_s0\sac_250000_steps.zip,steer_speed,Sakhir,TIMEOUT,21.8962,0.0
-4,checkpoints\curvature_speed_full_s0\sac_250000_steps.zip,steer_speed,Sakhir,TIMEOUT,7.7455,0.0

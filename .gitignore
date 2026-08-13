@@ -37,6 +37,12 @@ runs/
 tb_logs/
 logs/
 
+# Derived research outputs (regenerate from checkpoints/results)
+rollouts/
+metrics/
+experiments/
+figures/
+
 ############################
 # Simulation / rendering junk
 ############################

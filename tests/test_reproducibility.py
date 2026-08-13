@@ -66,8 +66,11 @@ class ReproducibilityTests(unittest.TestCase):
             "envs/__pycache__/f1tenth_sb3_env.cpython-310.pyc",
             "checkpoints/model.zip",
             "runs/events.out.tfevents",
+            "rollouts/policy.npz",
+            "metrics/trajectory.csv",
+            "experiments/20260402-233122/result.json",
         ])
-        self.assertEqual(len(violations), 3)
+        self.assertEqual(len(violations), 6)
 
     def test_git_provenance_contains_source_and_submodule_identity(self):
         provenance = git_provenance(ROOT)
