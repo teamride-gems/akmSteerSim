@@ -229,7 +229,10 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> N
     logger.record(f"{prefix}/mean_reward", _mean("reward"))
     logger.record(f"{prefix}/std_reward", _std("reward"))
     logger.record(f"{prefix}/mean_progress", _mean("normalized_progress"))
-    logger.record(f"{prefix}/completion_rate", sum(1 for e in episodes if e.normalized_progress >= 0.95) / n)
+    logger.record(
+        f"{prefix}/completion_rate",
+        sum(1 for e in episodes if e.term_reason == "lap_complete") / n,
+    )
     logger.record(f"{prefix}/crash_rate", sum(1 for e in episodes if e.term_reason == "crash") / n)
     logger.record(f"{prefix}/mean_lateral_error", _mean("mean_lateral_error"))
     logger.record(f"{prefix}/std_lateral_error", _std("mean_lateral_error"))
@@ -264,7 +267,7 @@ def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
         "mean_reward": _mean("reward"),
         "std_reward": _std("reward"),
         "mean_progress": _mean("normalized_progress"),
-        "completion_rate": sum(1 for e in episodes if e.normalized_progress >= 0.95) / n,
+        "completion_rate": sum(1 for e in episodes if e.term_reason == "lap_complete") / n,
         "crash_rate": sum(1 for e in episodes if e.term_reason == "crash") / n,
         "timeout_rate": sum(1 for e in episodes if e.term_reason == "timeout") / n,
         "mean_length": _mean("length"),

@@ -12,10 +12,10 @@ Design principles for the action-space comparison paper:
     Centerline tracking emerges from the heading-aligned progress term.
 
 Reward components:
-  progress:   w_progress * v * cos(e_head)
-  a_long_pen: w_a_long * (a_long / ref_a_long)^2
-  a_lat_pen:  w_a_lat  * (a_lat  / ref_a_lat)^2
-  time_pen:   w_time   (constant per step)
+  progress:   w_progress * centerline arc progress (m)
+  a_long_pen: w_a_long * (a_long / ref_a_long)^2 * dt
+  a_lat_pen:  w_a_lat  * (a_lat  / ref_a_lat)^2 * dt
+  time_pen:   w_time * dt
   crash_pen:  crash_penalty (on collision)
 """
 
@@ -31,6 +31,8 @@ def compute_reward(
     cfg: Dict,
     e_lat: Optional[float] = None,
     e_head: Optional[float] = None,
+    dt: float = 1.0,
+    delta_progress: Optional[float] = None,
 ) -> Tuple[float, Dict[str, float]]:
     rw = cfg.get("reward", {})
 
@@ -52,10 +54,16 @@ def compute_reward(
     if e_lat is None or e_head is None:
         e_lat, e_head = project_to_centerline(pose, centerline)
 
-    r_progress = w_progress * v * np.cos(e_head)
-    r_a_long   = w_a_long * (a_long / max(1e-6, ref_a_long)) ** 2
-    r_a_lat    = w_a_lat  * (a_lat  / max(1e-6, ref_a_lat)) ** 2
-    r_time     = w_time
+    dt = float(dt)
+    if dt <= 0.0:
+        raise ValueError(f"Reward timestep must be positive; got {dt}.")
+    if delta_progress is None:
+        delta_progress = v * np.cos(e_head) * dt
+
+    r_progress = w_progress * float(delta_progress)
+    r_a_long   = w_a_long * (a_long / max(1e-6, ref_a_long)) ** 2 * dt
+    r_a_lat    = w_a_lat  * (a_lat  / max(1e-6, ref_a_lat)) ** 2 * dt
+    r_time     = w_time * dt
     r_crash    = crash_pen if crash else 0.0
 
     total = r_progress + r_a_long + r_a_lat + r_time + r_crash

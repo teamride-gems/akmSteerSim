@@ -29,11 +29,22 @@ def lidar_to_sectors(scan, cfg):
     scan = np.asarray(scan, dtype=float)
     scan = np.clip(scan, clip_min, clip_max)
 
-    fov = cfg["lidar"]["fov_deg"]
+    target_fov = float(cfg["lidar"]["fov_deg"])
+    input_fov = float(cfg["lidar"].get("input_fov_deg", target_fov))
+    if target_fov <= 0.0 or input_fov <= 0.0:
+        raise ValueError("Lidar fov_deg and input_fov_deg must be positive.")
+    if target_fov > input_fov:
+        warnings.warn(
+            f"Requested lidar FOV ({target_fov:g} deg) exceeds the input scan FOV "
+            f"({input_fov:g} deg); using the complete input scan.",
+            stacklevel=2,
+        )
+
     n = scan.size
-    mid = n // 2
-    half = int(n * (fov / 360.0) / 2)
-    window = scan[mid - half : mid + half]
+    fraction = min(1.0, target_fov / input_fov)
+    window_size = int(np.clip(round(n * fraction), 1, n))
+    start = (n - window_size) // 2
+    window = scan[start : start + window_size]
 
     if window.size < sectors:
         warnings.warn(

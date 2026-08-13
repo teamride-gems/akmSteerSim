@@ -1,3 +1,5 @@
+import os
+import sys
 import warnings
 
 import gymnasium as gym
@@ -62,7 +64,11 @@ class F1TenthSACEnv(gym.Env):
                 f"Centerline must be an array of shape (N, >=2); got {self.centerline.shape}"
             )
 
-        diffs = np.diff(self.centerline[:, :2], axis=0)
+        # Treat every centerline as a closed loop, including the final segment
+        # from the last waypoint back to the first.  F1TENTH track CSVs do not
+        # repeat the first waypoint at the end.
+        points = self.centerline[:, :2]
+        diffs = np.roll(points, -1, axis=0) - points
         seg_lengths = np.linalg.norm(diffs, axis=1)
         if np.any(seg_lengths <= 0.0):
             warnings.warn(
@@ -76,7 +82,18 @@ class F1TenthSACEnv(gym.Env):
             raise ValueError("Track length must be positive.")
 
         self.render_mode = render_mode
-        self._max_steps = int(cfg.get("max_episode_steps", 3000))
+        self._lap_completion_fraction = float(cfg.get("lap_completion_fraction", 1.0))
+        if not 0.0 < self._lap_completion_fraction <= 1.0:
+            raise ValueError(
+                "lap_completion_fraction must be in (0, 1]; got "
+                f"{self._lap_completion_fraction}"
+            )
+        self._configured_max_steps = cfg.get("max_episode_steps")
+        self._max_episode_seconds = cfg.get("max_episode_seconds")
+        if self._configured_max_steps is not None and self._max_episode_seconds is not None:
+            raise ValueError(
+                "Configure only one of max_episode_steps or max_episode_seconds, not both."
+            )
 
         reset_cfg = cfg.get("reset", {})
         self._reset_lat_noise = float(reset_cfg.get("lateral_noise_m", 0.0))
@@ -132,6 +149,22 @@ class F1TenthSACEnv(gym.Env):
         if not map_yaml_check.exists():
             raise FileNotFoundError(f"Map file not found: {map_yaml_check}")
 
+        # The simulator is commonly installed editable outside this repository.
+        # Its @njit(cache=True) decorators otherwise try to create cache files
+        # beside that read-only source tree, which can hang at import time.
+        numba_cache_dir = Path(
+            sim_cfg.get(
+                "numba_cache_dir",
+                Path(__file__).resolve().parents[1] / ".numba_cache",
+            )
+        ).resolve()
+        numba_cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault("NUMBA_CACHE_DIR", str(numba_cache_dir))
+        if "numba" in sys.modules:
+            import numba
+            if not numba.config.CACHE_DIR:
+                numba.config.CACHE_DIR = str(numba_cache_dir)
+
         try:
             from f110_gym.envs import F110Env
             self.sim = F110Env(map=str(map_path_no_ext), num_agents=1)
@@ -154,6 +187,19 @@ class F1TenthSACEnv(gym.Env):
                 stacklevel=2,
             )
 
+        if self._max_episode_seconds is not None:
+            max_episode_seconds = float(self._max_episode_seconds)
+            if max_episode_seconds <= 0.0:
+                raise ValueError("max_episode_seconds must be positive.")
+            self._max_steps = int(np.ceil(max_episode_seconds / self._dt))
+        elif self._configured_max_steps is not None:
+            self._max_steps = int(self._configured_max_steps)
+        else:
+            self._max_steps = int(np.ceil(120.0 / self._dt))
+        if self._max_steps <= 0:
+            raise ValueError("Episode horizon must contain at least one step.")
+        self._validate_episode_horizon()
+
         self._step_i = 0
         self._cumulative_progress = 0.0       # FIX (M7): cumulative delta tracking
         self._prev_progress = 0.0
@@ -167,6 +213,7 @@ class F1TenthSACEnv(gym.Env):
             f"obs_dim={self.obs_dim} "
             f"dt={self._dt:.4f}s "
             f"max_steps={self._max_steps} "
+            f"lap_fraction={self._lap_completion_fraction:.3f} "
             f"ablate_geometry={self._ablate_geometry}"
         )
 
@@ -177,6 +224,32 @@ class F1TenthSACEnv(gym.Env):
     @property
     def dt(self) -> float:
         return self._dt
+
+    @property
+    def max_episode_steps(self) -> int:
+        return self._max_steps
+
+    @property
+    def lap_completion_fraction(self) -> float:
+        return self._lap_completion_fraction
+
+    def _validate_episode_horizon(self) -> None:
+        """Reject configurations that cannot complete a lap even at v_max."""
+        max_speed = float(self._robot_config["max_speed"])
+        if max_speed <= 0.0:
+            raise ValueError("Maximum vehicle speed must be positive.")
+        minimum_steps = int(np.ceil(
+            self._lap_completion_fraction * self._track_length / (max_speed * self._dt)
+        ))
+        if self._max_steps < minimum_steps:
+            configured_seconds = self._max_steps * self._dt
+            minimum_seconds = minimum_steps * self._dt
+            raise ValueError(
+                "Episode horizon is physically incapable of reaching the lap-completion "
+                f"threshold: configured={self._max_steps} steps ({configured_seconds:.2f}s), "
+                f"minimum={minimum_steps} steps ({minimum_seconds:.2f}s) at "
+                f"v_max={max_speed:.2f}m/s on a {self._track_length:.2f}m track."
+            )
 
     @staticmethod
     def _build_robot_config(cfg: dict) -> dict:
@@ -256,6 +329,24 @@ class F1TenthSACEnv(gym.Env):
             scan = scan[::stride]
         return scan
 
+    def _read_sim_steering(self, ego_idx: int = 0):
+        """Read the realized front-wheel steering state from F1TENTH internals.
+
+        The installed F1TENTH observation omits steering even though the
+        simulator state stores it at index 2.  Failing loudly is preferable to
+        silently substituting zero, because steering is part of the policy
+        observation used by every experiment.
+        """
+        try:
+            simulator = getattr(self.sim, "sim")
+            agents = getattr(simulator, "agents")
+            state = np.asarray(agents[int(ego_idx)].state, dtype=float).ravel()
+            if state.size > 2 and np.isfinite(state[2]):
+                return float(state[2])
+        except (AttributeError, IndexError, TypeError, ValueError):
+            pass
+        return None
+
     def _pack_obs_dict(self, d):
         def first_scalar(x, default=0.0):
             if x is None:
@@ -264,6 +355,8 @@ class F1TenthSACEnv(gym.Env):
             if a.size == 0:
                 return float(default)
             return float(a.ravel()[0])
+
+        ego_idx = int(first_scalar(d.get("ego_idx"), 0.0))
 
         if "pose" in d and np.asarray(d["pose"]).size >= 3:
             pose = np.asarray(d["pose"], dtype=float).ravel()
@@ -286,12 +379,25 @@ class F1TenthSACEnv(gym.Env):
             v = 0.0
 
         steer = None
-        for k in ("steer", "delta", "steering_delta", "steering_deltas", "deltas"):
+        for k in (
+            "steer",
+            "delta",
+            "steering_angle",
+            "steering_angles",
+            "steering_delta",
+            "steering_deltas",
+            "deltas",
+        ):
             if k in d:
                 steer = first_scalar(d.get(k), 0.0)
                 break
         if steer is None:
-            steer = 0.0
+            steer = self._read_sim_steering(ego_idx)
+        if steer is None:
+            raise KeyError(
+                "Simulator observation does not expose realized steering and the "
+                "F1TENTH internal steering state could not be read."
+            )
 
         scan = None
         if "scans" in d:
@@ -310,7 +416,15 @@ class F1TenthSACEnv(gym.Env):
 
         scan = self._downsample_scan(scan)
 
-        crash = bool(d.get("crash", d.get("done", False)))
+        collision_value = d.get("collisions", d.get("collision", 0.0))
+        collision_values = np.asarray(collision_value).ravel()
+        if collision_values.size:
+            collision_idx = int(np.clip(ego_idx, 0, collision_values.size - 1))
+            collision = bool(collision_values[collision_idx])
+        else:
+            collision = False
+        crash_value = d.get("crash", False)
+        crash = bool(first_scalar(crash_value, 0.0)) or collision
         yr = d.get("yaw_rate", d.get("r", d.get("ang_vels_z", 0.0)))
         packed = {
             "pose": np.array([x, y, yaw], dtype=float),
@@ -378,9 +492,9 @@ class F1TenthSACEnv(gym.Env):
 
         best_s = 0.0
         best_dist_sq = float("inf")
-        for i in range(len(pts) - 1):
+        for i in range(len(pts)):
             p0 = pts[i]
-            p1 = pts[i + 1]
+            p1 = pts[(i + 1) % len(pts)]
             seg = p1 - p0
             seg_len_sq = float(np.dot(seg, seg))
             if seg_len_sq <= 1e-12:
@@ -439,6 +553,15 @@ class F1TenthSACEnv(gym.Env):
         obs_raw = self._extract_obs(sim_obs)
         obs_raw = self._finite_difference_kin(obs_raw)
 
+        # Seed the slew-rate limiter and steering-rate metric from the actual
+        # reset state so the very first policy action obeys the same physical
+        # constraints as every later action.
+        self._prev_command = {
+            "steering_angle": float(obs_raw["steer"]),
+            "speed": float(obs_raw["speed"]),
+        }
+        self._prev_steer_cmd = float(obs_raw["steer"])
+
         state = make_state(obs_raw, self.centerline, self.cfg)
         if self._ablate_geometry:
             state = self._zero_geometry_features(state)
@@ -490,13 +613,10 @@ class F1TenthSACEnv(gym.Env):
             state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
 
-        reward, reward_terms = compute_reward(obs_raw, self.centerline, self.cfg)
-
         crash = bool(obs_raw.get("crash", False))
-        terminated = bool(crash or sim_done)
-        truncated = (self._step_i >= self._max_steps) and not terminated
 
-        # FIX (M7): cumulative delta tracking instead of current - start
+        # Closed-loop cumulative arc progress makes completion independent of
+        # F1TENTH's two-return start-zone toggle semantics.
         current_progress = self._projected_arc_progress(obs_raw["pose"])
         delta_progress = current_progress - self._prev_progress
         if delta_progress < -self._track_length / 2:
@@ -508,8 +628,27 @@ class F1TenthSACEnv(gym.Env):
 
         e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
 
+        reward, reward_terms = compute_reward(
+            obs_raw,
+            self.centerline,
+            self.cfg,
+            e_lat=e_lat,
+            e_head=e_head,
+            dt=self._dt,
+            delta_progress=delta_progress,
+        )
+
+        lap_complete = bool(
+            self._cumulative_progress
+            >= self._lap_completion_fraction * self._track_length
+        )
+        terminated = bool(crash or lap_complete or sim_done)
+        truncated = (self._step_i >= self._max_steps) and not terminated
+
         if crash:
             term_reason = "crash"
+        elif lap_complete:
+            term_reason = "lap_complete"
         elif sim_done and not crash:
             term_reason = "sim_done"
         elif truncated:
@@ -522,6 +661,7 @@ class F1TenthSACEnv(gym.Env):
             "term_reason": term_reason,
             "action_space": self.action_space_name,
             "crash": crash,
+            "lap_complete": lap_complete,
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
             "steer_cmd": steering_angle,
@@ -538,7 +678,9 @@ class F1TenthSACEnv(gym.Env):
             "min_lidar": float(np.min(obs_raw["scan"])),
             "delta_progress": float(delta_progress),
             "total_progress": float(self._cumulative_progress),
-            "normalized_progress": float(self._cumulative_progress / self._track_length),
+            "normalized_progress": float(np.clip(
+                self._cumulative_progress / self._track_length, 0.0, 1.0
+            )),
             "reward_breakdown": reward_terms,
         }
 

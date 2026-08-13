@@ -4,7 +4,10 @@
 
 action_space: steer_speed  # options: steer_speed, curvature_speed, lookahead_point, bezier
 
-max_episode_steps: 3000
+# Physical episode horizon. The environment converts this to simulator steps
+# and rejects horizons that cannot reach lap_completion_fraction even at v_max.
+max_episode_seconds: 120.0
+lap_completion_fraction: 1.0
 
 # --- speed and steering limits ---
 v_min: 0.5
@@ -23,6 +26,7 @@ vehicle:
 lidar:
   sectors: 21
   fov_deg: 270
+  input_fov_deg: 270  # native F1TENTH scan FOV; avoids cropping a 270-deg scan twice
   clip_max_m: 10.0
   clip_min_m: 0.05
   outlier_quantile: 0.995
@@ -34,6 +38,8 @@ sim:
 
 # --- reward ---
 reward:
+  # Running terms are integrated over simulator dt; progress is measured in
+  # centerline arc-length meters and crash_penalty is a one-time impulse.
   w_progress: 1.0
   w_a_long: -0.1
   w_a_lat: -0.1

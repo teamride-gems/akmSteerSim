@@ -178,7 +178,14 @@ def apply_ackermann_command_constraints(
                 prev_steering - max_delta_steering,
                 prev_steering + max_delta_steering,
             )
-            steering = clip(steering, min_steering, max_steering)
+            # If a reset state is just outside the configured command range,
+            # keep the slew-limited transition rather than snapping to a
+            # bound and violating the rate limit on the first command.
+            steering = clip(
+                steering,
+                min(min_steering, prev_steering),
+                max(max_steering, prev_steering),
+            )
 
         max_acceleration = config.get("max_acceleration")
         if max_acceleration is not None:
@@ -188,7 +195,11 @@ def apply_ackermann_command_constraints(
                 prev_speed - max_delta_speed,
                 prev_speed + max_delta_speed,
             )
-            speed = clip(speed, min_speed, max_speed)
+            speed = clip(
+                speed,
+                min(min_speed, prev_speed),
+                max(max_speed, prev_speed),
+            )
 
     result = dict(command)
     result["steering_angle"] = steering

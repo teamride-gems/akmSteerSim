@@ -146,7 +146,9 @@ def aggregate_run(run_dir: Path) -> Optional[Dict[str, Any]]:
             row["overall_mean_reward"] = float(np.mean([e.get("reward", 0.0) for e in episodes]))
             row["overall_std_reward"] = float(np.std([e.get("reward", 0.0) for e in episodes]))
             row["overall_mean_progress"] = float(np.mean([e.get("normalized_progress", 0.0) for e in episodes]))
-            row["overall_completion_rate"] = float(np.mean([e.get("normalized_progress", 0.0) >= 0.95 for e in episodes]))
+            row["overall_completion_rate"] = float(np.mean([
+                e.get("term_reason") == "lap_complete" for e in episodes
+            ]))
             row["overall_crash_rate"] = float(np.mean([e.get("term_reason") == "crash" for e in episodes]))
 
     return row
