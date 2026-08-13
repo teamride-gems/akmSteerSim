@@ -144,6 +144,7 @@ python scripts\run_repro_baseline.py --device cpu
 Each run records:
 
 - exact Git commit, branch, dirty state, remote, and track-submodule commit;
+- standalone-evaluation Git provenance and the selected checkpoint's SHA-256;
 - Python, package, OS, CPU, CUDA, cuDNN, and GPU information;
 - resolved vehicle and SAC configurations;
 - initialization, running, completion, or failure status;

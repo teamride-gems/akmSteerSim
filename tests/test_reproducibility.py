@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 from scripts.preflight import tracked_artifact_violations
 from scripts.run_repro_baseline import finite_numbers
 from rl.common import run_eval_episode
+from rl.eval import sha256_file
 from utils.provenance import git_provenance, package_versions
 
 
@@ -17,6 +19,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReproducibilityTests(unittest.TestCase):
+    def test_checkpoint_digest_is_stable(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint = Path(temp_dir) / "model.zip"
+            checkpoint.write_bytes(b"rung-2-checkpoint")
+            self.assertEqual(
+                sha256_file(checkpoint),
+                "46c6512dae32bb31b3c197a165e599a62b9b1fd938b7f4fcc1a3be29db9f298d",
+            )
+
     def test_terminal_collision_impulse_is_separate_from_actuator_acceleration(self):
         class Model:
             def predict(self, _obs, deterministic=True):

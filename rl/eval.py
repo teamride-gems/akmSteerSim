@@ -9,6 +9,7 @@ FIX (m4): Explicitly logs deterministic mode.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -29,6 +30,15 @@ from rl.common import (
     run_eval_episode,
     summarize_episodes,
 )
+from utils.provenance import collect_provenance
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _check_normalizer_consistency(env, meta: Dict[str, Any]) -> None:
@@ -256,6 +266,8 @@ def main() -> None:
 
     output_data: Dict[str, Any] = {
         "checkpoint": str(ckpt_path),
+        "checkpoint_sha256": sha256_file(ckpt_path),
+        "evaluation_provenance": collect_provenance(ROOT),
         "action_space": action_space,
         "ablated": ablated,
         "deterministic": deterministic,

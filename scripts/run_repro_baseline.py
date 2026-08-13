@@ -85,7 +85,12 @@ def finite_numbers(value: Any, path: str = "root") -> List[str]:
     return failures
 
 
-def validate_run(run_dir: Path, action_space: str, training_commit: str) -> Dict[str, Any]:
+def validate_run(
+    run_dir: Path,
+    action_space: str,
+    training_commit: str,
+    evaluation_commit: str,
+) -> Dict[str, Any]:
     failures: List[str] = []
     required_files = (
         "run_meta.json",
@@ -128,6 +133,16 @@ def validate_run(run_dir: Path, action_space: str, training_commit: str) -> Dict
         failures.append("normalizer provenance is missing")
     if eval_data.get("evaluation_split") != "test":
         failures.append("standalone evaluation is not labeled as test")
+    eval_git = eval_data.get("evaluation_provenance", {}).get("git", {})
+    if eval_git.get("commit") != evaluation_commit:
+        failures.append("test evaluation Git commit does not match report commit")
+    if eval_git.get("dirty"):
+        failures.append(
+            f"test evaluation ran from a dirty tree: {eval_git.get('status_porcelain')}"
+        )
+    checkpoint_digest = eval_data.get("checkpoint_sha256")
+    if not isinstance(checkpoint_digest, str) or len(checkpoint_digest) != 64:
+        failures.append("test evaluation checkpoint SHA-256 is missing or malformed")
     if not episodes:
         failures.append("test evaluation contains no episodes")
 
@@ -325,6 +340,7 @@ def main() -> None:
             checkpoints_dir / f"{run_prefix}_{action_space}_full_s0",
             action_space,
             training_commit,
+            report_commit,
         )
         for action_space in ACTION_SPACES
     ]
