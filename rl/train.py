@@ -14,6 +14,7 @@ import argparse
 import json
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from utils.action_spaces_utils import get_policy_dim
+from utils.provenance import collect_provenance, utc_now_iso, write_json
 from rl.common import (
     normalize_track_name,
     make_env_for_track,
@@ -384,8 +386,23 @@ def main() -> None:
         "normalizer_refs": normalizer_refs,
         "vehicle_cfg": veh_cfg,
         "sac_cfg": sac_cfg,
+        "vehicle_cfg_source": args.vehicle_cfg,
+        "sac_cfg_source": args.sac_cfg,
+        "provenance": collect_provenance(ROOT),
+        "status": "initialized",
+        "training_started_at_utc": None,
+        "training_completed_at_utc": None,
+        "training_wall_clock_seconds": None,
+        "final_num_timesteps": None,
     }
-    (ckpt_dir / "run_meta.json").write_text(json.dumps(run_meta, indent=2, default=str))
+    meta_path = ckpt_dir / "run_meta.json"
+    write_json(meta_path, run_meta)
+    (ckpt_dir / "resolved_vehicle.yaml").write_text(
+        yaml.safe_dump(veh_cfg, sort_keys=True), encoding="utf-8"
+    )
+    (ckpt_dir / "resolved_sac.yaml").write_text(
+        yaml.safe_dump(sac_cfg, sort_keys=True), encoding="utf-8"
+    )
 
     print("=== Training setup ===")
     print(f"  run_id:            {run_id}")
@@ -432,24 +449,60 @@ def main() -> None:
             )
         )
 
-    model.learn(
-        total_timesteps=train_steps,
-        reset_num_timesteps=not resuming,
-        tb_log_name=run_id,
-        callback=callbacks,
-        progress_bar=True,
-    )
-
-    model.save(str(ckpt_dir / "sac_final"))
-    if args.save_replay_buffer:
-        model.save_replay_buffer(str(ckpt_dir / "sac_final_replay_buffer"))
+    train_wall_start = time.perf_counter()
+    run_meta["status"] = "running"
+    run_meta["training_started_at_utc"] = utc_now_iso()
+    write_json(meta_path, run_meta)
 
     try:
-        env.close()
-    except Exception:
-        pass
+        model.learn(
+            total_timesteps=train_steps,
+            reset_num_timesteps=not resuming,
+            tb_log_name=run_id,
+            callback=callbacks,
+            progress_bar=True,
+        )
+
+        model.save(str(ckpt_dir / "sac_final"))
+        if args.save_replay_buffer:
+            model.save_replay_buffer(str(ckpt_dir / "sac_final_replay_buffer"))
+    except BaseException as exc:
+        run_meta["status"] = "failed"
+        run_meta["training_completed_at_utc"] = utc_now_iso()
+        run_meta["training_wall_clock_seconds"] = time.perf_counter() - train_wall_start
+        run_meta["final_num_timesteps"] = int(getattr(model, "num_timesteps", 0))
+        run_meta["failure"] = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+        write_json(meta_path, run_meta)
+        raise
+    else:
+        run_meta["status"] = "complete"
+        run_meta["training_completed_at_utc"] = utc_now_iso()
+        run_meta["training_wall_clock_seconds"] = time.perf_counter() - train_wall_start
+        run_meta["final_num_timesteps"] = int(model.num_timesteps)
+        run_meta["artifacts"] = {
+            "final_model": "sac_final.zip",
+            "best_validation_model": (
+                "eval_results/best_validation_model.zip"
+                if (results_dir / "best_validation_model.zip").exists()
+                else None
+            ),
+            "replay_buffer": (
+                "sac_final_replay_buffer.pkl" if args.save_replay_buffer else None
+            ),
+        }
+        write_json(meta_path, run_meta)
+    finally:
+        try:
+            env.close()
+        except Exception:
+            pass
 
     print(f"\nSaved final model: {ckpt_dir / 'sac_final'}")
+    print(f"Run metadata: {meta_path}")
 
 
 if __name__ == "__main__":

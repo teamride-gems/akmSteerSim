@@ -31,11 +31,12 @@ def main() -> None:
     ap.add_argument("--n_eval_episodes", type=int, default=10)
     ap.add_argument("--device", default="auto")
     ap.add_argument("--eval_after_train", action="store_true")
+    ap.add_argument("--run_id", default=None, help="Explicit artifact directory name")
     args = ap.parse_args()
 
     ablate = args.obs_regime == "ablated"
     validation_tracks = args.validation_tracks or args.eval_tracks
-    run_id = f"{args.action_space}_{args.obs_regime}_s{args.seed}"
+    run_id = args.run_id or f"{args.action_space}_{args.obs_regime}_s{args.seed}"
 
     train_cmd = [
         sys.executable, str(ROOT / "rl" / "train.py"),
@@ -92,6 +93,7 @@ def main() -> None:
         "--evaluation_split", "test",
         "--n_episodes", str(args.n_eval_episodes),
         "--device", args.device,
+        "--output", str(ckpt_dir / "eval_standalone_test.json"),
     ]
 
     print("=" * 72)

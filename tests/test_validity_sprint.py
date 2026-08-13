@@ -213,6 +213,9 @@ class ValiditySprintTests(unittest.TestCase):
         self.assertAlmostEqual(info["speed_cmd"], 0.2)
         self.assertTrue(info["steer_clipped"])
         self.assertTrue(info["speed_clipped"])
+        self.assertIn("realized_steer", info)
+        self.assertIn("a_long", info)
+        self.assertIn("a_lat", info)
 
     def test_running_reward_is_timestep_invariant(self):
         cfg = _vehicle_config(Path(self.temp_dir.name))

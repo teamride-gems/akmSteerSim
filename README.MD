@@ -117,6 +117,53 @@ LiDAR FOV, closed-loop lap completion, feasible horizons, first-action slew
 limits, reward timestep invariance, and every bundled track. The integration
 smoke checks the installed F1TENTH observation schema and a real physics step.
 
+The same checks, plus Git artifact-hygiene validation, are available through:
+
+```powershell
+python scripts\preflight.py
+```
+
+CI runs the deterministic portion on every push and pull request. The installed
+F1TENTH smoke remains a required local preflight because it exercises the
+editable simulator, map loading, Numba runtime, and real physics step.
+
+## Reproducibility baseline
+
+`configs/sac_debug.yaml` defines the Rung 2 pipeline baseline: 20,000 training
+steps, seed 0, Sakhir training, Austin validation, Budapest test, and two fixed
+evaluation spawns. It is diagnostic evidence, not a paper-scale comparison.
+
+From a clean committed tree, one command trains and evaluates all four action
+spaces, validates their artifacts and numerical diagnostics, and regenerates
+the aggregate tables:
+
+```powershell
+python scripts\run_repro_baseline.py --device cpu
+```
+
+Each run records:
+
+- exact Git commit, branch, dirty state, remote, and track-submodule commit;
+- Python, package, OS, CPU, CUDA, cuDNN, and GPU information;
+- resolved vehicle and SAC configurations;
+- initialization, running, completion, or failure status;
+- training/evaluation wall time and final timestep;
+- reward-component, collision-penalty, realized-steering, acceleration, and
+  termination diagnostics.
+
+The generated report lives under `reproducibility/rung2/<run-prefix>/`. It can
+be regenerated without retraining using:
+
+```powershell
+python scripts\run_repro_baseline.py `
+  --aggregate-only `
+  --run-prefix <run-prefix>
+```
+
+The root-level `run_experiment.py` is intentionally retired and fails closed.
+It must not be restored as an experiment path because it used obsolete and
+potentially stale checkpoint/metric associations.
+
 ## Training and evaluation
 
 Inspect a full four-space sweep without launching jobs:

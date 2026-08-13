@@ -280,7 +280,9 @@ def main() -> None:
         )
         output_path = str(ckpt_path.parent / f"eval_standalone_{split_suffix}.json")
 
-    Path(output_path).write_text(json.dumps(output_data, indent=2))
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(output_data, indent=2), encoding="utf-8")
     print(f"\nResults saved: {output_path}")
 
 

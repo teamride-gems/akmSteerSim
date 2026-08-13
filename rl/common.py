@@ -130,6 +130,10 @@ class EpisodeResult:
     mean_reward_a_lat_pen: float = 0.0
     mean_reward_time_pen: float = 0.0
     mean_reward_crash_pen: float = 0.0
+    mean_reward_total: float = 0.0
+    max_abs_observed_steer: float = 0.0
+    max_abs_a_long: float = 0.0
+    max_abs_a_lat: float = 0.0
 
 
 def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool = True) -> EpisodeResult:
@@ -152,6 +156,10 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
     reward_a_lat_pen = []
     reward_time_pen = []
     reward_crash_pen = []
+    reward_total = []
+    observed_steers = []
+    a_longs = []
+    a_lats = []
 
     done = False
     info: Dict[str, Any] = {}
@@ -182,6 +190,10 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         reward_a_lat_pen.append(float(rb.get("a_lat_pen", 0.0)))
         reward_time_pen.append(float(rb.get("time_pen", 0.0)))
         reward_crash_pen.append(float(rb.get("crash_pen", 0.0)))
+        reward_total.append(float(rb.get("total", reward)))
+        observed_steers.append(float(info.get("realized_steer", 0.0)))
+        a_longs.append(float(info.get("a_long", 0.0)))
+        a_lats.append(float(info.get("a_lat", 0.0)))
 
         done = bool(terminated or truncated)
 
@@ -212,6 +224,10 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         mean_reward_a_lat_pen=float(np.mean(reward_a_lat_pen)) if reward_a_lat_pen else 0.0,
         mean_reward_time_pen=float(np.mean(reward_time_pen)) if reward_time_pen else 0.0,
         mean_reward_crash_pen=float(np.mean(reward_crash_pen)) if reward_crash_pen else 0.0,
+        mean_reward_total=float(np.mean(reward_total)) if reward_total else 0.0,
+        max_abs_observed_steer=float(np.max(np.abs(observed_steers))) if observed_steers else 0.0,
+        max_abs_a_long=float(np.max(np.abs(a_longs))) if a_longs else 0.0,
+        max_abs_a_lat=float(np.max(np.abs(a_lats))) if a_lats else 0.0,
     )
 
 
@@ -249,6 +265,10 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> N
     logger.record(f"{prefix}/mean_reward_a_lat_pen", _mean("mean_reward_a_lat_pen"))
     logger.record(f"{prefix}/mean_reward_time_pen", _mean("mean_reward_time_pen"))
     logger.record(f"{prefix}/mean_reward_crash_pen", _mean("mean_reward_crash_pen"))
+    logger.record(f"{prefix}/mean_reward_total", _mean("mean_reward_total"))
+    logger.record(f"{prefix}/max_abs_observed_steer", max(e.max_abs_observed_steer for e in episodes))
+    logger.record(f"{prefix}/max_abs_a_long", max(e.max_abs_a_long for e in episodes))
+    logger.record(f"{prefix}/max_abs_a_lat", max(e.max_abs_a_lat for e in episodes))
 
 
 def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
@@ -286,6 +306,10 @@ def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
         "mean_reward_a_lat_pen": _mean("mean_reward_a_lat_pen"),
         "mean_reward_time_pen": _mean("mean_reward_time_pen"),
         "mean_reward_crash_pen": _mean("mean_reward_crash_pen"),
+        "mean_reward_total": _mean("mean_reward_total"),
+        "max_abs_observed_steer": float(np.max([e.max_abs_observed_steer for e in episodes])),
+        "max_abs_a_long": float(np.max([e.max_abs_a_long for e in episodes])),
+        "max_abs_a_lat": float(np.max([e.max_abs_a_lat for e in episodes])),
     }
 
 

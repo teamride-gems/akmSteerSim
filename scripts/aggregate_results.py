@@ -47,6 +47,10 @@ METRIC_KEYS = [
     "mean_reward_a_lat_pen",
     "mean_reward_time_pen",
     "mean_reward_crash_pen",
+    "mean_reward_total",
+    "max_abs_observed_steer",
+    "max_abs_a_long",
+    "max_abs_a_lat",
 ]
 
 
@@ -181,9 +185,12 @@ def build_summary_table(per_seed_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_per_track_table(checkpoints_dir: Path) -> pd.DataFrame:
+def build_per_track_table(checkpoints_dir: Path, run_prefix: str = "") -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
-    for run_dir in sorted(p for p in checkpoints_dir.iterdir() if p.is_dir()):
+    for run_dir in sorted(
+        p for p in checkpoints_dir.iterdir()
+        if p.is_dir() and (not run_prefix or p.name.startswith(run_prefix))
+    ):
         meta = load_run_meta(run_dir)
         eval_data, eval_source = load_eval_data(run_dir)
         if eval_data is None or "tracks" not in eval_data:
@@ -214,6 +221,8 @@ def main() -> None:
     ap.add_argument("--output", default="results")
     ap.add_argument("--require_test", action="store_true",
                     help="Skip runs without proper test eval data")
+    ap.add_argument("--run_prefix", default="",
+                    help="Only aggregate run directories whose names start with this prefix")
     args = ap.parse_args()
 
     checkpoints_dir = ROOT / args.checkpoints_dir
@@ -222,7 +231,10 @@ def main() -> None:
 
     rows: List[Dict[str, Any]] = []
     skipped = 0
-    for run_dir in sorted(p for p in checkpoints_dir.iterdir() if p.is_dir()):
+    for run_dir in sorted(
+        p for p in checkpoints_dir.iterdir()
+        if p.is_dir() and (not args.run_prefix or p.name.startswith(args.run_prefix))
+    ):
         row = aggregate_run(run_dir)
         if row is None:
             continue
@@ -237,7 +249,7 @@ def main() -> None:
 
     per_seed_df = pd.DataFrame(rows).sort_values(["action_space", "obs_regime", "seed", "run_id"])
     summary_df = build_summary_table(per_seed_df)
-    per_track_df = build_per_track_table(checkpoints_dir)
+    per_track_df = build_per_track_table(checkpoints_dir, run_prefix=args.run_prefix)
 
     per_seed_path = output_dir / "per_seed_results.csv"
     summary_path = output_dir / "summary_table.csv"

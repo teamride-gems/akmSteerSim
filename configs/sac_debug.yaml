@@ -1,0 +1,29 @@
+# Short reproducibility baseline. This is a pipeline/diagnostic run, not a
+# paper-scale result and must not be mixed with configs/sac.yaml experiments.
+policy: MlpPolicy
+seed: 0
+
+train_steps: 20000
+eval_interval_steps: 10000
+save_every_steps: 10000
+
+learning_rate: 3.0e-4
+batch_size: 128
+buffer_size: 100000
+learning_starts: 1000
+tau: 0.005
+gamma: 0.99
+
+ent_coef: auto
+target_entropy: auto
+
+train_track: Sakhir
+validation_tracks:
+  - Austin
+test_tracks:
+  - Budapest
+
+n_eval_episodes: 2
+selection_metric: completion_then_progress
+early_stop_patience: null
+early_stop_min_delta: 0.0
