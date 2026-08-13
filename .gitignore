@@ -18,6 +18,7 @@ __pycache__/
 *.so
 .pytest_cache/
 .mypy_cache/
+.numba_cache/
 .coverage
 htmlcov/
 dist/
@@ -39,6 +40,7 @@ logs/
 ############################
 # Simulation / rendering junk
 ############################
+tmp/
 *.log
 *.tmp
 *.bak

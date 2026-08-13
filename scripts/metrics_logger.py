@@ -1,100 +1,178 @@
+"""
+CSV logging for episode summaries and per-step trajectories.
+
+Designed for interactive rollouts (scripts/run_trained_policy.py, etc.).
+Field sets are aligned with rl/common.EpisodeResult so that CSV data
+is directly comparable to the JSON snapshots produced by eval.py.
+
+For batch evaluation, use eval.py — it writes richer JSON output.
+This logger is for ad-hoc runs where CSV is more convenient.
+"""
+
 import csv
 from pathlib import Path
+from typing import Dict, Optional
 
-class LapMetricsLogger:
-    FIELDNAMES = [
-        "lap_id",
-        "policy_id",
-        "action_space_id",
-        "track_id",
-        "lap_status",
-        "lap_time_sec",
-        "lap_progress",
-    ]
 
-    def __init__(self, csv_path: str = "metrics/lap_metrics.csv", timestep_csv_path: str | None = None):
+# ----------------------------
+# Episode-level logger
+# ----------------------------
+
+# Aligned with EpisodeResult fields from rl/common.py
+EPISODE_FIELDS = [
+    "episode_id",
+    "action_space",
+    "track",
+    "seed",
+    "spawn_index",
+    "reward",
+    "length",
+    "term_reason",
+    "normalized_progress",
+    "mean_lateral_error",
+    "max_lateral_error",
+    "mean_heading_error",
+    "mean_speed",
+    "mean_abs_steer_rate",
+    "steer_tv",
+    "steer_tv_per_step",
+    "steer_clip_frac",
+    "speed_clip_frac",
+    "mean_steer_clip_mag",
+    "mean_speed_clip_mag",
+    "min_lidar",
+]
+
+# ----------------------------
+# Step-level logger
+# ----------------------------
+
+STEP_FIELDS = [
+    "episode_id",
+    "step",
+    "x",
+    "y",
+    "yaw",
+    "speed",
+    "steer_cmd",
+    "speed_cmd",
+    "steer_rate",
+    "lateral_error",
+    "heading_error",
+    "min_lidar",
+    "reward",
+]
+
+
+class EpisodeLogger:
+    """
+    Logs one row per episode to a CSV file.
+
+    Usage:
+        with EpisodeLogger("metrics/episodes.csv") as logger:
+            logger.log(episode_id=0, action_space="steer_speed", ...)
+    """
+
+    def __init__(self, csv_path: str = "metrics/episodes.csv"):
         self.csv_path = Path(csv_path)
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
-        self.csv_file = open(self.csv_path, "w", newline="")
-        self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=self.FIELDNAMES)
-        self.csv_writer.writeheader()
+        self._file = open(self.csv_path, "w", newline="")
+        self._writer = csv.DictWriter(self._file, fieldnames=EPISODE_FIELDS)
+        self._writer.writeheader()
 
-        # time step edits - nik
-        self.timestep_csv_path = None
-        self.timestep_csv_file = None
-        self.timestep_csv_writer = None
-        self._prev_t_sec = None
-        self._prev_speed_mps = None
+    def log(self, **kwargs) -> None:
+        """
+        Log one episode. Accepts any subset of EPISODE_FIELDS as kwargs.
+        Missing fields are written as empty strings.
+        """
+        row = {f: kwargs.get(f, "") for f in EPISODE_FIELDS}
+        self._writer.writerow(row)
+        self._file.flush()
 
-        # time step edits - nik
-        if timestep_csv_path is not None:
-            self.enable_step_log(timestep_csv_path)
-
-    def log_lap(
+    def log_result(
         self,
-        lap_id: int,
-        lap_time_sec: float,
-        policy_id: str = "heuristic run",
-        action_space_id: str = "N/A",
-        track_id: str = "Sakhir",
-        lap_status: str = "SUCCESS",
-        lap_progress: float = 0.0,
+        episode_id: int,
+        result,
+        action_space: str = "",
+        track: str = "",
+        seed: int = -1,
+        spawn_index: int = -1,
     ) -> None:
-        if lap_status not in {"SUCCESS", "CRASH", "TIMEOUT"}:
-            raise ValueError(f"Invalid lap_status: {lap_status!r}")
-
-        self.csv_writer.writerow(
-            {
-                "lap_id": int(lap_id),
-                "policy_id": policy_id,
-                "action_space_id": action_space_id,
-                "track_id": track_id,
-                "lap_status": lap_status,
-                "lap_time_sec": round(float(lap_time_sec), 4),
-                "lap_progress": round(float(lap_progress), 6),
-            }
-        )
-        self.csv_file.flush()
-
-    # time step edits - nik
-    def enable_step_log(self, csv_path: str = "metrics/timestep_metrics.csv"):
-        self.timestep_csv_path = Path(csv_path)
-        self.timestep_csv_path.parent.mkdir(parents=True, exist_ok=True)
-        self.timestep_csv_file = open(self.timestep_csv_path, "w", newline="")
-        self.timestep_csv_writer = csv.writer(self.timestep_csv_file)
-        self.timestep_csv_writer.writerow(["lap_id", "t_sec", "speed_mps", "acceleration_mps2"])
-        self._prev_t_sec = None
-        self._prev_speed_mps = None
-
-    # time step edits - nik
-    def log_step(self, t_sec: float, speed_mps: float, acceleration_mps2: float, lap_id: int = -1):
-        if self.timestep_csv_writer is None:
-            raise RuntimeError("Timestep log not enabled.")
-        self.timestep_csv_writer.writerow([int(lap_id), float(t_sec), float(speed_mps), float(acceleration_mps2)])
-        self.timestep_csv_file.flush()
-
-    # time step edits - nik
-    def log_step_speed(self, t_sec: float, speed_mps: float, lap_id: int = -1):
-        t_sec = float(t_sec)
-        speed_mps = float(speed_mps)
-
-        if self._prev_t_sec is None or self._prev_speed_mps is None:
-            acceleration_mps2 = 0.0
-        else:
-            dt = max(t_sec - self._prev_t_sec, 1e-9)
-            acceleration_mps2 = (speed_mps - self._prev_speed_mps) / dt
-
-        self.log_step(t_sec=t_sec, speed_mps=speed_mps, acceleration_mps2=acceleration_mps2, lap_id=lap_id)
-        self._prev_t_sec = t_sec
-        self._prev_speed_mps = speed_mps
-
-    # time step edits - nik
-    def reset_step(self):
-        self._prev_t_sec = None
-        self._prev_speed_mps = None
+        """
+        Log directly from an EpisodeResult dataclass (from rl/common.py).
+        """
+        from dataclasses import asdict
+        d = asdict(result)
+        d["episode_id"] = episode_id
+        d["action_space"] = action_space
+        d["track"] = track
+        d["seed"] = seed
+        d["spawn_index"] = spawn_index
+        self.log(**d)
 
     def close(self):
-        self.csv_file.close()
-        # time step edits - nik
-        if self.timestep_csv_file is not None:
-            self.timestep_csv_file.close()
+        if self._file and not self._file.closed:
+            self._file.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
+class StepLogger:
+    """
+    Logs one row per timestep to a CSV file.
+    Captures the per-step trajectory data needed for paper figures
+    (steering profiles, tracking error over time, etc.).
+
+    Usage:
+        with StepLogger("metrics/trajectory.csv") as logger:
+            logger.log(episode_id=0, step=1, info_dict)
+    """
+
+    def __init__(self, csv_path: str = "metrics/trajectory.csv"):
+        self.csv_path = Path(csv_path)
+        self.csv_path.parent.mkdir(parents=True, exist_ok=True)
+        self._file = open(self.csv_path, "w", newline="")
+        self._writer = csv.DictWriter(self._file, fieldnames=STEP_FIELDS)
+        self._writer.writeheader()
+
+    def log(self, episode_id: int, info: Dict, reward: float = 0.0) -> None:
+        """
+        Log one timestep from the env's info dict.
+
+        Args:
+            episode_id: which episode this step belongs to
+            info: the info dict returned by env.step()
+            reward: the scalar reward for this step
+        """
+        pose = info.get("pose", [0.0, 0.0, 0.0])
+        row = {
+            "episode_id": int(episode_id),
+            "step": int(info.get("step", 0)),
+            "x": float(pose[0]),
+            "y": float(pose[1]),
+            "yaw": float(pose[2]),
+            "speed": float(info.get("speed", 0.0)),
+            "steer_cmd": float(info.get("steer_cmd", 0.0)),
+            "speed_cmd": float(info.get("speed_cmd", 0.0)),
+            "steer_rate": float(info.get("steer_rate", 0.0)),
+            "lateral_error": float(info.get("lateral_error", 0.0)),
+            "heading_error": float(info.get("heading_error", 0.0)),
+            "min_lidar": float(info.get("min_lidar", 0.0)),
+            "reward": float(reward),
+        }
+        self._writer.writerow(row)
+        self._file.flush()
+
+    def close(self):
+        if self._file and not self._file.closed:
+            self._file.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()

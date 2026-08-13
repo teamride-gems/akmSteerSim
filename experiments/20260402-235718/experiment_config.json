@@ -1,0 +1,18 @@
+{
+  "exp_id": "20260402-235718",
+  "action_spaces": [
+    "steer_speed",
+    "curvature_speed",
+    "lookahead_point",
+    "bezier"
+  ],
+  "eval_tracks": [
+    "Shanghai",
+    "Sakhir",
+    "Montreal"
+  ],
+  "vehicle_cfg": "configs/vehicle.yaml",
+  "sac_cfg": "configs/sac.yaml",
+  "eval_steps": 10000,
+  "device": "cuda"
+}

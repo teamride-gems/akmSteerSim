@@ -1,297 +1,162 @@
-# akmSteerSim (F1TENTH + SB3 SAC) — Contributor README
+# akmSteerSim: F1TENTH + SAC action-space experiments
 
-## Overview
+This repository studies how policy action representations affect reinforcement
+learning for Ackermann-steered racing. It provides direct steering, curvature,
+lookahead-point, and Bezier action decoders while keeping the simulator,
+observation model, actuator limits, and reward definition shared.
 
-This repository is designed to study how **action space design affects reinforcement learning performance** in Ackermann-steered systems.
-
-It enables controlled comparisons between different action parameterizations (e.g., direct steering, curvature, trajectory-based representations) while keeping the environment and reward structure fixed.
-
-## Table of Contents
-
-- [Repo Layout](#repo-layout)
-- [Core Concepts](#core-concepts)
-  - [Maps & Naming Conventions](#maps--naming-conventions)
-  - [Observation Vector](#observation-vector)
-  - [Actions](#actions)
-  - [Rewards](#rewards)
-- [Setup](#setup)
-  - [WSL2 Notes (Rendering)](#wsl2-notes-rendering)
-  - [Dependency Compatibility (IMPORTANT)](#dependency-compatibility-important)
-- [Quickstart](#quickstart)
-- [Scripts](#scripts)
-- [Training](#training)
-- [How to Run a Saved Model](#how-to-run-a-saved-model)
-- [Troubleshooting](#troubleshooting)
-- [Contributing Guidelines](#contributing-guidelines)
-- [Recommended Command Cheatsheet](#recommended-command-cheatsheet)
-
----
-
-## Repo Layout
+## Canonical pipeline
 
 ```text
-akmSteerSim/
-├─ assets/                  # Static assets for simulation (maps, track data)
-│  └─ f1tenth_racetracks/  # F1TENTH track dataset
-│     └─ <TrackName>/      # Individual track directory
-│        ├─ <TrackName>_map.yaml       # Map metadata (resolution, origin)
-│        ├─ <TrackName>_map.png        # Occupancy grid map
-│        └─ <TrackName>_centerline.csv # Track centerline (used for reward/eval)
-│
-├─ configs/                # Experiment and system configuration files
-│  ├─ vehicle.yaml         # Vehicle parameters (wheelbase, limits, constraints)
-│  └─ sac.yaml             # SAC hyperparameters and training settings
-│
-├─ drivers/                # Policy/driver abstractions
-│  └─ driver_spec.py       # Interface defining driver behavior
-│
-├─ envs/                   # RL environments (Gym-compatible)
-│  └─ f1tenth_sb3_env.py   # F1TENTH environment for training and evaluation
-│
-├─ metrics/                # Stored evaluation outputs
-│  └─ metrics.csv          # Aggregated performance metrics across runs
-│
-├─ rl/                     # Core RL pipeline (training + evaluation logic)
-│  ├─ train.py             # Training loop (SAC)
-│  └─ eval.py              # Policy evaluation logic
-│
-├─ scripts/                # Entry points for experiments, visualization, and utilities
-│  ├─ simple_drive_vis.py      # Visualize agent behavior in the environment
-│  ├─ replay_rollout_html.py   # Generate HTML replay from rollout data
-│  ├─ metrics_logger.py        # Logging/export utilities for experiment metrics
-│  ├─ run_eval.py              # Run evaluation on trained checkpoints
-│  ├─ run_trained_policy.py    # Execute a trained policy rollout
-│  └─ random_pose_gen.py       # Generate randomized initial conditions
-│
-├─ utils/                  # Core utilities (shared across env, RL, and scripts)
-│  ├─ geometry.py              # Geometric computations (curvature, transforms)
-│  ├─ normalization.py         # Input/output normalization
-│  ├─ reward.py                # Reward function definitions
-│  ├─ state_processing.py      # State representation construction
-│  └─ action_spaces_utils.py   # Action space definitions and mappings
-│
-├─ runs/                   # TensorBoard logs (created at runtime)
-├─ checkpoints/            # Saved model weights (created at runtime)
-└─ rollouts/               # Recorded trajectories + HTML replays (created at runtime)
+configs/{vehicle,sac}.yaml
+  -> scripts/sweep.py
+  -> scripts/run_one_experiment.py
+  -> rl/train.py
+  -> rl/common.py
+  -> envs/F1TenthSACEnv
+  -> utils/{action_spaces,state_processing,reward}.py
+  -> f110_gym F110Env
 ```
 
----
-## Core Concepts
+Periodic validation selects `best_validation_model.zip`. Test tracks are not
+evaluated unless `--eval_after_train` is requested or `rl/eval.py` is run
+explicitly after training.
 
-### Maps & Naming Conventions
+## Repository layout
 
-This repo uses a consistent naming convention:
+```text
+assets/f1tenth_racetracks/  Track maps and centerlines (Git submodule)
+configs/                    Vehicle/environment and SAC configurations
+envs/                       Gymnasium wrapper around F1TENTH
+rl/                         Training, validation, and held-out evaluation
+scripts/                    Sweep, analysis, rollout, and plotting entry points
+tests/                      Deterministic regressions and F1TENTH smoke test
+utils/                      Action decoding, geometry, state, reward, normalization
+checkpoints/                Generated model artifacts (ignored for new files)
+runs/                       Generated TensorBoard logs (ignored for new files)
+```
 
-- Folder per track: `assets/f1tenth_racetracks/<TrackName>/`
-- Map YAML:          `<TrackName>_map.yaml`
-- Map PNG:           `<TrackName>_map.png`
-- Centerline CSV:    `<TrackName>_centerline.csv`
+The legacy root-level `run_experiment.py` is not the canonical experiment
+runner. Use `scripts/sweep.py` or `scripts/run_one_experiment.py`.
 
-Orginal tracks from https://github.com/f1tenth/f1tenth_racetracks#
+## Environment contract
 
+The normalized observation has 28 elements with the default configuration:
 
-### Observation Vector
+```text
+[v, a_long, steering, yaw_rate, heading_error, lateral_error, a_lat,
+ 21 lidar-sector minima]
+```
 
-The environment wrapper returns a fixed observation vector including kinematics + centerline errors + LiDAR sectors.
+The steering feature is the realized F1TENTH vehicle state, not the requested
+command. The LiDAR configuration distinguishes the simulator's native input
+field of view (`input_fov_deg`) from an optional narrower policy field of view
+(`fov_deg`).
 
-Typical layout
+Available normalized policy action spaces are:
 
-[0]  v                 (speed)  
-[1]  a_long            (longitudinal accel)  
-[2]  steering          (steering state)  
-[3]  yaw_rate          (angular velocity about z)  
-[4]  heading_error     (rad)  relative to centerline tangent  
-[5]  lateral_error     (m)    signed distance to centerline  
-[6]  a_lat             (lateral accel)  
-[7] lidar_sectors     (normalized)  
+| Name | Dimensions | Decoded command |
+|---|---:|---|
+| `steer_speed` | 2 | steering angle, speed |
+| `curvature_speed` | 2 | curvature converted to steering, speed |
+| `lookahead_point` | 3 | local lookahead point converted by pure pursuit, speed |
+| `bezier` | 5 | Bezier control points converted by pure pursuit, speed |
 
-### Actions
+All decoded commands pass through the same steering-rate, acceleration, and
+absolute command constraints, including the first command after reset.
 
-The wrapper expects a 2D continuous action:
+Episodes end on collision, one environment-measured closed-loop lap, or the
+physical time horizon. `max_episode_seconds` is converted using the detected
+simulator timestep, and environment construction fails if the horizon cannot
+reach the configured lap threshold even at maximum speed.
 
-action[0]: speed_norm in [-1, 1] (mapped to m/s by your action mapper)
+The running reward is integrated in physical time:
 
-action[1]: steer_norm in [-1, 1] (mapped to steering radians)
+```text
+w_progress * centerline_arc_delta
++ w_a_long * (a_long / ref_a_long)^2 * dt
++ w_a_lat  * (a_lat  / ref_a_lat)^2  * dt
++ w_time * dt
++ one-time collision penalty
+```
 
-### Rewards
+This makes the episode objective invariant to simulator/control frequency for
+the same physical trajectory.
 
-From configs/vehicle.yaml, reward config often looks like:
+## Setup
 
-reward:  
-  progress_gain: 1.0  
-  collision_penalty: -10.0  
-  offtrack_penalty: -5.0  
+Python 3.10 is the supported runtime.
 
-## Setup (Cross-Platform)
-
-### Requirements
-
-- Python 3.10 (strongly recommended)
-- Git
-
----
-
-### Step 1: Clone
-
-```bash
+```powershell
 git clone https://github.com/teamride-gems/akmSteerSim.git
 cd akmSteerSim
-```
+git submodule update --init --recursive
 
----
-
-### Step 2: Virtual Environment
-
-#### Windows
-```powershell
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-#### macOS/Linux
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-```
-
----
-
-### Step 3: Compatibility Fix
-
-```bash
+py -3.10 -m venv .venv310
+.\.venv310\Scripts\Activate.ps1
 python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
+python -m pip install -r requirements_min.txt
+python -m pip install -e ..\f1tenth_gym
 ```
 
----
+Adjust the editable F1TENTH path to its local clone. The wrapper redirects
+Numba's cache into ignored `.numba_cache/`; this avoids import stalls when the
+editable simulator source is outside a writable workspace.
 
-### Step 4: Install Dependencies
+## Validity preflight
 
-```bash
-pip install -r requirements_min.txt
+Run both checks before training:
+
+```powershell
+python -m unittest discover -s tests -v
+python tests\f110_integration_smoke.py
 ```
 
----
+The unit suite covers collision semantics and penalty, realized steering,
+LiDAR FOV, closed-loop lap completion, feasible horizons, first-action slew
+limits, reward timestep invariance, and every bundled track. The integration
+smoke checks the installed F1TENTH observation schema and a real physics step.
 
-### Step 5: Install f110_gym
+## Training and evaluation
 
-```bash
-cd ..
-git clone https://github.com/f1tenth/f1tenth_gym.git
-pip install -e f1tenth_gym
-cd akmSteerSim
+Inspect a full four-space sweep without launching jobs:
+
+```powershell
+python scripts\sweep.py --include_bezier --seeds 0 --no-ablation --dry-run
 ```
 
----
+Run one condition and evaluate the selected validation checkpoint on the held-
+out test split:
 
-### Step 6: Install Track Assets
-
-```bash
-cd assets
-git clone https://github.com/f1tenth/f1tenth_racetracks.git
-cd ..
+```powershell
+python scripts\run_one_experiment.py `
+  --action_space steer_speed `
+  --obs_regime full `
+  --seed 0 `
+  --eval_after_train
 ```
 
----
+Run the configured multi-seed sweep:
 
-### Step 7: Verify Installation
-
-```bash
-python -c "import f110_gym; print('ok')"
-python -c "import numpy; print(numpy.__version__)"
+```powershell
+python scripts\sweep.py --include_bezier --eval_after_train
 ```
 
-Expected:
-```
-ok
-1.22.0
-```
+Outputs are written to `runs/` and `checkpoints/<run_id>/`. Each modern run
+stores its complete vehicle and SAC configuration in `run_meta.json`.
 
----
+## Rollout visualization
 
-### Step 8: Sanity Check
+```powershell
+python scripts\run_trained_policy.py `
+  --model checkpoints\<run_id>\eval_results\best_validation_model.zip `
+  --vehicle_cfg configs\vehicle.yaml `
+  --track Sakhir `
+  --steps 12000 `
+  --record --record_path rollouts\policy.npz
 
-```bash
-python scripts/simple_drive_vis.py --vehicle_cfg configs/vehicle.yaml --record --record_path rollouts/heuristic_run.npz
-```
-
----
-
-### Step 9: Replay
-
-```bash
-python scripts/replay_rollout_html.py --rollout rollouts/heuristic_run.npz --out rollouts/heuristic_run.html
-cd rollouts
-python -m http.server 8000
-```
-
-Open:
-http://localhost:8000/heuristic_run.html
-
----
-
-Core pipeline:
-
-policy → action space → (steering_angle, speed) → constraints → simulator
-
-Understanding this pipeline is essential for modifying action spaces or training logic.
-
----
-
-## Core Workflows
-
-### Rollout + Replay
-
-python scripts/simple_drive_vis.py \
-  --vehicle_cfg configs/vehicle.yaml \
-  --record --record_path rollouts/run.npz
-
-python scripts/replay_rollout_html.py \
-  --rollout rollouts/run.npz \
-  --out rollouts/run.html \
+python scripts\replay_rollout_html.py `
+  --rollout rollouts\policy.npz `
+  --out rollouts\policy.html `
   --lidar
-
----
-
-### Training
-
-python rl/train.py \
-  --vehicle_cfg configs/vehicle.yaml \
-  --sac_cfg configs/sac.yaml
-
-Outputs:
-
-- runs/ (TensorBoard logs)
-- checkpoints/ (saved models)
-
----
-
-### Run a Trained Model
-
-python scripts/run_trained_policy.py \
-  --model checkpoints/<run>/sac_final \
-  --vehicle_cfg configs/vehicle.yaml \
-  --track Sakhir \
-  --steps 5000 \
-  --record --record_path rollouts/policy.npz
-
----
-
-## Troubleshooting
-
-### Rendering Issues (WSL2)
-
-Use headless mode:
-
-- Record rollouts
-- Replay using HTML viewer
-
----
-
-### HTML Replay Issues
-
-Fixes:
-
-- Use python -m http.server
-- Reduce size with --stride
-- Validate rollout data:
----
+```

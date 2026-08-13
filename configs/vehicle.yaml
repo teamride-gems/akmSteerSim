@@ -1,31 +1,45 @@
+# ============================================================
+# Vehicle and environment configuration
+# ============================================================
+
 action_space: steer_speed  # options: steer_speed, curvature_speed, lookahead_point, bezier
 
-max_episode_steps: 2000
+# Physical episode horizon. The environment converts this to simulator steps
+# and rejects horizons that cannot reach lap_completion_fraction even at v_max.
+max_episode_seconds: 120.0
+lap_completion_fraction: 1.0
 
+# --- speed and steering limits ---
+v_min: 0.5
 v_max: 6.0
-delta_max: 0.4189
-steer_max_deg: 24.0
-aref_long_g: 0.51
-aref_lat_g: 0.82
-
-lidar:
-  sectors: 21
-  fov_deg: 270
-  clip_max_m: 10.0
-  clip_min_m: 0.05
-  outlier_quantile: 0.995
-
-sim:
-  map_dir: assets/f1tenth_racetracks/Sakhir
-  map_name: Sakhir_map
+delta_max: 0.4189  # 24.0 degrees
 
 vehicle:
   wheelbase: 0.33
   max_steer_rad: 0.4189
   max_speed_mps: 6.0
-  min_speed_mps: 0.0
+  min_speed_mps: 0.5
+  max_steering_rate: 3.5   # rad/s
+  max_acceleration: 8.0    # m/s^2
 
+# --- lidar ---
+lidar:
+  sectors: 21
+  fov_deg: 270
+  input_fov_deg: 270  # native F1TENTH scan FOV; avoids cropping a 270-deg scan twice
+  clip_max_m: 10.0
+  clip_min_m: 0.05
+  outlier_quantile: 0.995
+
+# --- simulator ---
+sim:
+  map_dir: assets/f1tenth_racetracks/Sakhir
+  map_name: Sakhir_map
+
+# --- reward ---
 reward:
+  # Running terms are integrated over simulator dt; progress is measured in
+  # centerline arc-length meters and crash_penalty is a one-time impulse.
   w_progress: 1.0
   w_a_long: -0.1
   w_a_lat: -0.1
