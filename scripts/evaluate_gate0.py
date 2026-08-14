@@ -9,12 +9,14 @@ of five seeds complete at least 90% of those laps without collision.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import json
 import sys
 from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
+import torch
 import yaml
 from stable_baselines3 import SAC
 
@@ -76,6 +78,55 @@ def _resolve_checkpoint(run_dir: Path, requested: str) -> Path:
     return path
 
 
+def _evaluate_run(payload: Dict) -> Dict:
+    """Evaluate one trained seed in an isolated process."""
+    torch.set_num_threads(1)
+    run_dir = Path(payload["run_dir"]).resolve()
+    meta = _load_json(run_dir / "run_meta.json")
+    vehicle_cfg = yaml.safe_load(
+        (run_dir / "resolved_vehicle.yaml").read_text(encoding="utf-8")
+    )
+    env = make_env_for_track(vehicle_cfg, payload["track"], render_mode=None)
+    checkpoint = _resolve_checkpoint(run_dir, payload["checkpoint"])
+    model = SAC.load(str(checkpoint), env=env, device=payload["device"])
+    spawn_indices = arc_length_spawn_indices(env.centerline, payload["starts"])
+    episodes = []
+    try:
+        for episode_idx, spawn_idx in enumerate(spawn_indices):
+            episodes.append(
+                run_eval_episode(
+                    model,
+                    env,
+                    seed=payload["evaluation_seed"] + episode_idx,
+                    spawn_idx=spawn_idx,
+                    deterministic=True,
+                )
+            )
+            if (episode_idx + 1) % 10 == 0:
+                complete = sum(e.term_reason == "lap_complete" for e in episodes)
+                print(
+                    f"seed={meta['seed']} evaluated={episode_idx + 1}/{payload['starts']} "
+                    f"complete={complete}",
+                    flush=True,
+                )
+    finally:
+        env.close()
+
+    summary = summarize_episodes(episodes)
+    return {
+        "run_result": {
+            "run_dir": str(run_dir),
+            "checkpoint": str(checkpoint),
+            "seed": int(meta["seed"]),
+            "summary": summary,
+            "passes_seed_threshold": bool(summary["completion_rate"] >= 0.90),
+            "episodes": [vars(episode) for episode in episodes],
+        },
+        "outcomes": [episode.term_reason == "lap_complete" for episode in episodes],
+        "spawn_indices": spawn_indices,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("run_dirs", nargs="+", help="Five checkpoint run directories")
@@ -86,18 +137,22 @@ def main() -> None:
     parser.add_argument("--output", default="experiments/gate0/gate0_result.json")
     parser.add_argument("--bootstrap_samples", type=int, default=10000)
     parser.add_argument("--bootstrap_seed", type=int, default=20260814)
+    parser.add_argument("--max_parallel", type=int, default=1)
     args = parser.parse_args()
 
     if len(args.run_dirs) != 5:
         raise ValueError(f"Gate 0 requires exactly five trained seeds; got {len(args.run_dirs)}.")
     if args.starts < 50:
         raise ValueError("Gate 0 requires at least 50 fixed starts per seed.")
+    if args.max_parallel <= 0:
+        raise ValueError("max_parallel must be positive.")
 
     run_results = []
     seed_outcomes: List[np.ndarray] = []
     seen_seeds = set()
     reference_spawn_indices = None
 
+    payloads = []
     for raw_run_dir in args.run_dirs:
         run_dir = Path(raw_run_dir).resolve()
         meta = _load_json(run_dir / "run_meta.json")
@@ -109,50 +164,36 @@ def main() -> None:
         if seed in seen_seeds:
             raise ValueError(f"Duplicate training seed {seed}.")
         seen_seeds.add(seed)
+        payloads.append(
+            {
+                "run_dir": str(run_dir),
+                "track": args.track,
+                "starts": args.starts,
+                "checkpoint": args.checkpoint,
+                "device": args.device,
+                "evaluation_seed": args.bootstrap_seed,
+            }
+        )
 
-        vehicle_cfg = yaml.safe_load((run_dir / "resolved_vehicle.yaml").read_text(encoding="utf-8"))
-        env = make_env_for_track(vehicle_cfg, args.track, render_mode=None)
-        checkpoint = _resolve_checkpoint(run_dir, args.checkpoint)
-        model = SAC.load(str(checkpoint), env=env, device=args.device)
-        spawn_indices = arc_length_spawn_indices(env.centerline, args.starts)
+    if args.max_parallel == 1:
+        evaluated = [_evaluate_run(payload) for payload in payloads]
+    else:
+        with ProcessPoolExecutor(max_workers=args.max_parallel) as executor:
+            evaluated = list(executor.map(_evaluate_run, payloads))
+
+    for item in evaluated:
+        run_result = item["run_result"]
+        spawn_indices = item["spawn_indices"]
         if reference_spawn_indices is None:
             reference_spawn_indices = spawn_indices
         elif spawn_indices != reference_spawn_indices:
             raise RuntimeError("Fixed-start construction changed between runs.")
-
-        episodes = []
-        try:
-            for episode_idx, spawn_idx in enumerate(spawn_indices):
-                episodes.append(
-                    run_eval_episode(
-                        model,
-                        env,
-                        seed=args.bootstrap_seed + episode_idx,
-                        spawn_idx=spawn_idx,
-                        deterministic=True,
-                    )
-                )
-        finally:
-            env.close()
-
-        outcomes = np.asarray(
-            [episode.term_reason == "lap_complete" for episode in episodes], dtype=float
-        )
-        seed_outcomes.append(outcomes)
-        summary = summarize_episodes(episodes)
-        run_results.append(
-            {
-                "run_dir": str(run_dir),
-                "checkpoint": str(checkpoint),
-                "seed": seed,
-                "summary": summary,
-                "passes_seed_threshold": bool(summary["completion_rate"] >= 0.90),
-                "episodes": [vars(episode) for episode in episodes],
-            }
-        )
+        run_results.append(run_result)
+        seed_outcomes.append(np.asarray(item["outcomes"], dtype=float))
         print(
-            f"seed={seed} completion={summary['completion_rate']:.3f} "
-            f"crash={summary['crash_rate']:.3f}"
+            f"seed={run_result['seed']} "
+            f"completion={run_result['summary']['completion_rate']:.3f} "
+            f"crash={run_result['summary']['crash_rate']:.3f}"
         )
 
     per_seed_completion = np.asarray([float(np.mean(x)) for x in seed_outcomes])
@@ -170,6 +211,7 @@ def main() -> None:
             "fixed_starts_per_seed": args.starts,
             "track": args.track,
             "checkpoint_rule": args.checkpoint,
+            "max_parallel": args.max_parallel,
         },
         "passed": bool(passing_seeds >= 4),
         "passing_seeds": passing_seeds,
