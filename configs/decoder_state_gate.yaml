@@ -1,0 +1,28 @@
+# Preregistered non-training Gate 1 thresholds. Steering is primary because the
+# action-representation contrast changes steering geometry; speed is diagnostic.
+data:
+  require_completed_episodes: true
+  minimum_episodes: 20
+  minimum_transitions: 30000
+  maximum_transitions: 100000
+
+cross_validation:
+  folds: 3
+  seed: 20260814
+  hidden_sizes: [64, 64]
+  batch_size: 1024
+  maximum_epochs: 40
+  early_stopping_patience: 5
+  learning_rate: 1.0e-3
+
+matched_histories:
+  neighbors: 16
+  maximum_standardized_rms_distance: 0.25
+  minimum_register_separation_rad: 0.05
+  minimum_pairs: 250
+
+thresholds:
+  maximum_register_steer_r2: 0.90
+  minimum_steer_nmse_reduction: 0.15
+  minimum_steer_limiter_activation_fraction: 0.20
+  minimum_matched_command_effect_rad: 0.01

@@ -11,7 +11,9 @@ FIX (M1): Normalizer reference values are serialized into run_meta.json.
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import json
+import math
 import sys
 import time
 import traceback
@@ -19,6 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+import torch
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.utils import set_random_seed
@@ -70,6 +73,38 @@ def resolve_target_entropy(sac_cfg: Dict[str, Any], action_space_name: str):
     if isinstance(te, str):
         return float(te)
     return te
+
+
+def resolve_gamma(sac_cfg: Dict[str, Any], step_seconds: float) -> float:
+    """Resolve a discount without silently coupling it to simulator frequency."""
+    configured = [
+        key for key in ("gamma", "discount_half_life_seconds", "discount_per_second")
+        if key in sac_cfg
+    ]
+    if len(configured) != 1:
+        raise ValueError(
+            "Configure exactly one of gamma, discount_half_life_seconds, or "
+            f"discount_per_second; found {configured}."
+        )
+    if step_seconds <= 0.0:
+        raise ValueError(f"step_seconds must be positive; got {step_seconds}.")
+
+    if "discount_half_life_seconds" in sac_cfg:
+        half_life = float(sac_cfg["discount_half_life_seconds"])
+        if half_life <= 0.0:
+            raise ValueError("discount_half_life_seconds must be positive.")
+        gamma = math.exp(math.log(0.5) * step_seconds / half_life)
+    elif "discount_per_second" in sac_cfg:
+        per_second = float(sac_cfg["discount_per_second"])
+        if not 0.0 < per_second <= 1.0:
+            raise ValueError("discount_per_second must be in (0, 1].")
+        gamma = per_second ** step_seconds
+    else:
+        gamma = float(sac_cfg["gamma"])
+
+    if not 0.0 < gamma <= 1.0:
+        raise ValueError(f"Resolved gamma must be in (0, 1]; got {gamma}.")
+    return gamma
 
 
 class ValidationEvalCallback(BaseCallback):
@@ -257,7 +292,15 @@ def main() -> None:
     ap.add_argument("--validation_tracks", default=None)
     ap.add_argument("--test_tracks", default=None)
     ap.add_argument("--eval_tracks", default=None, help="Legacy alias for validation tracks")
-    ap.add_argument("--n_eval_episodes", type=int, default=10)
+    ap.add_argument("--n_eval_episodes", type=int, default=None)
+    ap.add_argument("--train_steps", type=int, default=None)
+    ap.add_argument("--eval_interval_steps", type=int, default=None)
+    ap.add_argument("--save_every_steps", type=int, default=None)
+    ap.add_argument(
+        "--no_train_track_eval",
+        action="store_true",
+        help="Skip diagnostic train-track rollouts during validation.",
+    )
     ap.add_argument("--run_id", default=None)
     ap.add_argument("--early_stop_patience", type=int, default=None)
     ap.add_argument("--save_replay_buffer", action="store_true")
@@ -266,6 +309,11 @@ def main() -> None:
 
     veh_cfg = load_yaml(ROOT / args.vehicle_cfg)
     sac_cfg = load_yaml(ROOT / args.sac_cfg)
+
+    torch_num_threads = int(sac_cfg.get("torch_num_threads", 1))
+    if torch_num_threads <= 0:
+        raise ValueError("torch_num_threads must be positive.")
+    torch.set_num_threads(torch_num_threads)
 
     seed = args.seed if args.seed is not None else int(sac_cfg.get("seed", 0))
     set_random_seed(seed)
@@ -276,6 +324,13 @@ def main() -> None:
         veh_cfg["ablate_centerline_features"] = True
 
     action_space_name = veh_cfg.get("action_space", "steer_speed")
+    n_eval_episodes = (
+        int(args.n_eval_episodes)
+        if args.n_eval_episodes is not None
+        else int(sac_cfg.get("n_eval_episodes", 10))
+    )
+    if n_eval_episodes <= 0:
+        raise ValueError("n_eval_episodes must be positive.")
 
     if args.train_track:
         train_track = normalize_track_name(args.train_track)
@@ -313,9 +368,19 @@ def main() -> None:
 
     env = make_env_for_track(veh_cfg, train_track, render_mode=None)
 
-    train_steps = int(sac_cfg.get("train_steps", 500_000))
-    eval_freq = int(sac_cfg.get("eval_interval_steps", 5_000))
-    save_every = int(sac_cfg.get("save_every_steps", 25_000))
+    train_steps = int(
+        args.train_steps if args.train_steps is not None
+        else sac_cfg.get("train_steps", 500_000)
+    )
+    eval_freq = int(
+        args.eval_interval_steps if args.eval_interval_steps is not None
+        else sac_cfg.get("eval_interval_steps", 5_000)
+    )
+    save_every = int(
+        args.save_every_steps if args.save_every_steps is not None
+        else sac_cfg.get("save_every_steps", 25_000)
+    )
+    resolved_gamma = resolve_gamma(sac_cfg, env.dt)
     lr_schedule = make_lr_schedule(sac_cfg)
     target_entropy = resolve_target_entropy(sac_cfg, action_space_name)
 
@@ -337,16 +402,18 @@ def main() -> None:
             learning_rate=lr_schedule,
             batch_size=sac_cfg["batch_size"],
             tau=sac_cfg["tau"],
-            gamma=sac_cfg["gamma"],
+            gamma=resolved_gamma,
             buffer_size=int(sac_cfg.get("buffer_size", 1_000_000)),
             learning_starts=int(sac_cfg.get("learning_starts", 100)),
             seed=seed,
-            policy_kwargs=sac_cfg.get("policy_kwargs"),
+            policy_kwargs=deepcopy(sac_cfg.get("policy_kwargs")),
             verbose=1,
             tensorboard_log=str(runs_dir),
             device=args.device,
             ent_coef=sac_cfg.get("ent_coef", "auto"),
             target_entropy=target_entropy,
+            train_freq=int(sac_cfg.get("train_freq", 1)),
+            gradient_steps=int(sac_cfg.get("gradient_steps", 1)),
         )
 
     # FIX (M1): serialize normalizer reference values for eval-time consistency check
@@ -375,7 +442,7 @@ def main() -> None:
         "train_track": train_track,
         "validation_tracks": validation_tracks,
         "test_tracks": test_tracks,
-        "n_eval_episodes": args.n_eval_episodes,
+        "n_eval_episodes": n_eval_episodes,
         "selection_metric": "completion_then_progress",
         "selected_checkpoint_name": "best_validation_model.zip",
         "resumed_from": args.resume,
@@ -386,6 +453,15 @@ def main() -> None:
         "normalizer_refs": normalizer_refs,
         "vehicle_cfg": veh_cfg,
         "sac_cfg": sac_cfg,
+        "resolved_gamma": resolved_gamma,
+        "policy_step_seconds": env.dt,
+        "simulator_step_seconds": env.simulator_dt,
+        "action_repeat": env.action_repeat,
+        "torch_num_threads": torch_num_threads,
+        "discount_half_life_seconds": (
+            math.log(0.5) * env.dt / math.log(resolved_gamma)
+            if 0.0 < resolved_gamma < 1.0 else None
+        ),
         "vehicle_cfg_source": args.vehicle_cfg,
         "sac_cfg_source": args.sac_cfg,
         "provenance": collect_provenance(ROOT),
@@ -416,6 +492,7 @@ def main() -> None:
     print(f"  validation_tracks: {validation_tracks}")
     print(f"  test_tracks:       {test_tracks}")
     print(f"  target_entropy:    {target_entropy}")
+    print(f"  resolved_gamma:    {resolved_gamma:.9f} (dt={env.dt:.6f}s)")
     print(f"  checkpoints:       {ckpt_dir}")
 
     callbacks: List[BaseCallback] = [
@@ -439,9 +516,12 @@ def main() -> None:
                 train_track=train_track,
                 validation_tracks=validation_tracks,
                 eval_freq=eval_freq,
-                n_eval_episodes=args.n_eval_episodes,
+                n_eval_episodes=n_eval_episodes,
                 results_dir=results_dir,
-                report_train_track=True,
+                report_train_track=(
+                    bool(sac_cfg.get("report_train_track", True))
+                    and not args.no_train_track_eval
+                ),
                 deterministic=True,
                 early_stop_patience=int(early_stop_patience) if early_stop_patience is not None else None,
                 early_stop_min_delta=float(sac_cfg.get("early_stop_min_delta", 0.0)),

@@ -30,8 +30,10 @@ def main() -> None:
         obs, reset_info = env.reset(seed=0, options={"spawn_index": 1})
         assert obs.shape == env.observation_space.shape
         assert np.all(np.isfinite(obs))
-        assert env.dt == 0.01, f"Unexpected F1TENTH timestep: {env.dt}"
-        assert env.max_episode_steps == 12_000
+        assert env.simulator_dt == 0.01, f"Unexpected F1TENTH timestep: {env.simulator_dt}"
+        assert env.action_repeat == cfg["action_repeat"]
+        assert env.dt == 0.05, f"Unexpected policy timestep: {env.dt}"
+        assert env.max_episode_steps == 2_400
         assert not reset_info["crash"]
 
         previous_realized_steer = env._read_sim_steering(0)
@@ -71,7 +73,8 @@ def main() -> None:
 
         print(
             "F1TENTH integration smoke passed: "
-            f"dt={env.dt:.3f}s, horizon={env.max_episode_steps} steps, "
+            f"control_dt={env.dt:.3f}s, sim_dt={env.simulator_dt:.3f}s, "
+            f"horizon={env.max_episode_steps} steps, "
             f"first_steer_cmd={first_info['steer_cmd']:.4f}rad, "
             f"realized_steer={realized_steer:.4f}rad"
         )

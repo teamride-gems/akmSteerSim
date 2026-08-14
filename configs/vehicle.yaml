@@ -4,6 +4,10 @@
 
 action_space: steer_speed  # options: steer_speed, curvature_speed, lookahead_point, bezier
 
+# The plant integrates at 100 Hz; the policy/decoder acts at 20 Hz. This is
+# fixed across all conditions and approximates the physical robot command loop.
+action_repeat: 5
+
 # Physical episode horizon. The environment converts this to simulator steps
 # and rejects horizons that cannot reach lap_completion_fraction even at v_max.
 max_episode_seconds: 120.0

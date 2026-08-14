@@ -124,6 +124,8 @@ class EpisodeResult:
     speed_clip_frac: float = 0.0
     mean_steer_clip_mag: float = 0.0
     mean_speed_clip_mag: float = 0.0
+    mean_steer_command_realized_gap: float = 0.0
+    mean_speed_command_realized_gap: float = 0.0
     min_lidar: float = 0.0
     mean_reward_progress: float = 0.0
     mean_reward_a_long_pen: float = 0.0
@@ -153,6 +155,8 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
     speed_clips = 0
     steer_clip_mags = []
     speed_clip_mags = []
+    steer_command_realized_gaps = []
+    speed_command_realized_gaps = []
     reward_progress = []
     reward_a_long_pen = []
     reward_a_lat_pen = []
@@ -187,6 +191,12 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
             speed_clips += 1
         steer_clip_mags.append(float(info.get("steer_clip_mag", 0.0)))
         speed_clip_mags.append(float(info.get("speed_clip_mag", 0.0)))
+        steer_command_realized_gaps.append(
+            float(info.get("steer_command_realized_gap", 0.0))
+        )
+        speed_command_realized_gaps.append(
+            float(info.get("speed_command_realized_gap", 0.0))
+        )
 
         rb = info.get("reward_breakdown", {})
         reward_progress.append(float(rb.get("progress", 0.0)))
@@ -228,6 +238,14 @@ def run_eval_episode(model, env, seed: int, spawn_idx: int, deterministic: bool 
         speed_clip_frac=speed_clips / n,
         mean_steer_clip_mag=float(np.mean(steer_clip_mags)) if steer_clip_mags else 0.0,
         mean_speed_clip_mag=float(np.mean(speed_clip_mags)) if speed_clip_mags else 0.0,
+        mean_steer_command_realized_gap=(
+            float(np.mean(steer_command_realized_gaps))
+            if steer_command_realized_gaps else 0.0
+        ),
+        mean_speed_command_realized_gap=(
+            float(np.mean(speed_command_realized_gaps))
+            if speed_command_realized_gaps else 0.0
+        ),
         min_lidar=float(np.min(real_lidars)) if real_lidars else 0.0,
         mean_reward_progress=float(np.mean(reward_progress)) if reward_progress else 0.0,
         mean_reward_a_long_pen=float(np.mean(reward_a_long_pen)) if reward_a_long_pen else 0.0,
@@ -275,6 +293,14 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> N
     logger.record(f"{prefix}/mean_steer_tv_per_step", _mean("steer_tv_per_step"))
     logger.record(f"{prefix}/steer_clip_frac", _mean("steer_clip_frac"))
     logger.record(f"{prefix}/speed_clip_frac", _mean("speed_clip_frac"))
+    logger.record(
+        f"{prefix}/mean_steer_cmd_gap",
+        _mean("mean_steer_command_realized_gap"),
+    )
+    logger.record(
+        f"{prefix}/mean_speed_cmd_gap",
+        _mean("mean_speed_command_realized_gap"),
+    )
     logger.record(f"{prefix}/mean_ep_len", _mean("length"))
     logger.record(f"{prefix}/mean_reward_progress", _mean("mean_reward_progress"))
     logger.record(f"{prefix}/mean_reward_a_long_pen", _mean("mean_reward_a_long_pen"))
@@ -286,11 +312,11 @@ def log_episode_metrics(logger, prefix: str, episodes: List[EpisodeResult]) -> N
     logger.record(f"{prefix}/max_abs_a_long", max(e.max_abs_a_long for e in episodes))
     logger.record(f"{prefix}/max_abs_a_lat", max(e.max_abs_a_lat for e in episodes))
     logger.record(
-        f"{prefix}/max_abs_nonterminal_a_long",
+        f"{prefix}/max_nonterm_ax",
         max(e.max_abs_nonterminal_a_long for e in episodes),
     )
     logger.record(
-        f"{prefix}/max_abs_nonterminal_a_lat",
+        f"{prefix}/max_nonterm_ay",
         max(e.max_abs_nonterminal_a_lat for e in episodes),
     )
 
@@ -325,6 +351,8 @@ def summarize_episodes(episodes: List[EpisodeResult]) -> Dict[str, float]:
         "mean_steer_tv_per_step": _mean("steer_tv_per_step"),
         "steer_clip_frac": _mean("steer_clip_frac"),
         "speed_clip_frac": _mean("speed_clip_frac"),
+        "mean_steer_command_realized_gap": _mean("mean_steer_command_realized_gap"),
+        "mean_speed_command_realized_gap": _mean("mean_speed_command_realized_gap"),
         "mean_reward_progress": _mean("mean_reward_progress"),
         "mean_reward_a_long_pen": _mean("mean_reward_a_long_pen"),
         "mean_reward_a_lat_pen": _mean("mean_reward_a_lat_pen"),

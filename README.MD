@@ -63,11 +63,14 @@ Available normalized policy action spaces are:
 | `bezier` | 5 | Bezier control points converted by pure pursuit, speed |
 
 All decoded commands pass through the same steering-rate, acceleration, and
-absolute command constraints, including the first command after reset.
+absolute command constraints, including the first command after reset. The
+default plant integrates at 100 Hz while the policy and stateful decoder act at
+20 Hz (`action_repeat: 5`); each constrained command is held across the five
+plant integrations.
 
 Episodes end on collision, one environment-measured closed-loop lap, or the
-physical time horizon. `max_episode_seconds` is converted using the detected
-simulator timestep, and environment construction fails if the horizon cannot
+physical time horizon. `max_episode_seconds` is converted using the policy
+control timestep, and environment construction fails if the horizon cannot
 reach the configured lap threshold even at maximum speed.
 
 The running reward is integrated in physical time:
@@ -80,8 +83,56 @@ w_progress * centerline_arc_delta
 + one-time collision penalty
 ```
 
-This makes the episode objective invariant to simulator/control frequency for
-the same physical trajectory.
+This makes the running objective invariant to simulator/control frequency for
+the same physical trajectory. SAC discounting is also specified in physical
+time (`discount_half_life_seconds`) and resolved against the policy timestep.
+
+## Closing-the-action-interface ladder
+
+The current paper direction is gated. Comparative action-space training is not
+authorized until both of these checks pass:
+
+1. **Gate 0 — direct SAC functionality.** Train five `steer_speed` seeds using
+   `configs/gate0_sac.yaml`. Select checkpoints only on the declared validation
+   tracks. On 50 fixed, arc-length-spaced Sakhir starts, at least four of five
+   seeds must achieve at least 90% collision-free lap completion. The decision
+   script reports per-seed outcomes, IQM, and stratified bootstrap intervals.
+2. **Gate 1 — decoder-state relevance.** From successful frozen-policy laps,
+   fit episode-split models `m: o -> h`, `f: (o,a) -> c`, and
+   `g: (o,a,h) -> c`, then run standardized caliper matching on reachable
+   histories. All thresholds in `configs/decoder_state_gate.yaml` were fixed
+   before the audit. Recoverable or irrelevant register state, rare limiter
+   activation, or a failed matched-history contrast kills the paper direction.
+
+The environment logs the full interface transition on every step: policy
+observation, raw action, previous constrained command, decoded pre-limit
+command, executed command, realized command, next observation, limiter flags,
+correction magnitudes, and commanded-versus-realized gaps.
+
+Gate 0 evaluation:
+
+```powershell
+python scripts\evaluate_gate0.py `
+  checkpoints\gate0_direct_s0 checkpoints\gate0_direct_s1 `
+  checkpoints\gate0_direct_s2 checkpoints\gate0_direct_s3 `
+  checkpoints\gate0_direct_s4
+```
+
+Gate 1 collection and audit (only after Gate 0 passes):
+
+```powershell
+python scripts\collect_decoder_audit.py `
+  --run_dir checkpoints\gate0_direct_s0 `
+  --tracks Sakhir --episodes_per_track 25
+
+python scripts\audit_decoder_state.py `
+  experiments\gate1\decoder_audit_dataset.npz
+```
+
+Only a joint Gate 0/Gate 1 pass authorizes the 12-run
+Direct/Curvature × {shuffled-register, actual-register} screen. A common main
+effect is insufficient; expansion requires a representation-by-observability
+interaction plus the preregistered command-distribution mechanism analysis.
 
 ## Setup
 

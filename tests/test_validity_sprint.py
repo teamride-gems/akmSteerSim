@@ -18,6 +18,7 @@ import numpy as np
 import yaml
 
 from envs.f1tenth_sb3_env import F1TenthSACEnv
+from rl.train import resolve_gamma
 from utils.reward import compute_reward
 from utils.state_processing import lidar_to_sectors
 
@@ -204,7 +205,7 @@ class ValiditySprintTests(unittest.TestCase):
 
     def test_first_action_obeys_steering_and_acceleration_limits(self):
         env = self.make_env()
-        env.reset(options={"spawn_index": 1})
+        obs, _ = env.reset(options={"spawn_index": 1})
 
         _, _, _, _, info = env.step(np.ones(2))
 
@@ -216,6 +217,39 @@ class ValiditySprintTests(unittest.TestCase):
         self.assertIn("realized_steer", info)
         self.assertIn("a_long", info)
         self.assertIn("a_lat", info)
+        np.testing.assert_allclose(info["policy_observation"], obs)
+        self.assertEqual(info["raw_action"].shape, (2,))
+        self.assertEqual(info["previous_command"].shape, (2,))
+        self.assertEqual(info["pre_constraint_command"].shape, (2,))
+        self.assertEqual(info["executed_command"].shape, (2,))
+        self.assertEqual(info["realized_command"].shape, (2,))
+        self.assertEqual(info["next_policy_observation"].shape, env.observation_space.shape)
+        self.assertTrue(info["limiter_active"])
+
+    def test_physical_time_discount_is_frequency_calibrated(self):
+        cfg = {"discount_half_life_seconds": 10.0}
+        gamma_100hz = resolve_gamma(cfg, 0.01)
+        gamma_20hz = resolve_gamma(cfg, 0.05)
+
+        self.assertAlmostEqual(gamma_100hz ** 1000, 0.5, places=10)
+        self.assertAlmostEqual(gamma_20hz ** 200, 0.5, places=10)
+
+    def test_action_repeat_sets_policy_timestep_and_holds_command(self):
+        env = self.make_env(action_repeat=2)
+        env.reset(options={"spawn_index": 1})
+
+        _, _, _, _, info = env.step(np.ones(2))
+
+        self.assertAlmostEqual(env.simulator_dt, 0.1)
+        self.assertAlmostEqual(env.dt, 0.2)
+        self.assertEqual(env.max_episode_steps, 25)
+        self.assertEqual(info["internal_sim_steps"], 2)
+        self.assertAlmostEqual(info["elapsed_seconds"], 0.2)
+        self.assertAlmostEqual(info["steer_cmd"], 0.2)
+
+    def test_discount_configuration_is_unambiguous(self):
+        with self.assertRaisesRegex(ValueError, "exactly one"):
+            resolve_gamma({"gamma": 0.99, "discount_half_life_seconds": 10.0}, 0.01)
 
     def test_running_reward_is_timestep_invariant(self):
         cfg = _vehicle_config(Path(self.temp_dir.name))

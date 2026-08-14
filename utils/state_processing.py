@@ -66,7 +66,7 @@ def lidar_to_sectors(scan, cfg):
     return np.asarray(mins, dtype=float)
 
 
-def make_state(obs_raw, centerline, cfg):
+def make_state(obs_raw, centerline, cfg, e_lat=None, e_head=None):
     x, y, yaw = obs_raw["pose"]
     v = float(obs_raw["speed"])
     d = float(obs_raw["steer"])
@@ -74,7 +74,8 @@ def make_state(obs_raw, centerline, cfg):
     a_long = float(obs_raw.get("a_long", 0.0))
     a_lat = float(obs_raw.get("a_lat", 0.0))
 
-    e_lat, e_head = project_to_centerline(np.array([x, y, yaw]), centerline)
+    if e_lat is None or e_head is None:
+        e_lat, e_head = project_to_centerline(np.array([x, y, yaw]), centerline)
 
     lidar_mins = lidar_to_sectors(obs_raw["scan"], cfg)
 

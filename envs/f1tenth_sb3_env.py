@@ -11,7 +11,6 @@ import yaml
 from utils.state_processing import make_state
 from utils.reward import compute_reward
 from utils.normalization import StateNormalizer
-from utils.geometry import project_to_centerline
 from utils.action_spaces_utils import (
     get_policy_dim,
     get_action_space_spec,
@@ -77,6 +76,11 @@ class F1TenthSACEnv(gym.Env):
             )
         self._cl_seg_lengths = seg_lengths
         self._cl_cumlen = np.concatenate([[0.0], np.cumsum(seg_lengths)])
+        self._cl_starts = points
+        self._cl_segments = np.roll(points, -1, axis=0) - points
+        self._cl_safe_len_sq = np.maximum(
+            np.sum(self._cl_segments * self._cl_segments, axis=1), 1e-12
+        )
         self._track_length = float(self._cl_cumlen[-1])
         if self._track_length <= 0.0:
             raise ValueError("Track length must be positive.")
@@ -122,6 +126,7 @@ class F1TenthSACEnv(gym.Env):
         )
 
         self._prev_command = None
+        self._last_policy_observation = None
 
         self.n_lidar = int(self.cfg["lidar"]["sectors"])
         self.obs_dim = STATE_N_SCALARS + self.n_lidar
@@ -131,7 +136,10 @@ class F1TenthSACEnv(gym.Env):
 
         self.normalizer = StateNormalizer(self.cfg)
 
-        self._dt = 1.0 / 30.0
+        self._sim_dt = 1.0 / 30.0
+        self._action_repeat = int(cfg.get("action_repeat", 1))
+        if self._action_repeat <= 0:
+            raise ValueError("action_repeat must be a positive integer.")
         self._last_for_rates = None
         self._raw_beams = int(self.cfg.get("lidar", {}).get("raw_beams", 0))
         self._sim_obs_schema_validated = False
@@ -176,16 +184,19 @@ class F1TenthSACEnv(gym.Env):
             if hasattr(self.sim, key) and isinstance(getattr(self.sim, key), (float, int)):
                 val = float(getattr(self.sim, key))
                 if val > 0:
-                    self._dt = val
+                    self._sim_dt = val
                     dt_found = True
                     break
         if not dt_found:
             warnings.warn(
                 f"Could not detect sim timestep from F110Env attributes. "
-                f"Falling back to dt={self._dt:.4f}s (1/{1.0 / self._dt:.0f} Hz). "
+                f"Falling back to dt={self._sim_dt:.4f}s "
+                f"(1/{1.0 / self._sim_dt:.0f} Hz). "
                 f"Steering rate and finite-difference kinematics may be inaccurate.",
                 stacklevel=2,
             )
+
+        self._dt = self._sim_dt * self._action_repeat
 
         if self._max_episode_seconds is not None:
             max_episode_seconds = float(self._max_episode_seconds)
@@ -211,7 +222,9 @@ class F1TenthSACEnv(gym.Env):
             f"[F1TenthSACEnv] action_space={self.action_space_name} "
             f"policy_dim={self._policy_dim} "
             f"obs_dim={self.obs_dim} "
-            f"dt={self._dt:.4f}s "
+            f"control_dt={self._dt:.4f}s "
+            f"sim_dt={self._sim_dt:.4f}s "
+            f"action_repeat={self._action_repeat} "
             f"max_steps={self._max_steps} "
             f"lap_fraction={self._lap_completion_fraction:.3f} "
             f"ablate_geometry={self._ablate_geometry}"
@@ -224,6 +237,14 @@ class F1TenthSACEnv(gym.Env):
     @property
     def dt(self) -> float:
         return self._dt
+
+    @property
+    def simulator_dt(self) -> float:
+        return self._sim_dt
+
+    @property
+    def action_repeat(self) -> int:
+        return self._action_repeat
 
     @property
     def max_episode_steps(self) -> int:
@@ -486,27 +507,35 @@ class F1TenthSACEnv(gym.Env):
         self._last_for_rates = {"t": t_now, "x": x, "y": y, "yaw": yaw, "v": v}
         return obs_raw
 
-    def _projected_arc_progress(self, pose) -> float:
+    def _project_centerline_state(self, pose):
+        """Return arc progress, lateral error, and heading error in one pass."""
         xy = np.asarray(pose[:2], dtype=float)
-        pts = self.centerline[:, :2]
+        to_point = xy - self._cl_starts
+        t = np.sum(to_point * self._cl_segments, axis=1) / self._cl_safe_len_sq
+        t = np.clip(t, 0.0, 1.0)
+        closest = self._cl_starts + t[:, None] * self._cl_segments
+        dist_sq = np.sum((xy - closest) ** 2, axis=1)
+        best = int(np.argmin(dist_sq))
 
-        best_s = 0.0
-        best_dist_sq = float("inf")
-        for i in range(len(pts)):
-            p0 = pts[i]
-            p1 = pts[(i + 1) % len(pts)]
-            seg = p1 - p0
-            seg_len_sq = float(np.dot(seg, seg))
-            if seg_len_sq <= 1e-12:
-                continue
-            t = float(np.dot(xy - p0, seg) / seg_len_sq)
-            t = float(np.clip(t, 0.0, 1.0))
-            proj = p0 + t * seg
-            dist_sq = float(np.sum((xy - proj) ** 2))
-            if dist_sq < best_dist_sq:
-                best_dist_sq = dist_sq
-                best_s = float(self._cl_cumlen[i] + t * self._cl_seg_lengths[i])
-        return best_s
+        segment = self._cl_segments[best]
+        segment_length = float(self._cl_seg_lengths[best])
+        if segment_length > 1e-6:
+            e_lat = (
+                float(segment[0]) * float(to_point[best, 1])
+                - float(segment[1]) * float(to_point[best, 0])
+            ) / segment_length
+        else:
+            e_lat = float(np.sqrt(dist_sq[best]))
+
+        track_heading = float(np.arctan2(segment[1], segment[0]))
+        e_head = float((float(pose[2]) - track_heading + np.pi) % (2 * np.pi) - np.pi)
+        arc_progress = float(
+            self._cl_cumlen[best] + float(t[best]) * self._cl_seg_lengths[best]
+        )
+        return arc_progress, float(e_lat), e_head
+
+    def _projected_arc_progress(self, pose) -> float:
+        return self._project_centerline_state(pose)[0]
 
     def _spawn_pose(self, idx: int):
         N = self.centerline.shape[0]
@@ -524,6 +553,7 @@ class F1TenthSACEnv(gym.Env):
         self._step_i = 0
         self._last_for_rates = None
         self._prev_command = None
+        self._last_policy_observation = None
         self._prev_steer_cmd = 0.0
         self._cumulative_progress = 0.0       # FIX (M7)
 
@@ -562,23 +592,46 @@ class F1TenthSACEnv(gym.Env):
         }
         self._prev_steer_cmd = float(obs_raw["steer"])
 
-        state = make_state(obs_raw, self.centerline, self.cfg)
+        arc_progress, e_lat, e_head = self._project_centerline_state(obs_raw["pose"])
+        state = make_state(
+            obs_raw,
+            self.centerline,
+            self.cfg,
+            e_lat=e_lat,
+            e_head=e_head,
+        )
         if self._ablate_geometry:
             state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
 
-        self._prev_progress = self._projected_arc_progress(obs_raw["pose"])
+        self._prev_progress = arc_progress
+        policy_observation = state_norm.astype(np.float32)
+        self._last_policy_observation = policy_observation.copy()
 
         info = {
             "crash": bool(obs_raw.get("crash", False)),
             "pose": obs_raw["pose"].copy(),
             "speed": float(obs_raw["speed"]),
             "spawn_index": spawn_idx,
+            "lateral_error": float(e_lat),
+            "heading_error": float(e_head),
         }
-        return state_norm.astype(np.float32), info
+        return policy_observation, info
 
     def step(self, action):
         self._step_i += 1
+
+        if self._last_policy_observation is None:
+            raise RuntimeError("step() called before reset().")
+        policy_observation = self._last_policy_observation.copy()
+        raw_action = np.asarray(action, dtype=np.float32).reshape(-1).copy()
+        previous_command = np.array(
+            [
+                float(self._prev_command["steering_angle"]),
+                float(self._prev_command["speed"]),
+            ],
+            dtype=np.float32,
+        )
 
         command = raw_action_to_command(
             self.action_space_name,
@@ -602,13 +655,30 @@ class F1TenthSACEnv(gym.Env):
         self._prev_command = command
 
         sim_action = np.array([[steering_angle, speed]], dtype=float)
-        sim_obs, _, done, _ = self.sim.step(sim_action)
-        sim_done = bool(np.asarray(done).ravel()[0]) if isinstance(done, (list, tuple, np.ndarray)) else bool(done)
+        sim_done = False
+        internal_steps = 0
+        for _ in range(self._action_repeat):
+            sim_obs, _, done, _ = self.sim.step(sim_action)
+            internal_steps += 1
+            sim_done = (
+                bool(np.asarray(done).ravel()[0])
+                if isinstance(done, (list, tuple, np.ndarray))
+                else bool(done)
+            )
+            if sim_done:
+                break
 
         obs_raw = self._extract_obs(sim_obs)
         obs_raw = self._finite_difference_kin(obs_raw)
 
-        state = make_state(obs_raw, self.centerline, self.cfg)
+        current_progress, e_lat, e_head = self._project_centerline_state(obs_raw["pose"])
+        state = make_state(
+            obs_raw,
+            self.centerline,
+            self.cfg,
+            e_lat=e_lat,
+            e_head=e_head,
+        )
         if self._ablate_geometry:
             state = self._zero_geometry_features(state)
         state_norm = self.normalizer.normalize(state)
@@ -617,7 +687,6 @@ class F1TenthSACEnv(gym.Env):
 
         # Closed-loop cumulative arc progress makes completion independent of
         # F1TENTH's two-return start-zone toggle semantics.
-        current_progress = self._projected_arc_progress(obs_raw["pose"])
         delta_progress = current_progress - self._prev_progress
         if delta_progress < -self._track_length / 2:
             delta_progress += self._track_length
@@ -626,15 +695,13 @@ class F1TenthSACEnv(gym.Env):
         self._prev_progress = current_progress
         self._cumulative_progress += delta_progress
 
-        e_lat, e_head = project_to_centerline(obs_raw["pose"], self.centerline)
-
         reward, reward_terms = compute_reward(
             obs_raw,
             self.centerline,
             self.cfg,
             e_lat=e_lat,
             e_head=e_head,
-            dt=self._dt,
+            dt=internal_steps * self._sim_dt,
             delta_progress=delta_progress,
         )
 
@@ -656,8 +723,18 @@ class F1TenthSACEnv(gym.Env):
         else:
             term_reason = "running"
 
+        next_policy_observation = state_norm.astype(np.float32)
+        self._last_policy_observation = next_policy_observation.copy()
+        realized_command = np.array(
+            [float(obs_raw["steer"]), float(obs_raw["speed"])], dtype=np.float32
+        )
+        executed_command = np.array([steering_angle, speed], dtype=np.float32)
+        pre_constraint_command = np.array([pre_steer, pre_speed], dtype=np.float32)
+
         info = {
             "step": self._step_i,
+            "internal_sim_steps": internal_steps,
+            "elapsed_seconds": internal_steps * self._sim_dt,
             "term_reason": term_reason,
             "action_space": self.action_space_name,
             "crash": crash,
@@ -676,6 +753,17 @@ class F1TenthSACEnv(gym.Env):
             "speed_clipped": speed_clipped,
             "steer_clip_mag": abs(pre_steer - steering_angle),
             "speed_clip_mag": abs(pre_speed - speed),
+            # Complete action-interface transition for the Gate 0/1 audit.
+            "policy_observation": policy_observation,
+            "raw_action": raw_action,
+            "previous_command": previous_command,
+            "pre_constraint_command": pre_constraint_command,
+            "executed_command": executed_command,
+            "realized_command": realized_command,
+            "next_policy_observation": next_policy_observation,
+            "limiter_active": bool(steer_clipped or speed_clipped),
+            "steer_command_realized_gap": abs(steering_angle - float(obs_raw["steer"])),
+            "speed_command_realized_gap": abs(speed - float(obs_raw["speed"])),
             "lateral_error": float(e_lat),
             "heading_error": float(e_head),
             "min_lidar": float(np.min(obs_raw["scan"])),
@@ -687,7 +775,7 @@ class F1TenthSACEnv(gym.Env):
             "reward_breakdown": reward_terms,
         }
 
-        return state_norm.astype(np.float32), float(reward), terminated, truncated, info
+        return next_policy_observation, float(reward), terminated, truncated, info
 
     def _zero_geometry_features(self, state: np.ndarray) -> np.ndarray:
         """Zero geometry-leaking features in the ablated observation regime.

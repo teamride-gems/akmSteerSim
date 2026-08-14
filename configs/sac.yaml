@@ -1,4 +1,5 @@
 policy: MlpPolicy
+torch_num_threads: 1
 seed: 0
 
 train_steps: 500000
@@ -10,7 +11,9 @@ batch_size: 256
 buffer_size: 1000000
 learning_starts: 1000
 tau: 0.005
-gamma: 0.99
+# Physical-time discounting. At the configured 20 Hz policy rate this resolves
+# to gamma ~= 0.996540, preserving a 10 s reward half-life.
+discount_half_life_seconds: 10.0
 
 ent_coef: auto
 target_entropy: auto
