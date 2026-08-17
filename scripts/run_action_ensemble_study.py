@@ -318,7 +318,16 @@ def temporal_features(history: deque[np.ndarray]) -> np.ndarray:
     minimum = np.min(values, axis=0)
     maximum = np.max(values, axis=0)
     delta = values[-1] - values[0]
-    return np.concatenate([current, mean, minimum, maximum, delta]).astype(float)
+    base = np.concatenate([current, mean, minimum, maximum, delta]).astype(float)
+    # A linear classifier over these expanded terms is a nonlinear temporal
+    # state-risk model in the original observation.  Pairwise current-state
+    # interactions let, for example, speed modulate yaw/lateral risk without
+    # introducing an optional external ML dependency.
+    interactions = []
+    for i in range(current.size):
+        for j in range(i, current.size):
+            interactions.append(float(current[i] * current[j]))
+    return np.concatenate([base, np.asarray(interactions, dtype=float)])
 
 
 def collect_episode(
@@ -495,7 +504,7 @@ class TemporalLogisticRisk:
 
     def as_dict(self) -> Dict[str, Any]:
         return {
-            "kind": "L2 temporal logistic risk model",
+            "kind": "L2 temporal logistic model over nonlinear rolling features",
             "l2": self.l2,
             "constant": self.constant,
             "mean": None if self.mean is None else self.mean.tolist(),
@@ -630,6 +639,11 @@ def analyze_dataset(cfg: Dict[str, Any], rows, episodes):
     for row, score in zip(test, model.predict(x_test)):
         row["temporal_risk"] = float(score)
 
+    pair_names = ("direct_curvature", "direct_lookahead", "curvature_lookahead")
+    for row in rows:
+        for pair_idx, pair_name in enumerate(pair_names):
+            row[f"heterogeneous_pair_{pair_name}"] = float(row["heterogeneous_pairs"][pair_idx])
+
     fpr = float(cfg["target_frame_false_positive_rate"])
     thresholds = {}
     for score_name in SCORE_NAMES:
@@ -655,6 +669,17 @@ def analyze_dataset(cfg: Dict[str, Any], rows, episodes):
                 "safe_alarm_events_per_minute",
             )
         }
+    pair_macro_auprc = {}
+    for pair_name in pair_names:
+        key = f"heterogeneous_pair_{pair_name}"
+        family_values = []
+        for family in cfg["shifts"]:
+            family_rows = [row for row in test if row["family"] == family]
+            y_family = np.asarray([row["label"] for row in family_rows], dtype=int)
+            family_values.append(
+                average_precision(y_family, np.asarray([row[key] for row in family_rows]))
+            )
+        pair_macro_auprc[pair_name] = float(np.nanmean(family_values))
 
     samples = int(cfg["bootstrap_samples"])
     seed = int(cfg["bootstrap_seed"])
@@ -685,6 +710,9 @@ def analyze_dataset(cfg: Dict[str, Any], rows, episodes):
         )
         for family in families
     }
+    supporting_pairs = sum(
+        value > macro["homogeneous"]["auprc"] for value in pair_macro_auprc.values()
+    )
     pass_checks = {
         "gain_over_homogeneous": gain_homo["macro_auprc_difference"] >= float(
             rules["minimum_macro_auprc_gain_over_homogeneous"]
@@ -696,6 +724,7 @@ def analyze_dataset(cfg: Dict[str, Any], rows, episodes):
         "ci_over_temporal_risk_excludes_zero": gain_risk["paired_episode_bootstrap_ci95"][0] > 0.0,
         "usable_warning": macro["heterogeneous"]["median_warning_seconds_misses_zero"] >= warning_required,
         "family_wins": all(family_wins.values()),
+        "pair_support": supporting_pairs >= int(rules["minimum_supporting_heterogeneous_pairs"]),
     }
     if not bool(rules.get("require_ci_excludes_zero", True)):
         pass_checks["ci_over_homogeneous_excludes_zero"] = True
@@ -721,6 +750,8 @@ def analyze_dataset(cfg: Dict[str, Any], rows, episodes):
         "macro": macro,
         "comparisons": comparisons,
         "family_wins": family_wins,
+        "heterogeneous_pair_macro_auprc": pair_macro_auprc,
+        "supporting_heterogeneous_pairs": supporting_pairs,
         "pass_checks": pass_checks,
         "passed": bool(all(pass_checks.values())),
         "warning_required_seconds": warning_required,
@@ -751,6 +782,9 @@ def save_dataset(path: Path, rows: List[Dict[str, Any]], episodes: List[Dict[str
 
 
 def write_report(path: Path, result: Dict[str, Any]) -> None:
+    def fmt(value: Any) -> str:
+        return "NA" if value is None else f"{float(value):.3f}"
+
     lines = [
         "# Action-interface ensemble screening study",
         "",
@@ -779,8 +813,8 @@ def write_report(path: Path, result: Dict[str, Any]) -> None:
         for score in SCORE_NAMES:
             metric = analysis["macro"][score]
             lines.append(
-                f"| {score} | {metric['auprc']:.3f} | {metric['recall_at_calibrated_fpr']:.3f} | "
-                f"{metric['median_warning_seconds_misses_zero']:.3f} s |"
+                f"| {score} | {fmt(metric['auprc'])} | {fmt(metric['recall_at_calibrated_fpr'])} | "
+                f"{fmt(metric['median_warning_seconds_misses_zero'])} s |"
             )
         lines.extend(["", "## Pass checks", ""])
         for key, passed in analysis["pass_checks"].items():

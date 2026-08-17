@@ -76,6 +76,7 @@ pass_rules:
   minimum_warning_margin_over_fallback_seconds: 0.20
   require_ci_excludes_zero: true
   require_win_every_screen_family: true
+  minimum_supporting_heterogeneous_pairs: 2
 
 outputs:
   root: experiments/action_ensemble_screen

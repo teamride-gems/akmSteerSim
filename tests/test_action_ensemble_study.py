@@ -65,9 +65,10 @@ class ActionEnsembleStudyTests(unittest.TestCase):
             [np.array([1.0, 2.0]), np.array([3.0, 1.0])], maxlen=4
         )
         features = temporal_features(history)
-        self.assertEqual(features.shape, (10,))
+        self.assertEqual(features.shape, (13,))
         np.testing.assert_allclose(features[:2], [3.0, 1.0])
-        np.testing.assert_allclose(features[-2:], [2.0, -1.0])
+        np.testing.assert_allclose(features[8:10], [2.0, -1.0])
+        np.testing.assert_allclose(features[-3:], [9.0, 3.0, 1.0])
 
     def test_average_precision_and_calibration_threshold(self):
         y = np.array([0, 1, 0, 1])
