@@ -1,0 +1,6 @@
+member,action_space,seed,completed,crashed,timed_out,completion_rate,mean_progress,mean_speed_mps,mean_lateral_error_m,mean_episode_steps,mean_steer_rate_rad_s,passed
+direct_0,steer_speed,0,10,0,0,1.0,1.0,3.91,0.175,2262.9,1.74,true
+direct_4,steer_speed,4,10,0,0,1.0,1.0,3.75,0.208,2361.1,0.99,true
+direct_5,steer_speed,5,0,10,0,0.0,0.44,3.33,0.119,1097.9,0.94,false
+curvature_0,curvature_speed,0,0,10,0,0.0,0.44,3.47,0.187,1061.8,1.61,false
+lookahead_0,lookahead_point,0,0,0,10,0.0,0.92,3.38,0.191,2400.0,0.58,false

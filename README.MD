@@ -87,9 +87,9 @@ This makes the running objective invariant to simulator/control frequency for
 the same physical trajectory. SAC discounting is also specified in physical
 time (`discount_half_life_seconds`) and resolved against the policy timestep.
 
-## Current action-interface ensemble study
+## Action-interface ensemble study
 
-The active workshop hypothesis is a fail-closed five-policy screen: does
+The workshop hypothesis was tested with a fail-closed five-policy screen: does
 structured diversity from direct steering, curvature, and lookahead interfaces
 predict failures of one fixed direct-action anchor better than an equally sized
 direct-action seed ensemble and a temporal state-risk model?
@@ -113,9 +113,13 @@ risk baseline uses the same observation history, thresholds are calibrated at
 a fixed frame-level false-positive rate, and confidence intervals resample
 whole episodes rather than correlated timesteps.
 
-Passing this screen authorizes a larger crossed-seed study; it is not itself a
-population-level action-space claim. Results are regenerated under
-`experiments/action_ensemble_screen/` and remain ignored as derived artifacts.
+The August 17, 2026 screen **failed at the competence gate**. Direct seeds 0
+and 4 completed 10/10 fixed Sakhir laps, while direct seed 5 and curvature seed
+0 crashed on 10/10, and lookahead seed 0 timed out on 10/10. OOD disagreement
+was therefore not evaluated: doing so would confound interface diversity with
+policy quality. The durable negative-result record is in
+`reproducibility/action_ensemble_screen/REPORT.md`; detailed regenerated output
+remains under ignored `experiments/action_ensemble_screen/`.
 
 ## Historical closing-the-action-interface ladder
 
