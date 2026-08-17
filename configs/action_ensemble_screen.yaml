@@ -1,0 +1,83 @@
+study_name: action_interface_ensemble_screen_v1
+anchor_member: direct_0
+
+# The two competent direct policies are reused from the preregistered Gate 0
+# run.  The third direct policy and both structured-interface policies are
+# trained exactly once under the fixed configuration below.  Member identities
+# are fixed before OOD evaluation; no failed member may be replaced post hoc.
+members:
+  direct_0:
+    action_space: steer_speed
+    seed: 0
+    run_dir: checkpoints/gate0_direct_s0
+  direct_4:
+    action_space: steer_speed
+    seed: 4
+    run_dir: checkpoints/gate0_direct_s4
+  direct_5:
+    action_space: steer_speed
+    seed: 5
+    run_dir: checkpoints/ensemble_screen_direct_s5
+  curvature_0:
+    action_space: curvature_speed
+    seed: 0
+    run_dir: checkpoints/ensemble_screen_curvature_s0
+  lookahead_0:
+    action_space: lookahead_point
+    seed: 0
+    run_dir: checkpoints/ensemble_screen_lookahead_s0
+
+heterogeneous_ensemble: [direct_0, curvature_0, lookahead_0]
+homogeneous_ensemble: [direct_0, direct_4, direct_5]
+training:
+  vehicle_cfg: configs/vehicle.yaml
+  sac_cfg: configs/action_ensemble_sac.yaml
+  device: cuda
+  max_parallel: 2
+
+# Screening competence and behavior-matching gate on fixed Sakhir starts.
+competence:
+  track: Sakhir
+  starts: 10
+  minimum_completion_rate: 0.90
+  maximum_lap_time_ratio_error: 0.10
+  maximum_speed_ratio_error: 0.10
+  maximum_mean_lateral_error_increase_m: 0.10
+  minimum_steer_rate_ratio: 0.50
+  maximum_steer_rate_ratio: 2.00
+
+# The temporal risk model is calibrated on tracks that were used only for
+# checkpoint selection. Final monitoring metrics use untouched test tracks.
+calibration:
+  tracks: [Austin, BrandsHatch]
+  starts_per_track: 8
+test:
+  tracks: [Budapest, Hockenheim]
+  starts_per_track: 12
+
+shifts:
+  lidar_dropout:
+    kind: lidar_dropout
+    probability: 0.15
+    replacement: 1.0
+  steering_delay:
+    kind: steering_delay
+    policy_steps: 3
+
+failure_horizon_seconds: 1.0
+fallback_latency_seconds: 0.30
+target_frame_false_positive_rate: 0.05
+bootstrap_samples: 1000
+bootstrap_seed: 20260816
+
+pass_rules:
+  minimum_macro_auprc_gain_over_homogeneous: 0.10
+  minimum_macro_auprc_gain_over_temporal_risk: 0.05
+  minimum_warning_margin_over_fallback_seconds: 0.20
+  require_ci_excludes_zero: true
+  require_win_every_screen_family: true
+
+outputs:
+  root: experiments/action_ensemble_screen
+  report_json: experiments/action_ensemble_screen/result.json
+  report_markdown: experiments/action_ensemble_screen/REPORT.md

@@ -87,10 +87,42 @@ This makes the running objective invariant to simulator/control frequency for
 the same physical trajectory. SAC discounting is also specified in physical
 time (`discount_half_life_seconds`) and resolved against the policy timestep.
 
-## Closing-the-action-interface ladder
+## Current action-interface ensemble study
 
-The current paper direction is gated. Comparative action-space training is not
-authorized until both of these checks pass:
+The active workshop hypothesis is a fail-closed five-policy screen: does
+structured diversity from direct steering, curvature, and lookahead interfaces
+predict failures of one fixed direct-action anchor better than an equally sized
+direct-action seed ensemble and a temporal state-risk model?
+
+The member identities, competence thresholds, OOD conditions, metrics, and
+pass/kill rules are fixed in `configs/action_ensemble_screen.yaml`. The screen
+reuses the two competent Gate 0 checkpoints and trains exactly one additional
+direct policy, one curvature policy, and one lookahead policy. It stops before
+OOD evaluation if any member fails completion or behavior matching; weak
+members may not be replaced after seeing results.
+
+```powershell
+python scripts\run_action_ensemble_study.py
+```
+
+The two shift families are LiDAR dropout and steering-command delay. The direct
+anchor generates every evaluated trajectory while all five policies run in
+shadow mode on the same observation. Native actions are decoded to normalized
+physical steering-speed commands before disagreement is measured. The temporal
+risk baseline uses the same observation history, thresholds are calibrated at
+a fixed frame-level false-positive rate, and confidence intervals resample
+whole episodes rather than correlated timesteps.
+
+Passing this screen authorizes a larger crossed-seed study; it is not itself a
+population-level action-space claim. Results are regenerated under
+`experiments/action_ensemble_screen/` and remain ignored as derived artifacts.
+
+## Historical closing-the-action-interface ladder
+
+The earlier stateful-decoder direction was killed by its preregistered gates:
+only two of five direct SAC seeds reached 90% completion, and the steering
+limiter activated on 4.74% of successful transitions versus the fixed 20%
+floor. The retained audit procedure was:
 
 1. **Gate 0 — direct SAC functionality.** Train five `steer_speed` seeds using
    `configs/gate0_sac.yaml`. Select checkpoints only on the declared validation
@@ -118,9 +150,13 @@ python scripts\evaluate_gate0.py `
   checkpoints\gate0_direct_s4
 ```
 
-Gate 1 collection and audit (only after Gate 0 passes):
+Gate 1 nontraining audit:
 
 ```powershell
+python scripts\audit_decoder_state.py `
+  --gate0_result experiments\gate0\gate0_result.json
+
+# Only if the successful-lap activation floor passes:
 python scripts\collect_decoder_audit.py `
   --run_dir checkpoints\gate0_direct_s0 `
   --tracks Sakhir --episodes_per_track 25
@@ -129,10 +165,9 @@ python scripts\audit_decoder_state.py `
   experiments\gate1\decoder_audit_dataset.npz
 ```
 
-Only a joint Gate 0/Gate 1 pass authorizes the 12-run
-Direct/Curvature × {shuffled-register, actual-register} screen. A common main
-effect is insufficient; expansion requires a representation-by-observability
-interaction plus the preregistered command-distribution mechanism analysis.
+The joint Gate 0/Gate 1 criterion did not pass, so the proposed 12-run
+Direct/Curvature × {shuffled-register, actual-register} screen is not
+authorized and must not be revived without a substantively new hypothesis.
 
 ## Setup
 

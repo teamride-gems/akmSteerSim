@@ -10,7 +10,7 @@ import yaml
 from stable_baselines3.common.logger import configure
 
 from rl.common import EpisodeResult, log_episode_metrics
-from scripts.audit_decoder_state import gate_decision
+from scripts.audit_decoder_state import activation_precheck, gate_decision
 
 
 class GateLadderTests(unittest.TestCase):
@@ -64,6 +64,24 @@ class GateLadderTests(unittest.TestCase):
                 [EpisodeResult()],
             )
             logger.dump(10)
+
+    def test_gate1_activation_precheck_weights_physical_transitions(self):
+        gate0_result = {
+            "runs": [
+                {
+                    "episodes": [
+                        {"term_reason": "lap_complete", "length": 100, "steer_clip_frac": 0.10},
+                        {"term_reason": "lap_complete", "length": 300, "steer_clip_frac": 0.30},
+                        {"term_reason": "crash", "length": 50, "steer_clip_frac": 1.0},
+                    ]
+                }
+            ]
+        }
+
+        result = activation_precheck(gate0_result, self.cfg)
+
+        self.assertAlmostEqual(result["steer_limiter_activation_fraction"], 0.25)
+        self.assertTrue(result["passed"])
 
 
 if __name__ == "__main__":

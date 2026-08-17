@@ -241,15 +241,81 @@ def gate_decision(metrics: Dict, cfg: Dict) -> Tuple[bool, Dict[str, bool]]:
     return all(checks.values()), checks
 
 
+def activation_precheck(gate0_result: Dict, cfg: Dict) -> Dict:
+    """Compute the activation floor on all successful fixed-start laps."""
+    successful_episodes = []
+    for run in gate0_result.get("runs", []):
+        successful_episodes.extend(
+            episode
+            for episode in run.get("episodes", [])
+            if episode.get("term_reason") == "lap_complete"
+        )
+    if not successful_episodes:
+        raise ValueError("Gate 1 activation precheck requires successful fixed-start laps.")
+
+    total_steps = int(sum(int(episode["length"]) for episode in successful_episodes))
+    active_steps = float(
+        sum(
+            float(episode["steer_clip_frac"]) * int(episode["length"])
+            for episode in successful_episodes
+        )
+    )
+    activation_fraction = active_steps / max(total_steps, 1)
+    threshold = float(
+        cfg["thresholds"]["minimum_steer_limiter_activation_fraction"]
+    )
+    return {
+        "passed": bool(activation_fraction >= threshold),
+        "n_successful_episodes": len(successful_episodes),
+        "n_successful_transitions": total_steps,
+        "estimated_active_transitions": active_steps,
+        "steer_limiter_activation_fraction": activation_fraction,
+        "minimum_required_fraction": threshold,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("datasets", nargs="+")
+    parser.add_argument("datasets", nargs="*")
     parser.add_argument("--config", default="configs/decoder_state_gate.yaml")
     parser.add_argument("--output", default="experiments/gate1/decoder_state_audit.json")
+    parser.add_argument(
+        "--gate0_result",
+        default=None,
+        help="Run the preregistered activation-floor precheck on successful Gate 0 laps.",
+    )
     args = parser.parse_args()
 
     cfg = yaml.safe_load((ROOT / args.config).read_text(encoding="utf-8"))
     torch.set_num_threads(1)
+    if args.gate0_result is not None:
+        gate0_path = Path(args.gate0_result)
+        gate0_result = json.loads(gate0_path.read_text(encoding="utf-8"))
+        precheck = activation_precheck(gate0_result, cfg)
+        if not precheck["passed"]:
+            report = {
+                "gate": "Gate 1 decoder-state relevance",
+                "generated_at_utc": utc_now_iso(),
+                "passed": False,
+                "stopped_early": True,
+                "stop_reason": "steering limiter activation below preregistered floor",
+                "checks": {"limiter_activates": False},
+                "activation_precheck": precheck,
+                "config": cfg,
+                "gate0_result": str(gate0_path.resolve()),
+                "provenance": collect_provenance(ROOT),
+            }
+            output = Path(args.output)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            write_json(output, report)
+            print(json.dumps(report, indent=2))
+            print(f"Saved: {output.resolve()}")
+            return
+    if not args.datasets:
+        raise ValueError(
+            "Provide one or more transition datasets unless --gate0_result "
+            "fails the activation-floor precheck."
+        )
     loaded = [np.load(path) for path in args.datasets]
     required = {
         "policy_observation",
