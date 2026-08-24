@@ -1,0 +1,110 @@
+{
+  "amendment_rule": "Never overwrite. Any necessary post-freeze change requires a numbered amendment that preserves this record and is disclosed before inspecting further outcomes.",
+  "files": [
+    {
+      "path": "configs/hardware_study_v1.yaml",
+      "sha256": "9583AADB2E1D6AA910F91638C9F2610891E1B4EB20E7FCF2FD234FB0EBBF511C"
+    },
+    {
+      "path": "configs/hardware_site_template.yaml",
+      "sha256": "5E730572DE603B2877AF1C1B5AF4CFFBED79D048E03884BE0CE0CD711054D525"
+    },
+    {
+      "path": "configs/hardware_site_mock.yaml",
+      "sha256": "AE98AE663A5F8C9642C400A73E91FA6F7E8465F678D9CBDE339B126F126BB8E4"
+    },
+    {
+      "path": "configs/vehicle.yaml",
+      "sha256": "57607D8EEC3669978FA93675C48276F450589ED5712F96EFB0F715524E117F0F"
+    },
+    {
+      "path": "reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md",
+      "sha256": "44BE54A162AFA18E3211DFAB4520DC01C6D97196FF882CF18D87F8A088619D75"
+    },
+    {
+      "path": "reproducibility/hardware_validation/study_v1/prepared/PREPARED_MANIFEST.json",
+      "sha256": "AC23E247D7C7ABC1EBD7D7CD4683538CD066A68976C253A9740DC4EEACD091FB"
+    },
+    {
+      "path": "reproducibility/innovation_gate_second_stack/run_v1/source_sequences.json",
+      "sha256": "524807001F0E5FBD02713F50D7E67EE235BEBD72121625D495B373AB90664212"
+    },
+    {
+      "path": "reproducibility/innovation_gate_second_stack/placebo_repair_v1_corrected/result.json",
+      "sha256": "252095332A00E7CB1919BEEFADA52A94F7A6DB7ED7CECA7FBA57646671D78764"
+    },
+    {
+      "path": "hardware_study/__init__.py",
+      "sha256": "CD34A689DD9D289FC33EF8264A000A621253B67558F1E68DBF62F1FD7261E346"
+    },
+    {
+      "path": "hardware_study/adapters.py",
+      "sha256": "180257663499DAF903362A7336824666657A456A5176157E9B00A16AC3D3247A"
+    },
+    {
+      "path": "hardware_study/analysis.py",
+      "sha256": "9AE3B4C402F0F13A380DE4DDBB6C2C879F210F38D4777AE4F388B765B02B61AB"
+    },
+    {
+      "path": "hardware_study/bundles.py",
+      "sha256": "E28CCACD53E74356E2C4B60F69836373217153AD6C5451A7BD9D7167D7D868A0"
+    },
+    {
+      "path": "hardware_study/design.py",
+      "sha256": "4CFAE2B9AF8C9BE5AD0862B1BD60EF88C3E732C36B63495D21CC4DEC67EDE269"
+    },
+    {
+      "path": "hardware_study/execution.py",
+      "sha256": "5E6F7A4D4FB4768A6F1FB02B07A0FBC6924FF43E3A36B87F293B2DDD067442C6"
+    },
+    {
+      "path": "hardware_study/integrity.py",
+      "sha256": "3EFEC8E177E0470CF9D0961F36628153E0177CC62B23C9ECECA689E98BD6700E"
+    },
+    {
+      "path": "hardware_study/pilot.py",
+      "sha256": "DBD36FA88FA85F9A72B84F409DECD15E2EDF2BCF6E4879821C7CBDA6F56C1E9C"
+    },
+    {
+      "path": "hardware_study/safety.py",
+      "sha256": "A35BE79421F21D1832D4E64A9D2A9E39A207EF48C55CE495F0987AA1493D06A7"
+    },
+    {
+      "path": "hardware_study/validation.py",
+      "sha256": "BC89F4B3CA397DBCA2094C4979C4BB3D0047E4FD8F701B689EF50B7BEB6F6E9B"
+    },
+    {
+      "path": "scripts/analyze_hardware_study.py",
+      "sha256": "E0AABDF927BD65BE6BA70D7D4AE545641BD3141F4A4EE28A72F1A399A8107FDC"
+    },
+    {
+      "path": "scripts/capture_hardware_site.py",
+      "sha256": "7F032A5BA33D218DA51166E9D652A3042361A8587DA63CBDD0094E08B7B8F634"
+    },
+    {
+      "path": "scripts/hardware_preflight.py",
+      "sha256": "3B42559897FC019FC73ACF1511F94F904922B4443AB0AD79DC4ACAC33DB10EF6"
+    },
+    {
+      "path": "scripts/prepare_hardware_study.py",
+      "sha256": "09E61FF459B23559AFDCA33D8DF7938FDA731648E328842C425A30D698B76CE9"
+    },
+    {
+      "path": "scripts/ros2_hardware_safety_bridge.py",
+      "sha256": "7D501AA8CF5C30267E4FCBCDA5EE39AE96A74272D85241B343155B74B9BF7353"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot.py",
+      "sha256": "433019AE353228ED6B0E1279023703235CAEEA192E8F8B8C893FF4E99AE92931"
+    },
+    {
+      "path": "scripts/run_hardware_study.py",
+      "sha256": "8D70295608380E0CB105EDE8111A944FEDF36722CE0340EE341FE78AE1D60729"
+    }
+  ],
+  "frozen_at_utc": "2026-08-21T06:42:28.744148+00:00",
+  "physical_outcomes_observed_at_freeze": false,
+  "schema_version": 1,
+  "status": "FROZEN_BEFORE_PHYSICAL_OUTCOMES",
+  "study_id": "innovation_gate_f1tenth_hardware_v1"
+}

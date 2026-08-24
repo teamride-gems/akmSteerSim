@@ -1,0 +1,57 @@
+{
+  "binding_scope": "Diagnostic only; does not change the original prospective or second-stack earliest-rung verdicts.",
+  "completed_units": 64,
+  "eligible_source_anchors": 32,
+  "matching_maxima": {
+    "absolute_target_normalized": 0.8842487557253793,
+    "accepted_increment_error": 0.0,
+    "accepted_target_error": 0.0,
+    "final_target_error": 0.0,
+    "initial_target_error": 0.0,
+    "speed_command_error_mps": 0.0,
+    "update_count_difference": 0
+  },
+  "primary_effect": {
+    "balanced_relative_improvement": 0.28809875708399035,
+    "by_checkpoint_plant": {
+      "direct_s0/fast_actuator": 0.16333632354310004,
+      "direct_s0/slow_actuator": 0.14942103535678083,
+      "direct_s4/fast_actuator": 0.4265877599141026,
+      "direct_s4/slow_actuator": 0.41304990952197784
+    },
+    "paired_bootstrap_ci95": [
+      0.09335093123929808,
+      0.45801691831352825
+    ]
+  },
+  "residual_balance": {
+    "anchors_with_changed_timing": 31,
+    "anchors_with_zero_timing_intervention": 1,
+    "interpretation": "Accepted targets and increments are exactly matched. Time-weighted command moments differ because hold durations are the intentionally manipulated timing variable.",
+    "maximum_abs_time_weighted_target_standardized_difference": 0.3764880541936983,
+    "mean_abs_event_time_shift_updates": 0.7054732159305588,
+    "mean_abs_time_weighted_mean_abs_difference": 0.007867859661669642,
+    "mean_abs_time_weighted_rms_difference": 0.006564440337103129
+  },
+  "specificity_checks": {
+    "bootstrap_lower_nonnegative": true,
+    "effect_at_least_five_percent": true,
+    "positive_in_all_cells": true
+  },
+  "study_id": "innovation_gate_increment_matched_placebo_v1",
+  "validity": {
+    "bounded": true,
+    "complete_units": true,
+    "eligible_source_anchors": true,
+    "exact_accepted_increments": true,
+    "exact_accepted_targets": true,
+    "exact_final_target": true,
+    "exact_initial_target": true,
+    "exact_speed_commands": true,
+    "exact_update_count": true,
+    "finite": true,
+    "frozen_provenance": true,
+    "timing_intervention_present": true
+  },
+  "verdict": "SUPPORTS_SPECIFICITY"
+}

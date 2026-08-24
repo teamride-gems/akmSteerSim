@@ -1,0 +1,72 @@
+site_id: REPLACE_WITH_SITE_ID
+robot_id: frank
+course_id: REPLACE_WITH_COURSE_ID
+operator: REPLACE_WITH_OPERATOR
+safety_supervisor: REPLACE_WITH_SUPERVISOR
+ros_domain_id: 0  # retained only for compatibility with the frozen capture utility
+
+platform:
+  computer: nvidia_agx_xavier
+  ubuntu_version: "20.04"
+  ros_version: 1
+  ros_distro: noetic
+  python_major: 3
+
+topics:
+  # Confirm the actual autonomous mux input with rostopic info. Do not assume
+  # that the teleoperation input is safe or appropriate for autonomous runs.
+  drive: REPLACE_WITH_AUTONOMOUS_ACKERMANN_TOPIC
+  odometry: REPLACE_WITH_FIXED_WORLD_ODOMETRY_TOPIC
+  deadman: /hardware_study/deadman
+  estop: /hardware_study/estop
+  joint_states: null
+  battery_state: null
+  additional_bag_topics:
+    - /scan
+    - /vesc/commands/motor/speed
+    - /vesc/commands/servo/position
+
+frames:
+  command_frame_id: base_link
+  odometry_frame_id: REPLACE_WITH_FIXED_WORLD_FRAME
+
+steering_feedback:
+  source: kinematic_from_odometry
+  steering_joint_name: null
+  wheelbase_m: REPLACE_WITH_MEASURED_WHEELBASE
+  minimum_speed_for_kinematic_estimate_mps: 0.20
+
+calibration:
+  wheelbase_measured: false
+  mass_measured: false
+  steering_limits_measured: false
+  steering_latency_measured: false
+  speed_response_measured: false
+  stopping_distance_measured: false
+
+vehicle_limits:
+  # Drive notes record 1.5 m/s^2 after the drivetrain/slipper-clutch repair.
+  # Use the current vesc.yaml value and do not exceed this provisional ceiling.
+  controller_max_acceleration_mps2: REPLACE_WITH_VERIFIED_VALUE_AT_OR_BELOW_1P5
+
+expected_start_pose:
+  x_m: REPLACE_WITH_CAPTURED_X
+  y_m: REPLACE_WITH_CAPTURED_Y
+  yaw_rad: REPLACE_WITH_CAPTURED_YAW
+
+course:
+  surveyed_clear_radius_m: REPLACE_WITH_MEASURED_CLEAR_RADIUS
+  localization_system: REPLACE_WITH_ONBOARD_LOCALIZATION_SYSTEM
+  evaluation_ground_truth_system: REPLACE_WITH_ARUCO_OR_OTHER_INDEPENDENT_SYSTEM
+
+safety_bridge:
+  joy_topic: /joy
+  deadman_button_index: REPLACE_WITH_BUTTON_INDEX
+  estop_button_index: REPLACE_WITH_DISTINCT_BUTTON_INDEX
+  publish_rate_hz: 20.0
+  joy_stale_seconds: 0.25
+  estop_latched: true
+
+rosbag:
+  format: rosbag1
+  compression: none

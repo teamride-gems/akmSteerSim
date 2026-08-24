@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_001",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "FROZEN_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-08-22T02:57:43.2071116Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "reason": "RiDE Drive documentation established that Frank runs ROS 1 Noetic, while the base freeze contains only a ROS 2 hardware integration layer.",
+  "scope": "Transport, safety-status publication, rosbag format, configuration capture, and operator instructions only. Scientific bundles, schedule, thresholds, failure policy, and analysis are unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "files": [
+    {
+      "path": "configs/hardware_site_ros1_template.yaml",
+      "sha256": "FED53BA4D05F10710466E8D4744FB061F82C1615815ECBA2D3ADDAA6971F7CB5"
+    },
+    {
+      "path": "hardware_study/ros1_adapter.py",
+      "sha256": "3D7916F4150453DC672784503C6141B777A2A0D234CCE1CB40890DF2E6E697CA"
+    },
+    {
+      "path": "hardware_study/ros1_runtime.py",
+      "sha256": "E384ED2F2B962FAF46412D739A4A6F9391C2FDB3018C22850EE7BE498F444FDB"
+    },
+    {
+      "path": "scripts/run_hardware_study_ros1.py",
+      "sha256": "4763A75C31E8EE31738C58841617FC2629E6046704E7162A94CDBE16B7182126"
+    },
+    {
+      "path": "scripts/ros1_hardware_preflight.py",
+      "sha256": "BCB55E2ECA565B74823A8F71B28D5E1E6E31FD86ABE421953C6913D6DB0EEB53"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot_ros1.py",
+      "sha256": "E204ED4BB5CEA01443576CB92656AEBD514E5DF1065426F5442345DA759A453E"
+    },
+    {
+      "path": "scripts/capture_hardware_site_ros1.py",
+      "sha256": "A72F75EB35797F04402FEDC1238759E61BF1F98611E53B7B82F2631B82A615DF"
+    },
+    {
+      "path": "scripts/ros1_hardware_safety_bridge.py",
+      "sha256": "84F04AB454DFE31324A3ECB58D17AAABEC6B69A6785CD17E32F819196A55DF84"
+    },
+    {
+      "path": "scripts/capture_ros1_configuration.py",
+      "sha256": "831420608F1FF036905A090754E09D04917F21A38435404FE1E0D9E9C20517D3"
+    },
+    {
+      "path": "reproducibility/hardware_validation/amendments/AMENDMENT_001.md",
+      "sha256": "B2EFD22726B97AA5FD94AAB740F33C64C2A1FE91D534BCE449D3C0FB5341E407"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_ACCEPTANCE_CHECKLIST.md",
+      "sha256": "F5E1416E47BCD231177DC6037D9B2AA5CF821F1536396AB4573A90B222EF5F9D"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md",
+      "sha256": "845B3F6921EC9646BC2D9EAE5694FDEE9E2381B2432501272A4B1EE7595A2B80"
+    },
+    {
+      "path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md",
+      "sha256": "C8E924A5A93C1BB25E95E19F0EC552FE293C4C7D00E079BAC6906D92CACBF970"
+    },
+    {
+      "path": "reproducibility/hardware_validation/PRE_ROBOT_READINESS.md",
+      "sha256": "AF802336BDA7F900EE48D9BBE704262AE342CBB6F537D462F85938897537B611"
+    },
+    {
+      "path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md",
+      "sha256": "EF3B51984B6010E6E1193792C77B02CAA1D0943473DCC1C8B8071644F4E18BB2"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+*.csv text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.txt text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# These files are covered by frozen SHA-256 manifests. Store and check them out
+# byte-for-byte; newline conversion would invalidate the study package.
+/configs/hardware_*.yaml -text
+/configs/vehicle.yaml -text
+/hardware_study/** -text
+/reproducibility/hardware_validation/** -text
+/reproducibility/innovation_gate_second_stack/run_v1/source_sequences.json -text
+/reproducibility/innovation_gate_second_stack/placebo_repair_v1_corrected/result.json -text
+/scripts/*hardware*.py -text
+/scripts/capture_ros1_configuration.py -text

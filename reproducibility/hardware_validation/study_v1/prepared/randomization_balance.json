@@ -1,0 +1,61 @@
+{
+  "blocks": 24,
+  "position_count_range": [
+    4,
+    6
+  ],
+  "position_counts": {
+    "A/position_1": 4,
+    "A/position_2": 5,
+    "A/position_3": 5,
+    "A/position_4": 5,
+    "A/position_5": 5,
+    "B/position_1": 5,
+    "B/position_2": 5,
+    "B/position_3": 6,
+    "B/position_4": 4,
+    "B/position_5": 4,
+    "C/position_1": 6,
+    "C/position_2": 4,
+    "C/position_3": 5,
+    "C/position_4": 4,
+    "C/position_5": 5,
+    "D/position_1": 4,
+    "D/position_2": 5,
+    "D/position_3": 4,
+    "D/position_4": 6,
+    "D/position_5": 5,
+    "E/position_1": 5,
+    "E/position_2": 5,
+    "E/position_3": 4,
+    "E/position_4": 5,
+    "E/position_5": 5
+  },
+  "runs": 120,
+  "transition_count_range": [
+    4,
+    6
+  ],
+  "transition_counts": {
+    "A_to_B": 5,
+    "A_to_C": 5,
+    "A_to_D": 4,
+    "A_to_E": 5,
+    "B_to_A": 6,
+    "B_to_C": 4,
+    "B_to_D": 5,
+    "B_to_E": 5,
+    "C_to_A": 5,
+    "C_to_B": 5,
+    "C_to_D": 5,
+    "C_to_E": 4,
+    "D_to_A": 5,
+    "D_to_B": 5,
+    "D_to_C": 4,
+    "D_to_E": 5,
+    "E_to_A": 4,
+    "E_to_B": 4,
+    "E_to_C": 5,
+    "E_to_D": 6
+  }
+}

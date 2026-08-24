@@ -1,0 +1,40 @@
+site_id: local_mock
+robot_id: mock_f1tenth
+course_id: virtual_clear_area
+operator: automated_mock
+safety_supervisor: automated_mock
+ros_domain_id: 0
+topics:
+  drive: /mock/drive
+  odometry: /mock/odom
+  deadman: /mock/deadman
+  estop: /mock/estop
+  joint_states: null
+  battery_state: null
+  additional_bag_topics: []
+frames:
+  command_frame_id: base_link
+  odometry_frame_id: map
+steering_feedback:
+  source: mock_state
+  steering_joint_name: null
+  wheelbase_m: 0.33
+  minimum_speed_for_kinematic_estimate_mps: 0.20
+expected_start_pose:
+  x_m: 0.0
+  y_m: 0.0
+  yaw_rad: 0.0
+course:
+  surveyed_clear_radius_m: 10.0
+  localization_system: deterministic_mock
+safety_bridge:
+  joy_topic: /mock/joy
+  deadman_button_index: 0
+  estop_button_index: 1
+  publish_rate_hz: 20.0
+  joy_stale_seconds: 0.25
+  estop_latched: true
+rosbag:
+  storage_id: mcap
+  compression_mode: none
+  compression_format: none

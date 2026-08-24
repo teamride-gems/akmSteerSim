@@ -36,6 +36,10 @@ checkpoints/
 runs/
 tb_logs/
 logs/
+hardware_runs/
+
+# Study unblinding material is held by the study lead, never in operator clones.
+reproducibility/hardware_validation/study_v1/prepared/condition_key.json
 
 # Derived research outputs (regenerate from checkpoints/results)
 rollouts/

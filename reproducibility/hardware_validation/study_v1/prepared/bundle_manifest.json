@@ -1,0 +1,246 @@
+{
+  "bundle_count": 24,
+  "bundles": [
+    {
+      "bundle_id": "direct_s0_spawn292_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1722408632159233,
+      "relative_path": "bundles/direct_s0_spawn292_speed1p0.json",
+      "sha256": "7CD467D677FDAA3D0E669807356A123C92FBEEABC7293F0D4DF396B2D793C39A",
+      "spawn": 292,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.025000000000000022
+    },
+    {
+      "bundle_id": "direct_s0_spawn11_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1016544998338356,
+      "relative_path": "bundles/direct_s0_spawn11_speed1p0.json",
+      "sha256": "B1CC9F43F811039A48A345CC03A9B77DB94627F21E402BE671C5E06C56AFDCA5",
+      "spawn": 11,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.050000000000000044
+    },
+    {
+      "bundle_id": "direct_s0_spawn76_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.10165051853947643,
+      "relative_path": "bundles/direct_s0_spawn76_speed1p0.json",
+      "sha256": "1E630BD5B72F39E5C0708391636C7916F511B877EF7F1818231E631EE7671F9C",
+      "spawn": 76,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.09999999999999998
+    },
+    {
+      "bundle_id": "direct_s0_spawn855_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1106487814896883,
+      "relative_path": "bundles/direct_s0_spawn855_speed1p0.json",
+      "sha256": "7577FDD3D2843525E4555324FC75798A447DD535399C14C172A471A0D70533CF",
+      "spawn": 855,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.09999999999999998
+    },
+    {
+      "bundle_id": "direct_s0_spawn574_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.09845513873100281,
+      "relative_path": "bundles/direct_s0_spawn574_speed1p0.json",
+      "sha256": "77187C92231AE4769A1898EB4080868CBF23E2B444B4E6E74F32E251AC6ACE28",
+      "spawn": 574,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.125
+    },
+    {
+      "bundle_id": "direct_s0_spawn1006_speed1p0",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.10109771776795387,
+      "relative_path": "bundles/direct_s0_spawn1006_speed1p0.json",
+      "sha256": "E44D9EF165EDA5741573023965B6DD7BD7DAADFC689BD33D9D3EC11C241919C5",
+      "spawn": 1006,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.15000000000000002
+    },
+    {
+      "bundle_id": "direct_s4_spawn638_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.11101648389101028,
+      "relative_path": "bundles/direct_s4_spawn638_speed1p0.json",
+      "sha256": "D0D35511E0F08F89D8BAE33DCEFD32D01BB64133A3189DF3E80027B701EB24FE",
+      "spawn": 638,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.19999999999999996
+    },
+    {
+      "bundle_id": "direct_s4_spawn725_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.1350146505316534,
+      "relative_path": "bundles/direct_s4_spawn725_speed1p0.json",
+      "sha256": "8E5B0CB2F193D0000B8B6167E361CB1C55C57644D6CC6C24E53E468C92900D92",
+      "spawn": 725,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.25
+    },
+    {
+      "bundle_id": "direct_s4_spawn574_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.048419895021200185,
+      "relative_path": "bundles/direct_s4_spawn574_speed1p0.json",
+      "sha256": "C5A79DC79296B6024AAF75A1C0530CA2DD48457C7F564722741844FC3F9C86A7",
+      "spawn": 574,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.55
+    },
+    {
+      "bundle_id": "direct_s4_spawn76_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04350240618542999,
+      "relative_path": "bundles/direct_s4_spawn76_speed1p0.json",
+      "sha256": "9FEA9DDE055F04600AD58253AA74F94B35493B0DD7E3859106C73224F517BADB",
+      "spawn": 76,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.625
+    },
+    {
+      "bundle_id": "direct_s4_spawn855_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04473452685987688,
+      "relative_path": "bundles/direct_s4_spawn855_speed1p0.json",
+      "sha256": "7709C9B4886752D6EA221FD74313B204F4AC512F7C70C1FCCDEC0AB7680BB3FB",
+      "spawn": 855,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.75
+    },
+    {
+      "bundle_id": "direct_s4_spawn1006_speed1p0",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04676064709788551,
+      "relative_path": "bundles/direct_s4_spawn1006_speed1p0.json",
+      "sha256": "745BD72C52FFD033CE089FE67CF738CF00EBCE113F3285CFC2890534E40154DA",
+      "spawn": 1006,
+      "speed_cap_mps": 1.0,
+      "suppression_fraction": 0.8
+    },
+    {
+      "bundle_id": "direct_s0_spawn292_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1722408632159233,
+      "relative_path": "bundles/direct_s0_spawn292_speed1p5.json",
+      "sha256": "DC3D9D3057582E930FDCB2494D8C6E9CB51CA06BEC43380EF8F73C1DC7A6DFF0",
+      "spawn": 292,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.025000000000000022
+    },
+    {
+      "bundle_id": "direct_s0_spawn11_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1016544998338356,
+      "relative_path": "bundles/direct_s0_spawn11_speed1p5.json",
+      "sha256": "5125570F7855F741E19CE7575896A807BFDC4DF08626F9F9D5D485116C5642C6",
+      "spawn": 11,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.050000000000000044
+    },
+    {
+      "bundle_id": "direct_s0_spawn76_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.10165051853947643,
+      "relative_path": "bundles/direct_s0_spawn76_speed1p5.json",
+      "sha256": "6ACD154DECED30A8DBAF1C4868FD37695F6A3CE94736DF74D06B8959C01D6AFF",
+      "spawn": 76,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.09999999999999998
+    },
+    {
+      "bundle_id": "direct_s0_spawn855_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.1106487814896883,
+      "relative_path": "bundles/direct_s0_spawn855_speed1p5.json",
+      "sha256": "06EED2C86D75836E5EC748B73B8B2BC15A2DCD213D7956A60A767378701AFB21",
+      "spawn": 855,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.09999999999999998
+    },
+    {
+      "bundle_id": "direct_s0_spawn574_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.09845513873100281,
+      "relative_path": "bundles/direct_s0_spawn574_speed1p5.json",
+      "sha256": "12B1F8CE06D4C79DD75CD671301C15BB51005E4C1E8E90895950CFCCB10F1EB5",
+      "spawn": 574,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.125
+    },
+    {
+      "bundle_id": "direct_s0_spawn1006_speed1p5",
+      "checkpoint": "direct_s0",
+      "maximum_abs_target_steering_rad": 0.10109771776795387,
+      "relative_path": "bundles/direct_s0_spawn1006_speed1p5.json",
+      "sha256": "47ED8D9F4BD9C41D7CE7E35EE0A56BE7E56ED08E510FF58EF7442EC3798DD05B",
+      "spawn": 1006,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.15000000000000002
+    },
+    {
+      "bundle_id": "direct_s4_spawn638_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.11101648389101028,
+      "relative_path": "bundles/direct_s4_spawn638_speed1p5.json",
+      "sha256": "CA5AF2F9415AAA735DDE8781EDDF1D54A2186903B47F8F800D1CE8E8C297819F",
+      "spawn": 638,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.19999999999999996
+    },
+    {
+      "bundle_id": "direct_s4_spawn725_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.1350146505316534,
+      "relative_path": "bundles/direct_s4_spawn725_speed1p5.json",
+      "sha256": "0C9DC9BFA7CB00717C759E8AD141979B728D5C0BA8D7AA7FACE2C8430F151F37",
+      "spawn": 725,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.25
+    },
+    {
+      "bundle_id": "direct_s4_spawn574_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.048419895021200185,
+      "relative_path": "bundles/direct_s4_spawn574_speed1p5.json",
+      "sha256": "8BF449F2668567FBB09747573A95207909CE85AF26AB6F470FA021C2B090A5D6",
+      "spawn": 574,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.55
+    },
+    {
+      "bundle_id": "direct_s4_spawn76_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04350240618542999,
+      "relative_path": "bundles/direct_s4_spawn76_speed1p5.json",
+      "sha256": "18B6BF15E0E482725E2C05FE3440F5F65AA61A6F25E1218E07AFCD9F32325ACE",
+      "spawn": 76,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.625
+    },
+    {
+      "bundle_id": "direct_s4_spawn855_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04473452685987688,
+      "relative_path": "bundles/direct_s4_spawn855_speed1p5.json",
+      "sha256": "8990EF4E4153510B66CFCD7AB6313225A031245A5AEEB8611D7E362DE475BA4B",
+      "spawn": 855,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.75
+    },
+    {
+      "bundle_id": "direct_s4_spawn1006_speed1p5",
+      "checkpoint": "direct_s4",
+      "maximum_abs_target_steering_rad": 0.04676064709788551,
+      "relative_path": "bundles/direct_s4_spawn1006_speed1p5.json",
+      "sha256": "044E8A62A58DA696C8165DBE29143FDE52CA6E329A51FCA5B8D9AACD8336A7D0",
+      "spawn": 1006,
+      "speed_cap_mps": 1.5,
+      "suppression_fraction": 0.8
+    }
+  ],
+  "schema_version": 1
+}

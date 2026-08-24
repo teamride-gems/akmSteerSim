@@ -1,0 +1,47 @@
+site_id: REPLACE_WITH_SITE_ID
+robot_id: REPLACE_WITH_ROBOT_ID
+course_id: REPLACE_WITH_COURSE_ID
+operator: REPLACE_WITH_OPERATOR
+safety_supervisor: REPLACE_WITH_SUPERVISOR
+ros_domain_id: 0
+
+topics:
+  drive: /drive
+  odometry: /odom
+  deadman: /hardware_study/deadman
+  estop: /hardware_study/estop
+  joint_states: null
+  battery_state: null
+  additional_bag_topics: [/scan]
+
+frames:
+  command_frame_id: base_link
+  odometry_frame_id: map
+
+steering_feedback:
+  source: kinematic_from_odometry
+  steering_joint_name: null
+  wheelbase_m: 0.33
+  minimum_speed_for_kinematic_estimate_mps: 0.20
+
+expected_start_pose:
+  x_m: REPLACE_WITH_CAPTURED_X
+  y_m: REPLACE_WITH_CAPTURED_Y
+  yaw_rad: REPLACE_WITH_CAPTURED_YAW
+
+course:
+  surveyed_clear_radius_m: REPLACE_WITH_MEASURED_CLEAR_RADIUS
+  localization_system: REPLACE_WITH_LOCALIZATION_SYSTEM
+
+safety_bridge:
+  joy_topic: /joy
+  deadman_button_index: REPLACE_WITH_BUTTON_INDEX
+  estop_button_index: REPLACE_WITH_BUTTON_INDEX
+  publish_rate_hz: 20.0
+  joy_stale_seconds: 0.25
+  estop_latched: true
+
+rosbag:
+  storage_id: mcap
+  compression_mode: file
+  compression_format: zstd

@@ -1,0 +1,2880 @@
+{
+  "bundle_id": "direct_s4_spawn638_speed1p0",
+  "checkpoint": "direct_s4",
+  "conditions": {
+    "clean_a": [
+      {
+        "packet_index": 0,
+        "phase": "preamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 1,
+        "phase": "preamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.05263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 2,
+        "phase": "preamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.10526315789473684,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 3,
+        "phase": "preamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.15789473684210525,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 4,
+        "phase": "preamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 5,
+        "phase": "preamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.2631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 6,
+        "phase": "preamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.3157894736842105,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 7,
+        "phase": "preamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.3684210526315789,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 8,
+        "phase": "preamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 9,
+        "phase": "preamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.47368421052631576,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 10,
+        "phase": "preamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.5263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 11,
+        "phase": "preamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 12,
+        "phase": "preamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 13,
+        "phase": "preamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.6842105263157894,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 14,
+        "phase": "preamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.7368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 15,
+        "phase": "preamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 16,
+        "phase": "preamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 17,
+        "phase": "preamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 18,
+        "phase": "preamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.9473684210526315,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 19,
+        "phase": "preamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 20,
+        "phase": "main",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.001668587279319763
+      },
+      {
+        "packet_index": 21,
+        "phase": "main",
+        "phase_packet_index": 1,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.020965903532505034
+      },
+      {
+        "packet_index": 22,
+        "phase": "main",
+        "phase_packet_index": 2,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.007785866743326187
+      },
+      {
+        "packet_index": 23,
+        "phase": "main",
+        "phase_packet_index": 3,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.01400416829586029
+      },
+      {
+        "packet_index": 24,
+        "phase": "main",
+        "phase_packet_index": 4,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.004112517839670181
+      },
+      {
+        "packet_index": 25,
+        "phase": "main",
+        "phase_packet_index": 5,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.021756103003025055
+      },
+      {
+        "packet_index": 26,
+        "phase": "main",
+        "phase_packet_index": 6,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0011474471330642701
+      },
+      {
+        "packet_index": 27,
+        "phase": "main",
+        "phase_packet_index": 7,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.02386123753786087
+      },
+      {
+        "packet_index": 28,
+        "phase": "main",
+        "phase_packet_index": 8,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0035584693610668182
+      },
+      {
+        "packet_index": 29,
+        "phase": "main",
+        "phase_packet_index": 9,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.02474536807537079
+      },
+      {
+        "packet_index": 30,
+        "phase": "main",
+        "phase_packet_index": 10,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0015591758131980895
+      },
+      {
+        "packet_index": 31,
+        "phase": "main",
+        "phase_packet_index": 11,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.023637895327806472
+      },
+      {
+        "packet_index": 32,
+        "phase": "main",
+        "phase_packet_index": 12,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0012797296404838561
+      },
+      {
+        "packet_index": 33,
+        "phase": "main",
+        "phase_packet_index": 13,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.022899555194377898
+      },
+      {
+        "packet_index": 34,
+        "phase": "main",
+        "phase_packet_index": 14,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.005765449941158294
+      },
+      {
+        "packet_index": 35,
+        "phase": "main",
+        "phase_packet_index": 15,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.02263783657550812
+      },
+      {
+        "packet_index": 36,
+        "phase": "main",
+        "phase_packet_index": 16,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0006486287236213684
+      },
+      {
+        "packet_index": 37,
+        "phase": "main",
+        "phase_packet_index": 17,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03249500569105148
+      },
+      {
+        "packet_index": 38,
+        "phase": "main",
+        "phase_packet_index": 18,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05140648548007011
+      },
+      {
+        "packet_index": 39,
+        "phase": "main",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05617457325458527
+      },
+      {
+        "packet_index": 40,
+        "phase": "main",
+        "phase_packet_index": 20,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05231705753803253
+      },
+      {
+        "packet_index": 41,
+        "phase": "main",
+        "phase_packet_index": 21,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0508312388420105
+      },
+      {
+        "packet_index": 42,
+        "phase": "main",
+        "phase_packet_index": 22,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06141391434073448
+      },
+      {
+        "packet_index": 43,
+        "phase": "main",
+        "phase_packet_index": 23,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04891356694698334
+      },
+      {
+        "packet_index": 44,
+        "phase": "main",
+        "phase_packet_index": 24,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06512576449513435
+      },
+      {
+        "packet_index": 45,
+        "phase": "main",
+        "phase_packet_index": 25,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04125081931352615
+      },
+      {
+        "packet_index": 46,
+        "phase": "main",
+        "phase_packet_index": 26,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03552292182445526
+      },
+      {
+        "packet_index": 47,
+        "phase": "main",
+        "phase_packet_index": 27,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.028217721474170683
+      },
+      {
+        "packet_index": 48,
+        "phase": "main",
+        "phase_packet_index": 28,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0025972364485263824
+      },
+      {
+        "packet_index": 49,
+        "phase": "main",
+        "phase_packet_index": 29,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.049402248191833496
+      },
+      {
+        "packet_index": 50,
+        "phase": "main",
+        "phase_packet_index": 30,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.050542853987216946
+      },
+      {
+        "packet_index": 51,
+        "phase": "main",
+        "phase_packet_index": 31,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06780075249671937
+      },
+      {
+        "packet_index": 52,
+        "phase": "main",
+        "phase_packet_index": 32,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05923245145082474
+      },
+      {
+        "packet_index": 53,
+        "phase": "main",
+        "phase_packet_index": 33,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05767946779727936
+      },
+      {
+        "packet_index": 54,
+        "phase": "main",
+        "phase_packet_index": 34,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07740396816134452
+      },
+      {
+        "packet_index": 55,
+        "phase": "main",
+        "phase_packet_index": 35,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04504960938692093
+      },
+      {
+        "packet_index": 56,
+        "phase": "main",
+        "phase_packet_index": 36,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.04504346716403961
+      },
+      {
+        "packet_index": 57,
+        "phase": "main",
+        "phase_packet_index": 37,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.044588293492794036
+      },
+      {
+        "packet_index": 58,
+        "phase": "main",
+        "phase_packet_index": 38,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.02913493512272835
+      },
+      {
+        "packet_index": 59,
+        "phase": "main",
+        "phase_packet_index": 39,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.11101648389101028
+      },
+      {
+        "packet_index": 60,
+        "phase": "main",
+        "phase_packet_index": 40,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05617954196333885
+      },
+      {
+        "packet_index": 61,
+        "phase": "postamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 62,
+        "phase": "postamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.9473684210526316,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 63,
+        "phase": "postamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.8947368421052632,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 64,
+        "phase": "postamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 65,
+        "phase": "postamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 66,
+        "phase": "postamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 67,
+        "phase": "postamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.6842105263157895,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 68,
+        "phase": "postamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 69,
+        "phase": "postamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 70,
+        "phase": "postamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.5263157894736843,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 71,
+        "phase": "postamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.4736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 72,
+        "phase": "postamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 73,
+        "phase": "postamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 74,
+        "phase": "postamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.3157894736842106,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 75,
+        "phase": "postamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.26315789473684215,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 76,
+        "phase": "postamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 77,
+        "phase": "postamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.1578947368421053,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 78,
+        "phase": "postamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.10526315789473695,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 79,
+        "phase": "postamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.052631578947368474,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 80,
+        "phase": "postamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      }
+    ],
+    "clean_b": [
+      {
+        "packet_index": 0,
+        "phase": "preamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 1,
+        "phase": "preamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.05263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 2,
+        "phase": "preamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.10526315789473684,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 3,
+        "phase": "preamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.15789473684210525,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 4,
+        "phase": "preamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 5,
+        "phase": "preamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.2631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 6,
+        "phase": "preamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.3157894736842105,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 7,
+        "phase": "preamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.3684210526315789,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 8,
+        "phase": "preamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 9,
+        "phase": "preamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.47368421052631576,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 10,
+        "phase": "preamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.5263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 11,
+        "phase": "preamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 12,
+        "phase": "preamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 13,
+        "phase": "preamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.6842105263157894,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 14,
+        "phase": "preamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.7368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 15,
+        "phase": "preamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 16,
+        "phase": "preamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 17,
+        "phase": "preamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 18,
+        "phase": "preamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.9473684210526315,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 19,
+        "phase": "preamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 20,
+        "phase": "main",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.001668587279319763
+      },
+      {
+        "packet_index": 21,
+        "phase": "main",
+        "phase_packet_index": 1,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.020965903532505034
+      },
+      {
+        "packet_index": 22,
+        "phase": "main",
+        "phase_packet_index": 2,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.007785866743326187
+      },
+      {
+        "packet_index": 23,
+        "phase": "main",
+        "phase_packet_index": 3,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.01400416829586029
+      },
+      {
+        "packet_index": 24,
+        "phase": "main",
+        "phase_packet_index": 4,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.004112517839670181
+      },
+      {
+        "packet_index": 25,
+        "phase": "main",
+        "phase_packet_index": 5,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.021756103003025055
+      },
+      {
+        "packet_index": 26,
+        "phase": "main",
+        "phase_packet_index": 6,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0011474471330642701
+      },
+      {
+        "packet_index": 27,
+        "phase": "main",
+        "phase_packet_index": 7,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.02386123753786087
+      },
+      {
+        "packet_index": 28,
+        "phase": "main",
+        "phase_packet_index": 8,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0035584693610668182
+      },
+      {
+        "packet_index": 29,
+        "phase": "main",
+        "phase_packet_index": 9,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.02474536807537079
+      },
+      {
+        "packet_index": 30,
+        "phase": "main",
+        "phase_packet_index": 10,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0015591758131980895
+      },
+      {
+        "packet_index": 31,
+        "phase": "main",
+        "phase_packet_index": 11,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.023637895327806472
+      },
+      {
+        "packet_index": 32,
+        "phase": "main",
+        "phase_packet_index": 12,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0012797296404838561
+      },
+      {
+        "packet_index": 33,
+        "phase": "main",
+        "phase_packet_index": 13,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.022899555194377898
+      },
+      {
+        "packet_index": 34,
+        "phase": "main",
+        "phase_packet_index": 14,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.005765449941158294
+      },
+      {
+        "packet_index": 35,
+        "phase": "main",
+        "phase_packet_index": 15,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.02263783657550812
+      },
+      {
+        "packet_index": 36,
+        "phase": "main",
+        "phase_packet_index": 16,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0006486287236213684
+      },
+      {
+        "packet_index": 37,
+        "phase": "main",
+        "phase_packet_index": 17,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03249500569105148
+      },
+      {
+        "packet_index": 38,
+        "phase": "main",
+        "phase_packet_index": 18,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05140648548007011
+      },
+      {
+        "packet_index": 39,
+        "phase": "main",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05617457325458527
+      },
+      {
+        "packet_index": 40,
+        "phase": "main",
+        "phase_packet_index": 20,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05231705753803253
+      },
+      {
+        "packet_index": 41,
+        "phase": "main",
+        "phase_packet_index": 21,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0508312388420105
+      },
+      {
+        "packet_index": 42,
+        "phase": "main",
+        "phase_packet_index": 22,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06141391434073448
+      },
+      {
+        "packet_index": 43,
+        "phase": "main",
+        "phase_packet_index": 23,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04891356694698334
+      },
+      {
+        "packet_index": 44,
+        "phase": "main",
+        "phase_packet_index": 24,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06512576449513435
+      },
+      {
+        "packet_index": 45,
+        "phase": "main",
+        "phase_packet_index": 25,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04125081931352615
+      },
+      {
+        "packet_index": 46,
+        "phase": "main",
+        "phase_packet_index": 26,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03552292182445526
+      },
+      {
+        "packet_index": 47,
+        "phase": "main",
+        "phase_packet_index": 27,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.028217721474170683
+      },
+      {
+        "packet_index": 48,
+        "phase": "main",
+        "phase_packet_index": 28,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0025972364485263824
+      },
+      {
+        "packet_index": 49,
+        "phase": "main",
+        "phase_packet_index": 29,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.049402248191833496
+      },
+      {
+        "packet_index": 50,
+        "phase": "main",
+        "phase_packet_index": 30,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.050542853987216946
+      },
+      {
+        "packet_index": 51,
+        "phase": "main",
+        "phase_packet_index": 31,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06780075249671937
+      },
+      {
+        "packet_index": 52,
+        "phase": "main",
+        "phase_packet_index": 32,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05923245145082474
+      },
+      {
+        "packet_index": 53,
+        "phase": "main",
+        "phase_packet_index": 33,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05767946779727936
+      },
+      {
+        "packet_index": 54,
+        "phase": "main",
+        "phase_packet_index": 34,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07740396816134452
+      },
+      {
+        "packet_index": 55,
+        "phase": "main",
+        "phase_packet_index": 35,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04504960938692093
+      },
+      {
+        "packet_index": 56,
+        "phase": "main",
+        "phase_packet_index": 36,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.04504346716403961
+      },
+      {
+        "packet_index": 57,
+        "phase": "main",
+        "phase_packet_index": 37,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.044588293492794036
+      },
+      {
+        "packet_index": 58,
+        "phase": "main",
+        "phase_packet_index": 38,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.02913493512272835
+      },
+      {
+        "packet_index": 59,
+        "phase": "main",
+        "phase_packet_index": 39,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.11101648389101028
+      },
+      {
+        "packet_index": 60,
+        "phase": "main",
+        "phase_packet_index": 40,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05617954196333885
+      },
+      {
+        "packet_index": 61,
+        "phase": "postamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 62,
+        "phase": "postamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.9473684210526316,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 63,
+        "phase": "postamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.8947368421052632,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 64,
+        "phase": "postamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 65,
+        "phase": "postamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 66,
+        "phase": "postamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 67,
+        "phase": "postamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.6842105263157895,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 68,
+        "phase": "postamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 69,
+        "phase": "postamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 70,
+        "phase": "postamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.5263157894736843,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 71,
+        "phase": "postamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.4736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 72,
+        "phase": "postamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 73,
+        "phase": "postamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 74,
+        "phase": "postamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.3157894736842106,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 75,
+        "phase": "postamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.26315789473684215,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 76,
+        "phase": "postamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 77,
+        "phase": "postamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.1578947368421053,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 78,
+        "phase": "postamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.10526315789473695,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 79,
+        "phase": "postamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.052631578947368474,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 80,
+        "phase": "postamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      }
+    ],
+    "direct": [
+      {
+        "packet_index": 0,
+        "phase": "preamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 1,
+        "phase": "preamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.05263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 2,
+        "phase": "preamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.10526315789473684,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 3,
+        "phase": "preamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.15789473684210525,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 4,
+        "phase": "preamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 5,
+        "phase": "preamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.2631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 6,
+        "phase": "preamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.3157894736842105,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 7,
+        "phase": "preamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.3684210526315789,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 8,
+        "phase": "preamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 9,
+        "phase": "preamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.47368421052631576,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 10,
+        "phase": "preamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.5263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 11,
+        "phase": "preamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 12,
+        "phase": "preamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 13,
+        "phase": "preamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.6842105263157894,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 14,
+        "phase": "preamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.7368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 15,
+        "phase": "preamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 16,
+        "phase": "preamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 17,
+        "phase": "preamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 18,
+        "phase": "preamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.9473684210526315,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 19,
+        "phase": "preamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 20,
+        "phase": "main",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0013692342087599533
+      },
+      {
+        "packet_index": 21,
+        "phase": "main",
+        "phase_packet_index": 1,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.008314657683185933
+      },
+      {
+        "packet_index": 22,
+        "phase": "main",
+        "phase_packet_index": 2,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.013709124694317981
+      },
+      {
+        "packet_index": 23,
+        "phase": "main",
+        "phase_packet_index": 3,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03039931864969143
+      },
+      {
+        "packet_index": 24,
+        "phase": "main",
+        "phase_packet_index": 4,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 25,
+        "phase": "main",
+        "phase_packet_index": 5,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.012538193265581171
+      },
+      {
+        "packet_index": 26,
+        "phase": "main",
+        "phase_packet_index": 6,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.011138528882840608
+      },
+      {
+        "packet_index": 27,
+        "phase": "main",
+        "phase_packet_index": 7,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.043735178205785916
+      },
+      {
+        "packet_index": 28,
+        "phase": "main",
+        "phase_packet_index": 8,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.016855792261440735
+      },
+      {
+        "packet_index": 29,
+        "phase": "main",
+        "phase_packet_index": 9,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04587371492753957
+      },
+      {
+        "packet_index": 30,
+        "phase": "main",
+        "phase_packet_index": 10,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.014918304760323754
+      },
+      {
+        "packet_index": 31,
+        "phase": "main",
+        "phase_packet_index": 11,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03298337486682874
+      },
+      {
+        "packet_index": 32,
+        "phase": "main",
+        "phase_packet_index": 12,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.002473635575369264
+      },
+      {
+        "packet_index": 33,
+        "phase": "main",
+        "phase_packet_index": 13,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03516580974042977
+      },
+      {
+        "packet_index": 34,
+        "phase": "main",
+        "phase_packet_index": 14,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 35,
+        "phase": "main",
+        "phase_packet_index": 15,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.015970429683913774
+      },
+      {
+        "packet_index": 36,
+        "phase": "main",
+        "phase_packet_index": 16,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.0067974086909745445
+      },
+      {
+        "packet_index": 37,
+        "phase": "main",
+        "phase_packet_index": 17,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.023115436207398803
+      },
+      {
+        "packet_index": 38,
+        "phase": "main",
+        "phase_packet_index": 18,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.058054533513249545
+      },
+      {
+        "packet_index": 39,
+        "phase": "main",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04127757192657569
+      },
+      {
+        "packet_index": 40,
+        "phase": "main",
+        "phase_packet_index": 20,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07442727791416301
+      },
+      {
+        "packet_index": 41,
+        "phase": "main",
+        "phase_packet_index": 21,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.060269020237301726
+      },
+      {
+        "packet_index": 42,
+        "phase": "main",
+        "phase_packet_index": 22,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06625826650684759
+      },
+      {
+        "packet_index": 43,
+        "phase": "main",
+        "phase_packet_index": 23,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05230767444048557
+      },
+      {
+        "packet_index": 44,
+        "phase": "main",
+        "phase_packet_index": 24,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06721960890223362
+      },
+      {
+        "packet_index": 45,
+        "phase": "main",
+        "phase_packet_index": 25,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04547745462127396
+      },
+      {
+        "packet_index": 46,
+        "phase": "main",
+        "phase_packet_index": 26,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06484592182445527
+      },
+      {
+        "packet_index": 47,
+        "phase": "main",
+        "phase_packet_index": 27,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.027131464695376577
+      },
+      {
+        "packet_index": 48,
+        "phase": "main",
+        "phase_packet_index": 28,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0005363497378047798
+      },
+      {
+        "packet_index": 49,
+        "phase": "main",
+        "phase_packet_index": 29,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06778935504309686
+      },
+      {
+        "packet_index": 50,
+        "phase": "main",
+        "phase_packet_index": 30,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06593758400174801
+      },
+      {
+        "packet_index": 51,
+        "phase": "main",
+        "phase_packet_index": 31,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.07887840226405954
+      },
+      {
+        "packet_index": 52,
+        "phase": "main",
+        "phase_packet_index": 32,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.060524352612349036
+      },
+      {
+        "packet_index": 53,
+        "phase": "main",
+        "phase_packet_index": 33,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06136825692896423
+      },
+      {
+        "packet_index": 54,
+        "phase": "main",
+        "phase_packet_index": 34,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07853427931735846
+      },
+      {
+        "packet_index": 55,
+        "phase": "main",
+        "phase_packet_index": 35,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.044375232120120185
+      },
+      {
+        "packet_index": 56,
+        "phase": "main",
+        "phase_packet_index": 36,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03625691394875867
+      },
+      {
+        "packet_index": 57,
+        "phase": "main",
+        "phase_packet_index": 37,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0626645742895793
+      },
+      {
+        "packet_index": 58,
+        "phase": "main",
+        "phase_packet_index": 38,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.04988109545552376
+      },
+      {
+        "packet_index": 59,
+        "phase": "main",
+        "phase_packet_index": 39,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.1064838148514642
+      },
+      {
+        "packet_index": 60,
+        "phase": "main",
+        "phase_packet_index": 40,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05426294992309649
+      },
+      {
+        "packet_index": 61,
+        "phase": "postamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 62,
+        "phase": "postamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.9473684210526316,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 63,
+        "phase": "postamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.8947368421052632,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 64,
+        "phase": "postamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 65,
+        "phase": "postamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 66,
+        "phase": "postamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 67,
+        "phase": "postamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.6842105263157895,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 68,
+        "phase": "postamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 69,
+        "phase": "postamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 70,
+        "phase": "postamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.5263157894736843,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 71,
+        "phase": "postamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.4736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 72,
+        "phase": "postamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 73,
+        "phase": "postamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 74,
+        "phase": "postamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.3157894736842106,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 75,
+        "phase": "postamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.26315789473684215,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 76,
+        "phase": "postamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 77,
+        "phase": "postamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.1578947368421053,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 78,
+        "phase": "postamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.10526315789473695,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 79,
+        "phase": "postamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.052631578947368474,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 80,
+        "phase": "postamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      }
+    ],
+    "innovation_gate": [
+      {
+        "packet_index": 0,
+        "phase": "preamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 1,
+        "phase": "preamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.05263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 2,
+        "phase": "preamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.10526315789473684,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 3,
+        "phase": "preamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.15789473684210525,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 4,
+        "phase": "preamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 5,
+        "phase": "preamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.2631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 6,
+        "phase": "preamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.3157894736842105,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 7,
+        "phase": "preamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.3684210526315789,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 8,
+        "phase": "preamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 9,
+        "phase": "preamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.47368421052631576,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 10,
+        "phase": "preamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.5263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 11,
+        "phase": "preamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 12,
+        "phase": "preamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 13,
+        "phase": "preamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.6842105263157894,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 14,
+        "phase": "preamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.7368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 15,
+        "phase": "preamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 16,
+        "phase": "preamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 17,
+        "phase": "preamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 18,
+        "phase": "preamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.9473684210526315,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 19,
+        "phase": "preamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 20,
+        "phase": "main",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0013692342087599533
+      },
+      {
+        "packet_index": 21,
+        "phase": "main",
+        "phase_packet_index": 1,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0013692342087599533
+      },
+      {
+        "packet_index": 22,
+        "phase": "main",
+        "phase_packet_index": 2,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0013692342087599533
+      },
+      {
+        "packet_index": 23,
+        "phase": "main",
+        "phase_packet_index": 3,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03039931864969143
+      },
+      {
+        "packet_index": 24,
+        "phase": "main",
+        "phase_packet_index": 4,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 25,
+        "phase": "main",
+        "phase_packet_index": 5,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 26,
+        "phase": "main",
+        "phase_packet_index": 6,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 27,
+        "phase": "main",
+        "phase_packet_index": 7,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.043735178205785916
+      },
+      {
+        "packet_index": 28,
+        "phase": "main",
+        "phase_packet_index": 8,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.016855792261440735
+      },
+      {
+        "packet_index": 29,
+        "phase": "main",
+        "phase_packet_index": 9,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04587371492753957
+      },
+      {
+        "packet_index": 30,
+        "phase": "main",
+        "phase_packet_index": 10,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.014918304760323754
+      },
+      {
+        "packet_index": 31,
+        "phase": "main",
+        "phase_packet_index": 11,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.014918304760323754
+      },
+      {
+        "packet_index": 32,
+        "phase": "main",
+        "phase_packet_index": 12,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.014918304760323754
+      },
+      {
+        "packet_index": 33,
+        "phase": "main",
+        "phase_packet_index": 13,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03516580974042977
+      },
+      {
+        "packet_index": 34,
+        "phase": "main",
+        "phase_packet_index": 14,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 35,
+        "phase": "main",
+        "phase_packet_index": 15,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 36,
+        "phase": "main",
+        "phase_packet_index": 16,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 37,
+        "phase": "main",
+        "phase_packet_index": 17,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.023115436207398803
+      },
+      {
+        "packet_index": 38,
+        "phase": "main",
+        "phase_packet_index": 18,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.058054533513249545
+      },
+      {
+        "packet_index": 39,
+        "phase": "main",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04127757192657569
+      },
+      {
+        "packet_index": 40,
+        "phase": "main",
+        "phase_packet_index": 20,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07442727791416301
+      },
+      {
+        "packet_index": 41,
+        "phase": "main",
+        "phase_packet_index": 21,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.060269020237301726
+      },
+      {
+        "packet_index": 42,
+        "phase": "main",
+        "phase_packet_index": 22,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06625826650684759
+      },
+      {
+        "packet_index": 43,
+        "phase": "main",
+        "phase_packet_index": 23,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05230767444048557
+      },
+      {
+        "packet_index": 44,
+        "phase": "main",
+        "phase_packet_index": 24,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06721960890223362
+      },
+      {
+        "packet_index": 45,
+        "phase": "main",
+        "phase_packet_index": 25,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04547745462127396
+      },
+      {
+        "packet_index": 46,
+        "phase": "main",
+        "phase_packet_index": 26,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06484592182445527
+      },
+      {
+        "packet_index": 47,
+        "phase": "main",
+        "phase_packet_index": 27,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.027131464695376577
+      },
+      {
+        "packet_index": 48,
+        "phase": "main",
+        "phase_packet_index": 28,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0005363497378047798
+      },
+      {
+        "packet_index": 49,
+        "phase": "main",
+        "phase_packet_index": 29,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06778935504309686
+      },
+      {
+        "packet_index": 50,
+        "phase": "main",
+        "phase_packet_index": 30,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06593758400174801
+      },
+      {
+        "packet_index": 51,
+        "phase": "main",
+        "phase_packet_index": 31,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.07887840226405954
+      },
+      {
+        "packet_index": 52,
+        "phase": "main",
+        "phase_packet_index": 32,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.060524352612349036
+      },
+      {
+        "packet_index": 53,
+        "phase": "main",
+        "phase_packet_index": 33,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06136825692896423
+      },
+      {
+        "packet_index": 54,
+        "phase": "main",
+        "phase_packet_index": 34,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07853427931735846
+      },
+      {
+        "packet_index": 55,
+        "phase": "main",
+        "phase_packet_index": 35,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.044375232120120185
+      },
+      {
+        "packet_index": 56,
+        "phase": "main",
+        "phase_packet_index": 36,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03625691394875867
+      },
+      {
+        "packet_index": 57,
+        "phase": "main",
+        "phase_packet_index": 37,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0626645742895793
+      },
+      {
+        "packet_index": 58,
+        "phase": "main",
+        "phase_packet_index": 38,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.04988109545552376
+      },
+      {
+        "packet_index": 59,
+        "phase": "main",
+        "phase_packet_index": 39,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.1064838148514642
+      },
+      {
+        "packet_index": 60,
+        "phase": "main",
+        "phase_packet_index": 40,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05426294992309649
+      },
+      {
+        "packet_index": 61,
+        "phase": "postamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 62,
+        "phase": "postamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.9473684210526316,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 63,
+        "phase": "postamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.8947368421052632,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 64,
+        "phase": "postamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 65,
+        "phase": "postamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 66,
+        "phase": "postamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 67,
+        "phase": "postamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.6842105263157895,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 68,
+        "phase": "postamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 69,
+        "phase": "postamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 70,
+        "phase": "postamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.5263157894736843,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 71,
+        "phase": "postamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.4736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 72,
+        "phase": "postamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 73,
+        "phase": "postamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 74,
+        "phase": "postamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.3157894736842106,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 75,
+        "phase": "postamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.26315789473684215,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 76,
+        "phase": "postamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 77,
+        "phase": "postamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.1578947368421053,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 78,
+        "phase": "postamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.10526315789473695,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 79,
+        "phase": "postamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.052631578947368474,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 80,
+        "phase": "postamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      }
+    ],
+    "timing_placebo": [
+      {
+        "packet_index": 0,
+        "phase": "preamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 1,
+        "phase": "preamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.05263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 2,
+        "phase": "preamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.10526315789473684,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 3,
+        "phase": "preamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.15789473684210525,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 4,
+        "phase": "preamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 5,
+        "phase": "preamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.2631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 6,
+        "phase": "preamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.3157894736842105,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 7,
+        "phase": "preamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.3684210526315789,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 8,
+        "phase": "preamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 9,
+        "phase": "preamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.47368421052631576,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 10,
+        "phase": "preamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.5263157894736842,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 11,
+        "phase": "preamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 12,
+        "phase": "preamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 13,
+        "phase": "preamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.6842105263157894,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 14,
+        "phase": "preamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.7368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 15,
+        "phase": "preamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 16,
+        "phase": "preamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 17,
+        "phase": "preamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 18,
+        "phase": "preamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.9473684210526315,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 19,
+        "phase": "preamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 20,
+        "phase": "main",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0013692342087599533
+      },
+      {
+        "packet_index": 21,
+        "phase": "main",
+        "phase_packet_index": 1,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03039931864969143
+      },
+      {
+        "packet_index": 22,
+        "phase": "main",
+        "phase_packet_index": 2,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 23,
+        "phase": "main",
+        "phase_packet_index": 3,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 24,
+        "phase": "main",
+        "phase_packet_index": 4,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 4.355810675816613e-05
+      },
+      {
+        "packet_index": 25,
+        "phase": "main",
+        "phase_packet_index": 5,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.043735178205785916
+      },
+      {
+        "packet_index": 26,
+        "phase": "main",
+        "phase_packet_index": 6,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.016855792261440735
+      },
+      {
+        "packet_index": 27,
+        "phase": "main",
+        "phase_packet_index": 7,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.016855792261440735
+      },
+      {
+        "packet_index": 28,
+        "phase": "main",
+        "phase_packet_index": 8,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.016855792261440735
+      },
+      {
+        "packet_index": 29,
+        "phase": "main",
+        "phase_packet_index": 9,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04587371492753957
+      },
+      {
+        "packet_index": 30,
+        "phase": "main",
+        "phase_packet_index": 10,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.014918304760323754
+      },
+      {
+        "packet_index": 31,
+        "phase": "main",
+        "phase_packet_index": 11,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.03516580974042977
+      },
+      {
+        "packet_index": 32,
+        "phase": "main",
+        "phase_packet_index": 12,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 33,
+        "phase": "main",
+        "phase_packet_index": 13,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 34,
+        "phase": "main",
+        "phase_packet_index": 14,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.01943968267207382
+      },
+      {
+        "packet_index": 35,
+        "phase": "main",
+        "phase_packet_index": 15,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.023115436207398803
+      },
+      {
+        "packet_index": 36,
+        "phase": "main",
+        "phase_packet_index": 16,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.058054533513249545
+      },
+      {
+        "packet_index": 37,
+        "phase": "main",
+        "phase_packet_index": 17,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.058054533513249545
+      },
+      {
+        "packet_index": 38,
+        "phase": "main",
+        "phase_packet_index": 18,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.058054533513249545
+      },
+      {
+        "packet_index": 39,
+        "phase": "main",
+        "phase_packet_index": 19,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04127757192657569
+      },
+      {
+        "packet_index": 40,
+        "phase": "main",
+        "phase_packet_index": 20,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07442727791416301
+      },
+      {
+        "packet_index": 41,
+        "phase": "main",
+        "phase_packet_index": 21,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.060269020237301726
+      },
+      {
+        "packet_index": 42,
+        "phase": "main",
+        "phase_packet_index": 22,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06625826650684759
+      },
+      {
+        "packet_index": 43,
+        "phase": "main",
+        "phase_packet_index": 23,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.05230767444048557
+      },
+      {
+        "packet_index": 44,
+        "phase": "main",
+        "phase_packet_index": 24,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06721960890223362
+      },
+      {
+        "packet_index": 45,
+        "phase": "main",
+        "phase_packet_index": 25,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.04547745462127396
+      },
+      {
+        "packet_index": 46,
+        "phase": "main",
+        "phase_packet_index": 26,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06484592182445527
+      },
+      {
+        "packet_index": 47,
+        "phase": "main",
+        "phase_packet_index": 27,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.027131464695376577
+      },
+      {
+        "packet_index": 48,
+        "phase": "main",
+        "phase_packet_index": 28,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0005363497378047798
+      },
+      {
+        "packet_index": 49,
+        "phase": "main",
+        "phase_packet_index": 29,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06778935504309686
+      },
+      {
+        "packet_index": 50,
+        "phase": "main",
+        "phase_packet_index": 30,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.06593758400174801
+      },
+      {
+        "packet_index": 51,
+        "phase": "main",
+        "phase_packet_index": 31,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.07887840226405954
+      },
+      {
+        "packet_index": 52,
+        "phase": "main",
+        "phase_packet_index": 32,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.060524352612349036
+      },
+      {
+        "packet_index": 53,
+        "phase": "main",
+        "phase_packet_index": 33,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.06136825692896423
+      },
+      {
+        "packet_index": 54,
+        "phase": "main",
+        "phase_packet_index": 34,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.07853427931735846
+      },
+      {
+        "packet_index": 55,
+        "phase": "main",
+        "phase_packet_index": 35,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.044375232120120185
+      },
+      {
+        "packet_index": 56,
+        "phase": "main",
+        "phase_packet_index": 36,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.03625691394875867
+      },
+      {
+        "packet_index": 57,
+        "phase": "main",
+        "phase_packet_index": 37,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0626645742895793
+      },
+      {
+        "packet_index": 58,
+        "phase": "main",
+        "phase_packet_index": 38,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.04988109545552376
+      },
+      {
+        "packet_index": 59,
+        "phase": "main",
+        "phase_packet_index": 39,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.1064838148514642
+      },
+      {
+        "packet_index": 60,
+        "phase": "main",
+        "phase_packet_index": 40,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": -0.05426294992309649
+      },
+      {
+        "packet_index": 61,
+        "phase": "postamble",
+        "phase_packet_index": 0,
+        "target_speed_mps": 1.0,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 62,
+        "phase": "postamble",
+        "phase_packet_index": 1,
+        "target_speed_mps": 0.9473684210526316,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 63,
+        "phase": "postamble",
+        "phase_packet_index": 2,
+        "target_speed_mps": 0.8947368421052632,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 64,
+        "phase": "postamble",
+        "phase_packet_index": 3,
+        "target_speed_mps": 0.8421052631578947,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 65,
+        "phase": "postamble",
+        "phase_packet_index": 4,
+        "target_speed_mps": 0.7894736842105263,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 66,
+        "phase": "postamble",
+        "phase_packet_index": 5,
+        "target_speed_mps": 0.736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 67,
+        "phase": "postamble",
+        "phase_packet_index": 6,
+        "target_speed_mps": 0.6842105263157895,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 68,
+        "phase": "postamble",
+        "phase_packet_index": 7,
+        "target_speed_mps": 0.631578947368421,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 69,
+        "phase": "postamble",
+        "phase_packet_index": 8,
+        "target_speed_mps": 0.5789473684210527,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 70,
+        "phase": "postamble",
+        "phase_packet_index": 9,
+        "target_speed_mps": 0.5263157894736843,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 71,
+        "phase": "postamble",
+        "phase_packet_index": 10,
+        "target_speed_mps": 0.4736842105263158,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 72,
+        "phase": "postamble",
+        "phase_packet_index": 11,
+        "target_speed_mps": 0.42105263157894735,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 73,
+        "phase": "postamble",
+        "phase_packet_index": 12,
+        "target_speed_mps": 0.368421052631579,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 74,
+        "phase": "postamble",
+        "phase_packet_index": 13,
+        "target_speed_mps": 0.3157894736842106,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 75,
+        "phase": "postamble",
+        "phase_packet_index": 14,
+        "target_speed_mps": 0.26315789473684215,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 76,
+        "phase": "postamble",
+        "phase_packet_index": 15,
+        "target_speed_mps": 0.21052631578947367,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 77,
+        "phase": "postamble",
+        "phase_packet_index": 16,
+        "target_speed_mps": 0.1578947368421053,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 78,
+        "phase": "postamble",
+        "phase_packet_index": 17,
+        "target_speed_mps": 0.10526315789473695,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 79,
+        "phase": "postamble",
+        "phase_packet_index": 18,
+        "target_speed_mps": 0.052631578947368474,
+        "target_steering_rad": 0.0
+      },
+      {
+        "packet_index": 80,
+        "phase": "postamble",
+        "phase_packet_index": 19,
+        "target_speed_mps": 0.0,
+        "target_steering_rad": 0.0
+      }
+    ]
+  },
+  "diagnostics": {
+    "condition_packet_counts": {
+      "clean_a": 81,
+      "clean_b": 81,
+      "direct": 81,
+      "innovation_gate": 81,
+      "timing_placebo": 81
+    },
+    "gate_update_count": 33,
+    "maximum_abs_target_steering_rad": 0.11101648389101028,
+    "maximum_main_speed_mps": 1.0,
+    "minimum_main_speed_mps": 1.0,
+    "timing_update_count": 33
+  },
+  "matching_checks": {
+    "clean_duplicates_exact": true,
+    "condition_packet_counts_exact": true,
+    "gate_timing_accepted_increments_exact": true,
+    "gate_timing_accepted_targets_exact": true,
+    "gate_timing_update_count_exact": true,
+    "speed_commands_exact_across_conditions": true
+  },
+  "packet_dt_seconds": 0.05,
+  "schema_version": 1,
+  "source_jitter_seed": 24271459,
+  "source_reset_seed": 20271459,
+  "source_suppression_fraction": 0.19999999999999996,
+  "spawn": 638,
+  "speed_cap_mps": 1.0
+}

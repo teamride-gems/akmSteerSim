@@ -1,0 +1,122 @@
+[
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 0,
+    "maximum_abs_normalized_steering": 0.4111741781234741,
+    "maximum_packet_step_normalized_steering": 0.4422710092157845,
+    "spawn": 292,
+    "suppression_fraction": 0.025000000000000022,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 1,
+    "maximum_abs_normalized_steering": 0.24267008792990116,
+    "maximum_packet_step_normalized_steering": 0.41225643523705613,
+    "spawn": 11,
+    "suppression_fraction": 0.050000000000000044,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 3,
+    "maximum_abs_normalized_steering": 0.24266058376575897,
+    "maximum_packet_step_normalized_steering": 0.3962372919395314,
+    "spawn": 76,
+    "suppression_fraction": 0.09999999999999998,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 4,
+    "maximum_abs_normalized_steering": 0.2641412783234383,
+    "maximum_packet_step_normalized_steering": 0.3957352051345209,
+    "spawn": 855,
+    "suppression_fraction": 0.09999999999999998,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 6,
+    "maximum_abs_normalized_steering": 0.2350325584411621,
+    "maximum_packet_step_normalized_steering": 0.42111584649625733,
+    "spawn": 574,
+    "suppression_fraction": 0.125,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s0",
+    "eligible_count_checkpoint": 8,
+    "eligible_rank": 7,
+    "maximum_abs_normalized_steering": 0.24134093523025513,
+    "maximum_packet_step_normalized_steering": 0.3577226098573142,
+    "spawn": 1006,
+    "suppression_fraction": 0.15000000000000002,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 0,
+    "maximum_abs_normalized_steering": 0.2650190591812134,
+    "maximum_packet_step_normalized_steering": 0.3991311192512512,
+    "spawn": 638,
+    "suppression_fraction": 0.19999999999999996,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 2,
+    "maximum_abs_normalized_steering": 0.3223075925797408,
+    "maximum_packet_step_normalized_steering": 0.3331671774351514,
+    "spawn": 725,
+    "suppression_fraction": 0.25,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 4,
+    "maximum_abs_normalized_steering": 0.1155881953239441,
+    "maximum_packet_step_normalized_steering": 0.1441803794088964,
+    "spawn": 574,
+    "suppression_fraction": 0.55,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 6,
+    "maximum_abs_normalized_steering": 0.10384914343621388,
+    "maximum_packet_step_normalized_steering": 0.15472873736786039,
+    "spawn": 76,
+    "suppression_fraction": 0.625,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 8,
+    "maximum_abs_normalized_steering": 0.1067904675575958,
+    "maximum_packet_step_normalized_steering": 0.12686622611746887,
+    "spawn": 855,
+    "suppression_fraction": 0.75,
+    "timing_nonidentity": true
+  },
+  {
+    "checkpoint": "direct_s4",
+    "eligible_count_checkpoint": 11,
+    "eligible_rank": 10,
+    "maximum_abs_normalized_steering": 0.11162723107635596,
+    "maximum_packet_step_normalized_steering": 0.1203613824065802,
+    "spawn": 1006,
+    "suppression_fraction": 0.8,
+    "timing_nonidentity": true
+  }
+]

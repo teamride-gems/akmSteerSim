@@ -1,0 +1,106 @@
+study_id: innovation_gate_f1tenth_hardware_v1
+status: frozen_design_before_physical_outcomes
+prepared_at_utc: "2026-08-21"
+claim: "Innovation-dependent steering-update timing can improve physical trajectory fidelity relative to an exact accepted-target/increment timing placebo even when the complete gated interface is less useful than direct commands."
+
+sealed_sources:
+  source_sequences:
+    path: reproducibility/innovation_gate_second_stack/run_v1/source_sequences.json
+    sha256: 524807001F0E5FBD02713F50D7E67EE235BEBD72121625D495B373AB90664212
+  placebo_result:
+    path: reproducibility/innovation_gate_second_stack/placebo_repair_v1_corrected/result.json
+    sha256: 252095332A00E7CB1919BEEFADA52A94F7A6DB7ED7CECA7FBA57646671D78764
+  vehicle_config:
+    path: configs/vehicle.yaml
+    sha256: 57607D8EEC3669978FA93675C48276F450589ED5712F96EFB0F715524E117F0F
+
+source_selection:
+  eligible_regime: output_jitter
+  require_survived: true
+  require_reference_not_terminated: true
+  require_nonidentity_timing_placebo: true
+  checkpoints: [direct_s0, direct_s4]
+  sources_per_checkpoint: 6
+  maximum_abs_normalized_steering: 0.60
+  maximum_packet_step_normalized_steering: 0.45
+  rule: "Within each checkpoint, retain every eligible source satisfying the safety envelope, sort by (suppression_fraction, spawn), and select six indices nearest an evenly spaced linspace from first to last. No simulated path-effect outcome enters selection."
+
+command_bundle:
+  command_rate_hz: 20.0
+  packet_dt_seconds: 0.05
+  preamble_packets: 20
+  main_packets: 41
+  postamble_packets: 20
+  speed_caps_mps: [1.0, 1.5]
+  conditions: [clean_a, clean_b, direct, innovation_gate, timing_placebo]
+  clean_duplicate_conditions: [clean_a, clean_b]
+  preamble: "zero steering with a linear speed ramp from 0 to the speed cap"
+  postamble: "zero steering with a linear speed ramp from the last main speed to 0"
+  scientific_phase: main
+
+randomization:
+  seed: 20260821
+  design: balanced_five_condition_crossover
+  blocks_per_speed_cap: 12
+  runs_per_block: 5
+  total_blocks: 24
+  total_main_runs: 120
+  blind_operator_labels: true
+
+safety:
+  physical_estop_required: true
+  independent_safety_supervisor_required: true
+  software_deadman_required: true
+  maximum_command_speed_mps: 1.5
+  maximum_study_target_abs_steering_rad: 0.25134
+  maximum_sent_abs_steering_rad: 0.26
+  common_sent_steering_slew_rad_s: 3.5
+  common_sent_acceleration_mps2: 2.0
+  maximum_geofence_radius_m: 5.0
+  maximum_observed_speed_mps: 1.8
+  maximum_abs_yaw_rate_rad_s: 3.5
+  telemetry_stale_seconds: 0.15
+  deadman_stale_seconds: 0.15
+  safe_stop_packets: 20
+  safe_stop_speed_mps: 0.0
+  safe_stop_steering_rad: 0.0
+  real_adapter_requires_explicit_arm_phrase: "AREA CLEAR - ESTOP READY"
+
+run_validity:
+  start_position_tolerance_m: 0.04
+  start_heading_tolerance_deg: 4.0
+  command_lateness_p95_max_seconds: 0.015
+  command_lateness_max_seconds: 0.050
+  telemetry_gap_max_seconds: 0.10
+  minimum_telemetry_rate_hz: 40.0
+  require_exact_packet_count: true
+  require_complete_main_localization: true
+  require_hash_chain: true
+  require_rosbag_for_real_adapter: true
+  require_bundle_and_schedule_hashes: true
+  allowed_pre_motion_technical_reruns:
+    - start_pose_out_of_tolerance_before_arm
+    - missing_or_stale_telemetry_before_first_motion
+    - logging_or_bag_start_failure_before_first_motion
+    - operator_selected_wrong_run_before_first_motion
+  rule: "Every post-motion abort, boundary crossing, deadman release, e-stop, localization loss, packet miss, or manual takeover remains an outcome. It may not be silently rerun or excluded."
+
+analysis:
+  bootstrap_draws: 10000
+  bootstrap_seed: 20260821
+  failure_fill_path_error_m: 1.0
+  clean_repeat_median_rms_max_m: 0.03
+  clean_repeat_p95_rms_max_m: 0.08
+  specificity_placebo_minus_gate_effect_min_m: 0.02
+  specificity_bootstrap_lower_min_m: 0.0
+  utility_gate_minus_direct_harm_min_m: 0.02
+  utility_bootstrap_lower_min_m: 0.0
+  require_positive_each_speed_checkpoint_cell: true
+  binding_outcomes:
+    reproduced_reversal: "clean repeatability passes; gate error is at least 0.02 m lower than timing-placebo error with nonnegative lower interval and positive effects in all four cells; gate error is at least 0.02 m higher than direct error under the same requirements"
+    specificity_only: "specificity passes but downstream harm does not"
+    downstream_only: "downstream harm passes but specificity does not"
+    not_reproduced: "valid study but neither complete condition passes"
+    invalid: "any provenance, balance, run-validity, completeness, or clean-repeatability requirement fails"
+
+binding_scope: "This study tests physical transport of one frozen simulator diagnosis. It does not establish improved RL learning, universal action-interface ordering, racing performance, or safety."
