@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one frozen study row through amendment 001's native ROS 1 adapter."""
+"""Run one frozen study row through the current native ROS 1 adapter."""
 
 from __future__ import annotations
 
@@ -73,4 +73,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -15,6 +15,7 @@ from hardware_study.ros1_runtime import (
     verify_operator_prepared,
     verify_operator_paths,
     verify_ros1_amendment,
+    AMENDMENT_ID,
 )
 from hardware_study.integrity import sha256_file
 from scripts.capture_ros1_configuration import find_named_values
@@ -91,6 +92,7 @@ def fake_runtime():
         Bool=object,
         JointState=object,
         BatteryState=object,
+        TFMessage=object,
     )
 
 
@@ -102,6 +104,7 @@ def valid_site():
             "odometry": "/odom",
             "deadman": "/deadman",
             "estop": "/estop",
+            "safety_override": "/safety_override",
             "joint_states": None,
             "battery_state": None,
             "additional_bag_topics": ["/scan", "/scan"],
@@ -115,6 +118,12 @@ def valid_site():
         "calibration": {"wheelbase_measured": True},
         "vehicle_limits": {"controller_max_acceleration_mps2": 1.5},
         "course": {"localization_system": "cartographer"},
+        "safety_bridge": {
+            "joy_topic": "/joy",
+            "deadman_button_index": 0,
+            "estop_button_index": 1,
+            "deadman_clearance_seconds": 1.0,
+        },
         "rosbag": {"compression": "none"},
     }
 
@@ -155,6 +164,70 @@ class Ros1AmendmentTests(unittest.TestCase):
         adapter.close()
         self.assertTrue(runtime.rospy.publisher.closed)
 
+    def test_ros1_adapter_composes_cartographer_tf_with_wheel_odometry(self):
+        runtime = fake_runtime()
+        site = valid_site()
+        site["topics"]["localization_tf"] = "/tf"
+        site["frames"] = {
+            "command_frame_id": "base_link",
+            "odometry_frame_id": "cartographer_map",
+            "localization_odom_frame_id": "cartographer_odom",
+            "base_frame_id": "base_link",
+            "localization_stale_seconds": 0.1,
+        }
+        adapter = Ros1AckermannAdapter(site, runtime=runtime)
+        adapter._deadman_callback(SimpleNamespace(data=True))
+        adapter._estop_callback(SimpleNamespace(data=False))
+        odometry = SimpleNamespace(
+            header=SimpleNamespace(stamp=SimpleNamespace(to_sec=lambda: 12.0)),
+            pose=SimpleNamespace(
+                pose=SimpleNamespace(
+                    position=SimpleNamespace(x=99.0, y=99.0),
+                    orientation=SimpleNamespace(w=1.0, x=0.0, y=0.0, z=0.0),
+                )
+            ),
+            twist=SimpleNamespace(
+                twist=SimpleNamespace(
+                    linear=SimpleNamespace(x=1.0, y=0.0),
+                    angular=SimpleNamespace(z=0.5),
+                )
+            ),
+        )
+        adapter._odom_callback(odometry)
+
+        def transform(parent, child, x, y, yaw, stamp):
+            return SimpleNamespace(
+                header=SimpleNamespace(
+                    frame_id=parent,
+                    stamp=SimpleNamespace(to_sec=lambda: stamp),
+                ),
+                child_frame_id=child,
+                transform=SimpleNamespace(
+                    translation=SimpleNamespace(x=x, y=y),
+                    rotation=SimpleNamespace(
+                        w=math.cos(yaw / 2.0),
+                        x=0.0,
+                        y=0.0,
+                        z=math.sin(yaw / 2.0),
+                    ),
+                ),
+            )
+
+        adapter._tf_callback(
+            SimpleNamespace(
+                transforms=[
+                    transform("cartographer_map", "cartographer_odom", 1.0, 2.0, math.pi / 2.0, 12.5),
+                    transform("cartographer_odom", "base_link", 3.0, 4.0, 0.1, 12.5),
+                ]
+            )
+        )
+        telemetry = adapter.latest_telemetry()
+        self.assertAlmostEqual(telemetry["x_m"], -3.0)
+        self.assertAlmostEqual(telemetry["y_m"], 5.0)
+        self.assertAlmostEqual(telemetry["yaw_rad"], math.pi / 2.0 + 0.1)
+        self.assertEqual(telemetry["pose_source"], "composed_tf")
+        self.assertAlmostEqual(telemetry["speed_mps"], 1.0)
+
     def test_safety_bridge_starts_latched_and_fails_closed(self):
         state = SafetyState(deadman_index=0, estop_index=1, stale_seconds=0.25)
         self.assertEqual(state.snapshot(now=0.0), (False, True))
@@ -165,6 +238,24 @@ class Ros1AmendmentTests(unittest.TestCase):
         self.assertEqual(state.snapshot(now=1.4), (False, False))
         state.update([0, 1], now=2.0)
         self.assertEqual(state.snapshot(now=2.0), (False, True))
+
+    def test_safety_bridge_clears_mux_before_asserting_deadman(self):
+        state = SafetyState(
+            deadman_index=0,
+            estop_index=1,
+            stale_seconds=2.0,
+            deadman_clearance_seconds=1.0,
+        )
+        state.update([0, 0], now=1.0)
+        self.assertTrue(state.stop_override_required(now=1.0))
+        self.assertTrue(state.reset(now=1.0)[0])
+        state.update([1, 0], now=1.1)
+        self.assertFalse(state.stop_override_required(now=1.1))
+        self.assertEqual(state.snapshot(now=2.0), (False, False))
+        self.assertEqual(state.snapshot(now=2.1), (True, False))
+        state.update([0, 0], now=2.2)
+        self.assertTrue(state.stop_override_required(now=2.2))
+        self.assertEqual(state.snapshot(now=2.2), (False, False))
 
     def test_site_gate_rejects_unmeasured_or_excess_acceleration(self):
         site = valid_site()
@@ -206,11 +297,19 @@ class Ros1AmendmentTests(unittest.TestCase):
         )
         self.assertEqual(template["platform"]["ros_distro"], "noetic")
         self.assertFalse(template["calibration"]["wheelbase_measured"])
-        self.assertIn("REPLACE_WITH", template["topics"]["drive"])
+        self.assertEqual(
+            template["topics"]["drive"],
+            "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
+        )
+        self.assertEqual(template["topics"]["localization_tf"], "/tf")
+        self.assertIn(
+            "REPLACE_WITH",
+            str(template["vehicle_limits"]["controller_max_acceleration_mps2"]),
+        )
 
     def test_amendment_and_base_freeze_hashes_verify(self):
         amendment = verify_ros1_amendment(ROOT)
-        self.assertEqual(amendment["amendment_id"], "AMENDMENT_001")
+        self.assertEqual(amendment["amendment_id"], AMENDMENT_ID)
         self.assertFalse(amendment["physical_outcomes_observed_before_amendment"])
 
     def test_operator_package_requires_sealed_key_to_be_absent(self):

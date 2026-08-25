@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run an engineering-only qualification pilot under ROS 1 amendment 001."""
+"""Run an engineering-only qualification pilot under the current ROS 1 amendment."""
 
 from __future__ import annotations
 
@@ -59,4 +59,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

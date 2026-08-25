@@ -24,8 +24,7 @@ from hardware_study.ros1_runtime import validate_ros1_site, verify_ros1_amendmen
 EXPECTED_TYPES = {
     "drive": "ackermann_msgs/AckermannDriveStamped",
     "odometry": "nav_msgs/Odometry",
-    "deadman": "std_msgs/Bool",
-    "estop": "std_msgs/Bool",
+    "localization_tf": "tf2_msgs/TFMessage",
 }
 
 
@@ -88,8 +87,16 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
         raise RuntimeError("site acceleration value does not match captured vesc.yaml")
 
     topic_rows = []
-    for key, expected_type in EXPECTED_TYPES.items():
-        topic = site["topics"][key]
+    expected_topics = [
+        (key, site["topics"].get(key), expected_type)
+        for key, expected_type in EXPECTED_TYPES.items()
+    ]
+    expected_topics.append(
+        ("joy_source", site["safety_bridge"]["joy_topic"], "sensor_msgs/Joy")
+    )
+    for key, topic, expected_type in expected_topics:
+        if not topic:
+            continue
         observed_type = run_checked(["rostopic", "type", topic])
         if observed_type != expected_type:
             raise RuntimeError(

@@ -1,21 +1,24 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_001`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+This runbook implements `AMENDMENT_002`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
-Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. Resolve every placeholder using measured values and live ROS inspection. In particular, do not guess the autonomous mux input, odometry topic, wheelbase, joystick buttons, or VESC acceleration setting.
+Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. The command topic, Cartographer TF chain, wheel-odometry topic, joystick topic, and deadman index are prefilled from the 2026-08-25 stationary capture and the authoritative Frank configuration report. Resolve the remaining placeholders using live inspection or measurement. Do not infer the physical button for index 6 or the active VESC acceleration value from the stationary bag.
 
 Confirm the command interfaces before starting the bridge:
 
 ```bash
-rostopic type AUTONOMOUS_ACKERMANN_TOPIC
-rostopic info AUTONOMOUS_ACKERMANN_TOPIC
-rostopic type FIXED_WORLD_ODOMETRY_TOPIC
-rostopic hz FIXED_WORLD_ODOMETRY_TOPIC
+rostopic type /vesc/high_level/ackermann_cmd_mux/input/nav_0
+rostopic info /vesc/high_level/ackermann_cmd_mux/input/nav_0
+rostopic type /vesc/odom
+rostopic hz /vesc/odom
+rostopic type /tf
+rostopic hz /tf
+rostopic type /vesc/joy
 ```
 
-The required types are `ackermann_msgs/AckermannDriveStamped` and `nav_msgs/Odometry`.
+The required types are `ackermann_msgs/AckermannDriveStamped`, `nav_msgs/Odometry`, `tf2_msgs/TFMessage`, and `sensor_msgs/Joy`. The adapter composes `cartographer_map -> cartographer_odom -> base_link` for fixed-world pose and uses `/vesc/odom` for speed and yaw rate.
 
 Capture the live interface and controller files:
 
@@ -37,13 +40,19 @@ python3 scripts/ros1_hardware_safety_bridge.py \
   --site local_hardware_site_ros1_draft.yaml
 ```
 
-The software e-stop starts latched. With a fresh joystick and both configured buttons released:
+The software e-stop starts latched. While the deadman is released, stale, or
+the e-stop is latched, the bridge publishes a zero command to Frank's low-level
+safety mux input. With a fresh joystick and both configured buttons released:
 
 ```bash
 rosservice call /hardware_study/reset_software_estop
 ```
 
-On stands, verify all four behaviors: deadman press publishes true, release publishes false, joystick disconnection publishes false within the configured stale interval, and the e-stop remains latched until a deliberate reset. Independently test the physical motor e-stop.
+On stands, verify all five behaviors: the safety mux selects the zero-command
+override while disarmed; holding the deadman for one second releases that
+override and then publishes true; release immediately publishes false and
+restores the override; joystick disconnection fails closed within the configured
+stale interval; and the e-stop remains latched until a deliberate reset.
 
 ## 3. Capture the stationary start pose
 
@@ -59,7 +68,7 @@ python3 scripts/capture_hardware_site_ros1.py \
   --operator OPERATOR_NAME \
   --safety-supervisor SUPERVISOR_NAME \
   --clear-radius-m MEASURED_RADIUS \
-  --localization-system SYSTEM_NAME
+    --localization-system cartographer_tf
 ```
 
 This reuses the frozen stationary-capture requirements: at least 40 samples, speed no greater than 0.03 m/s, and no more than 0.02 m positional dispersion.
@@ -112,7 +121,7 @@ Both archives are permanently engineering-only.
 
 ## 6. Main blinded study
 
-Begin only after both pilots pass and the independent evaluation system has been synchronized or its absence prospectively documented.
+Begin only after both pilots pass. This package prospectively records that the current study uses onboard Cartographer localization without independent trajectory ground truth; paper claims must not describe Cartographer trajectories as independently validated ground truth.
 
 The unblinding file `study_v1/prepared/condition_key.json` is deliberately not
 distributed with this branch. The study lead retains it separately until all
@@ -129,4 +138,3 @@ python3 scripts/run_hardware_study_ros1.py \
 ```
 
 Use the next opaque code from the operator schedule. The amended runner still enforces schedule order, refuses overwrite, records rosbag1 before motion, archives the original freeze and amendment, and applies the original post-motion no-rerun rule.
-

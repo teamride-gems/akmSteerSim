@@ -1,4 +1,4 @@
-"""Integrity and rosbag helpers for ROS 1 hardware amendment 001."""
+"""Integrity and rosbag helpers for the current ROS 1 hardware amendment."""
 
 from __future__ import annotations
 
@@ -12,8 +12,9 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
+AMENDMENT_ID = "AMENDMENT_002"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_001.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_002.json"
 )
 SEALED_PREPARED_PATH = "condition_key.json"
 
@@ -59,9 +60,18 @@ def verify_ros1_amendment(root: Path, amendment_path: Path | None = None) -> dic
     root = Path(root).resolve()
     path = (amendment_path or root / AMENDMENT_PATH).resolve()
     amendment = json.loads(path.read_text(encoding="utf-8"))
+    if amendment.get("amendment_id") != AMENDMENT_ID:
+        raise RuntimeError(
+            f"expected {AMENDMENT_ID}, found {amendment.get('amendment_id')!r}"
+        )
+    prior = amendment.get("prior_amendment")
+    if prior:
+        prior_path = root / prior["path"]
+        if sha256_file(prior_path) != prior["sha256"]:
+            raise RuntimeError(f"prior amendment does not match {AMENDMENT_ID}")
     freeze_path = root / amendment["base_freeze"]["path"]
     if sha256_file(freeze_path) != amendment["base_freeze"]["sha256"]:
-        raise RuntimeError("base FREEZE.json does not match ROS 1 amendment 001")
+        raise RuntimeError(f"base FREEZE.json does not match ROS 1 {AMENDMENT_ID}")
     freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
     freeze_checks = verify_paths(freeze["files"], root)
     if not all(row["passed"] for row in freeze_checks):
@@ -70,7 +80,7 @@ def verify_ros1_amendment(root: Path, amendment_path: Path | None = None) -> dic
     checks = verify_paths(amendment["files"], root)
     if not all(row["passed"] for row in checks):
         failed = [row for row in checks if not row["passed"]]
-        raise RuntimeError(f"ROS 1 amendment verification failed: {failed}")
+        raise RuntimeError(f"ROS 1 {AMENDMENT_ID} verification failed: {failed}")
     return amendment
 
 
@@ -91,6 +101,42 @@ def validate_ros1_site(site: dict) -> None:
     localization = site.get("course", {}).get("localization_system")
     if not localization or "REPLACE_WITH" in str(localization):
         raise RuntimeError("localization system must be resolved before preflight")
+    localization_tf = site.get("topics", {}).get("localization_tf")
+    if localization_tf:
+        frames = site.get("frames", {})
+        required_frames = (
+            "odometry_frame_id",
+            "localization_odom_frame_id",
+            "base_frame_id",
+        )
+        unresolved = [
+            key
+            for key in required_frames
+            if not frames.get(key) or "REPLACE_WITH" in str(frames.get(key))
+        ]
+        if unresolved:
+            raise RuntimeError(
+                f"Cartographer TF pose requires resolved frames: {unresolved}"
+            )
+    topics = site.get("topics", {})
+    for key in ("drive", "odometry", "deadman", "estop", "safety_override"):
+        value = topics.get(key)
+        if not value or "REPLACE_WITH" in str(value):
+            raise RuntimeError(f"ROS 1 topic {key!r} must be resolved")
+    bridge = site.get("safety_bridge", {})
+    joy_topic = bridge.get("joy_topic")
+    if not joy_topic or "REPLACE_WITH" in str(joy_topic):
+        raise RuntimeError("safety bridge joystick topic must be resolved")
+    try:
+        deadman_index = int(bridge["deadman_button_index"])
+        estop_index = int(bridge["estop_button_index"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("safety bridge button indices must be resolved integers") from exc
+    if min(deadman_index, estop_index) < 0 or deadman_index == estop_index:
+        raise RuntimeError("deadman and e-stop buttons must be distinct and nonnegative")
+    clearance = float(bridge.get("deadman_clearance_seconds", 0.0))
+    if clearance < 0.5:
+        raise RuntimeError("deadman mux-clearance interval must be at least 0.5 seconds")
 
 
 def ros1_bag_topics(site: dict) -> list[str]:
@@ -99,7 +145,10 @@ def ros1_bag_topics(site: dict) -> list[str]:
         site["topics"]["odometry"],
         site["topics"]["deadman"],
         site["topics"]["estop"],
+        site["topics"]["safety_override"],
     ]
+    if site["topics"].get("localization_tf"):
+        topics.append(site["topics"]["localization_tf"])
     for key in ("joint_states", "battery_state"):
         if site["topics"].get(key):
             topics.append(site["topics"][key])
@@ -176,7 +225,7 @@ def archive_amendment_inputs(
     root = Path(root).resolve()
     path = (amendment_path or root / AMENDMENT_PATH).resolve()
     amendment = verify_ros1_amendment(root, path)
-    archive = Path(run_dir) / "frozen_inputs" / "amendment_001"
+    archive = Path(run_dir) / "frozen_inputs" / AMENDMENT_ID.lower()
     archive.mkdir(exist_ok=False)
     shutil.copy2(path, archive / path.name)
     for entry in amendment["files"]:
@@ -199,7 +248,7 @@ def verify_ros1_preflight(
         "site_hash": result.get("site_sha256") == sha256_file(site_path),
         "study_id": result.get("study_id") == config["study_id"],
         "adapter": result.get("adapter") == "ros1",
-        "amendment": result.get("amendment_id") == "AMENDMENT_001",
+        "amendment": result.get("amendment_id") == AMENDMENT_ID,
     }
     if not all(checks.values()):
         raise RuntimeError(f"ROS 1 real-run preflight is not valid: {checks}")

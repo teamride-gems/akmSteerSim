@@ -13,27 +13,46 @@ platform:
   python_major: 3
 
 topics:
-  # Confirm the actual autonomous mux input with rostopic info. Do not assume
-  # that the teleoperation input is safe or appropriate for autonomous runs.
-  drive: REPLACE_WITH_AUTONOMOUS_ACKERMANN_TOPIC
-  odometry: REPLACE_WITH_FIXED_WORLD_ODOMETRY_TOPIC
+  drive: /vesc/high_level/ackermann_cmd_mux/input/nav_0
+  # Frank's wheel odometry supplies speed and yaw rate. Cartographer TF supplies
+  # the fixed-world pose used for trajectory evaluation.
+  odometry: /vesc/odom
+  localization_tf: /tf
   deadman: /hardware_study/deadman
   estop: /hardware_study/estop
+  safety_override: /vesc/low_level/ackermann_cmd_mux/input/safety
   joint_states: null
   battery_state: null
   additional_bag_topics:
     - /scan
+    - /imu
+    - /tf_static
+    - /vesc/joy
+    - /vesc/sensors/core
+    - /vesc/sensors/servo_position_command
     - /vesc/commands/motor/speed
+    - /vesc/commands/motor/unsmoothed_speed
     - /vesc/commands/servo/position
+    - /vesc/commands/servo/unsmoothed_position
+    - /vesc/high_level/ackermann_cmd_mux/output
+    - /vesc/low_level/ackermann_cmd_mux/input/navigation
+    - /vesc/low_level/ackermann_cmd_mux/input/safety
+    - /vesc/low_level/ackermann_cmd_mux/input/teleop
+    - /vesc/low_level/ackermann_cmd_mux/output
 
 frames:
   command_frame_id: base_link
-  odometry_frame_id: REPLACE_WITH_FIXED_WORLD_FRAME
+  odometry_frame_id: cartographer_map
+  localization_odom_frame_id: cartographer_odom
+  base_frame_id: base_link
+  localization_stale_seconds: 0.10
 
 steering_feedback:
-  source: kinematic_from_odometry
+  source: derived_from_vesc_odometry_model
   steering_joint_name: null
-  wheelbase_m: REPLACE_WITH_MEASURED_WHEELBASE
+  # Frank's current configuration reports approximately 0.250 m. Keep the
+  # measured gate false until this is confirmed on the current chassis.
+  wheelbase_m: 0.250
   minimum_speed_for_kinematic_estimate_mps: 0.20
 
 calibration:
@@ -48,6 +67,8 @@ vehicle_limits:
   # Drive notes record 1.5 m/s^2 after the drivetrain/slipper-clutch repair.
   # Use the current vesc.yaml value and do not exceed this provisional ceiling.
   controller_max_acceleration_mps2: REPLACE_WITH_VERIFIED_VALUE_AT_OR_BELOW_1P5
+  controller_min_steering_rad: -0.263
+  controller_max_steering_rad: 0.313
 
 expected_start_pose:
   x_m: REPLACE_WITH_CAPTURED_X
@@ -56,15 +77,18 @@ expected_start_pose:
 
 course:
   surveyed_clear_radius_m: REPLACE_WITH_MEASURED_CLEAR_RADIUS
-  localization_system: REPLACE_WITH_ONBOARD_LOCALIZATION_SYSTEM
-  evaluation_ground_truth_system: REPLACE_WITH_ARUCO_OR_OTHER_INDEPENDENT_SYSTEM
+  localization_system: cartographer_tf
+  evaluation_ground_truth_system: none_onboard_cartographer_only
 
 safety_bridge:
-  joy_topic: /joy
-  deadman_button_index: REPLACE_WITH_BUTTON_INDEX
+  joy_topic: /vesc/joy
+  deadman_button_index: 5
   estop_button_index: REPLACE_WITH_DISTINCT_BUTTON_INDEX
   publish_rate_hz: 20.0
   joy_stale_seconds: 0.25
+  # Hold the deadman for this long before the runner arms, allowing the previous
+  # zero-command safety override to expire in the mux.
+  deadman_clearance_seconds: 1.0
   estop_latched: true
 
 rosbag:

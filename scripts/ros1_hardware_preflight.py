@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the frozen live preflight through ROS 1 amendment 001."""
+"""Run the frozen live preflight through the current ROS 1 amendment."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ if str(ROOT) not in sys.path:
 from hardware_study.integrity import sha256_file, write_json
 from hardware_study.ros1_adapter import Ros1AckermannAdapter
 from hardware_study.ros1_runtime import (
+    AMENDMENT_ID,
+    AMENDMENT_PATH,
     validate_ros1_site,
     verify_operator_paths,
     verify_ros1_amendment,
@@ -39,7 +41,7 @@ def make_ros1_adapter(name: str, site: dict):
 
 
 def main() -> int:
-    amendment_path = ROOT / "reproducibility/hardware_validation/amendments/AMENDMENT_001.json"
+    amendment_path = ROOT / AMENDMENT_PATH
     verify_ros1_amendment(ROOT, amendment_path)
     original_arguments = list(sys.argv[1:])
     output_path = (ROOT / argument_value(original_arguments, "--output")).resolve()
@@ -52,7 +54,7 @@ def main() -> int:
         {
             "adapter": "ros1",
             "adapter_name": "ros1_ackermann_noetic",
-            "amendment_id": "AMENDMENT_001",
+            "amendment_id": AMENDMENT_ID,
             "amendment_sha256": sha256_file(amendment_path),
             "preflight_wrapper_sha256": sha256_file(Path(__file__)),
         }
@@ -63,4 +65,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

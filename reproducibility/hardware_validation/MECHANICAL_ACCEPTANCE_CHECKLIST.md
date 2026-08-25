@@ -41,12 +41,12 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 ## Sensing, localization, and recording
 
 - [ ] `/scan` is live with plausible ranges and no persistent blind sector caused by the chassis.
-- [ ] Fixed-world odometry is ≥40 Hz, maximum gap ≤0.10 s, and stationary drift ≤0.02 m over the capture interval.
+- [ ] Composed Cartographer `cartographer_map -> base_link` pose is ≥40 Hz, maximum gap ≤0.10 s, and stationary drift ≤0.02 m over the capture interval.
 - [ ] IMU, if used, has a secure mount, correct axes, stable timestamps, and no cable strain.
 - [ ] Onboard localization system: ______________________________
 - [ ] Independent evaluation system: ____________________________
 - [ ] ArUco/external pose accuracy and update rate were measured, or its unavailability was documented before outcomes.
-- [ ] Onboard and independent poses agree in translation, heading, direction, and time alignment during a slow figure-eight.
+- [ ] If independent tracking is used, onboard and independent poses agree in translation, heading, direction, and time alignment during a slow figure-eight; otherwise mark this N/A under the prospectively documented Cartographer-only limitation.
 - [ ] rosbag1 contains command, odometry, deadman, e-stop, scan, and configured VESC feedback topics.
 - [ ] Independent video covers the entire course and visibly identifies run ID.
 
@@ -62,4 +62,3 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 **Release decision:** [ ] PASS FOR STANDS ONLY  [ ] PASS FOR GROUND PILOT  [ ] FAIL
 
 Any failure blocks the main study. Engineering repairs and pilots may continue, but their data remain excluded from the paper analysis.
-

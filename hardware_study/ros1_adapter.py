@@ -23,10 +23,11 @@ def load_ros1_runtime():  # pragma: no cover - requires the robot runtime
         from nav_msgs.msg import Odometry
         from sensor_msgs.msg import BatteryState, JointState
         from std_msgs.msg import Bool
+        from tf2_msgs.msg import TFMessage
     except ImportError as exc:
         raise AdapterError(
             "ROS 1 adapter requires rospy, ackermann_msgs, nav_msgs, sensor_msgs, "
-            "and std_msgs in a sourced ROS Noetic environment"
+            "std_msgs, and tf2_msgs in a sourced ROS Noetic environment"
         ) from exc
 
     class Runtime:
@@ -39,6 +40,7 @@ def load_ros1_runtime():  # pragma: no cover - requires the robot runtime
     runtime.Bool = Bool
     runtime.JointState = JointState
     runtime.BatteryState = BatteryState
+    runtime.TFMessage = TFMessage
     return runtime
 
 
@@ -61,6 +63,8 @@ class Ros1AckermannAdapter:
         self._estop_time = None
         self._joint_steering = None
         self._battery_voltage = None
+        self._odom_state = None
+        self._tf_transforms = {}
         self._subscribers = []
 
         if not self.rospy.core.is_initialized():
@@ -80,6 +84,16 @@ class Ros1AckermannAdapter:
                 queue_size=50,
             )
         )
+        localization_tf_topic = site["topics"].get("localization_tf")
+        if localization_tf_topic:
+            self._subscribers.append(
+                self.rospy.Subscriber(
+                    localization_tf_topic,
+                    self.runtime.TFMessage,
+                    self._tf_callback,
+                    queue_size=100,
+                )
+            )
         self._subscribers.append(
             self.rospy.Subscriber(
                 site["topics"]["deadman"],
@@ -135,41 +149,130 @@ class Ros1AckermannAdapter:
     def _stamp_seconds(stamp) -> float:
         return float(stamp.to_sec())
 
+    @staticmethod
+    def _normalized_frame(frame: str) -> str:
+        return str(frame).lstrip("/")
+
+    def _steering(self, speed: float, yaw_rate: float) -> tuple[Optional[float], str]:
+        feedback = self.site["steering_feedback"]
+        if self._joint_steering is not None:
+            return float(self._joint_steering), "joint_state"
+        if speed >= float(feedback["minimum_speed_for_kinematic_estimate_mps"]):
+            value = math.atan(float(feedback["wheelbase_m"]) * yaw_rate / speed)
+            return value, "kinematic_from_odometry"
+        return None, "unavailable_below_speed_threshold"
+
+    def _append_telemetry(
+        self,
+        *,
+        source_stamp_s: float,
+        x_m: float,
+        y_m: float,
+        yaw_rad: float,
+        speed_mps: float,
+        yaw_rate_rad_s: float,
+        pose_source: str,
+    ) -> None:
+        now = time.monotonic()
+        steering, steering_source = self._steering(speed_mps, yaw_rate_rad_s)
+        telemetry = {
+            "received_monotonic_s": now,
+            "source_stamp_s": float(source_stamp_s),
+            "x_m": float(x_m),
+            "y_m": float(y_m),
+            "yaw_rad": float(yaw_rad),
+            "speed_mps": float(speed_mps),
+            "yaw_rate_rad_s": float(yaw_rate_rad_s),
+            "steering_rad": steering,
+            "steering_source": steering_source,
+            "pose_source": pose_source,
+            "deadman": bool(self._deadman) if self._deadman is not None else False,
+            "deadman_received_monotonic_s": self._deadman_time,
+            "estop": bool(self._estop) if self._estop is not None else True,
+            "estop_received_monotonic_s": self._estop_time,
+            "battery_voltage_v": self._battery_voltage,
+        }
+        self._latest = telemetry
+        self._queue.append(dict(telemetry))
+
     def _odom_callback(self, message):  # pragma: no cover - exercised with fakes
         now = time.monotonic()
         pose = message.pose.pose
         twist = message.twist.twist
         speed = math.hypot(float(twist.linear.x), float(twist.linear.y))
         yaw_rate = float(twist.angular.z)
-        feedback = self.site["steering_feedback"]
         with self._lock:
-            if self._joint_steering is not None:
-                steering = float(self._joint_steering)
-                source = "joint_state"
-            elif speed >= float(feedback["minimum_speed_for_kinematic_estimate_mps"]):
-                steering = math.atan(float(feedback["wheelbase_m"]) * yaw_rate / speed)
-                source = "kinematic_from_odometry"
-            else:
-                steering = None
-                source = "unavailable_below_speed_threshold"
-            telemetry = {
+            self._odom_state = {
                 "received_monotonic_s": now,
                 "source_stamp_s": self._stamp_seconds(message.header.stamp),
-                "x_m": float(pose.position.x),
-                "y_m": float(pose.position.y),
-                "yaw_rad": self._yaw(pose.orientation),
                 "speed_mps": speed,
                 "yaw_rate_rad_s": yaw_rate,
-                "steering_rad": steering,
-                "steering_source": source,
-                "deadman": bool(self._deadman) if self._deadman is not None else False,
-                "deadman_received_monotonic_s": self._deadman_time,
-                "estop": bool(self._estop) if self._estop is not None else True,
-                "estop_received_monotonic_s": self._estop_time,
-                "battery_voltage_v": self._battery_voltage,
             }
-            self._latest = telemetry
-            self._queue.append(dict(telemetry))
+            if not self.site["topics"].get("localization_tf"):
+                self._append_telemetry(
+                    source_stamp_s=self._odom_state["source_stamp_s"],
+                    x_m=pose.position.x,
+                    y_m=pose.position.y,
+                    yaw_rad=self._yaw(pose.orientation),
+                    speed_mps=speed,
+                    yaw_rate_rad_s=yaw_rate,
+                    pose_source="odometry",
+                )
+
+    def _tf_callback(self, message):  # pragma: no cover - exercised with fakes
+        now = time.monotonic()
+        frames = self.site["frames"]
+        world = self._normalized_frame(frames["odometry_frame_id"])
+        localization_odom = self._normalized_frame(frames["localization_odom_frame_id"])
+        base = self._normalized_frame(frames.get("base_frame_id", "base_link"))
+        with self._lock:
+            for transform in message.transforms:
+                parent = self._normalized_frame(transform.header.frame_id)
+                child = self._normalized_frame(transform.child_frame_id)
+                self._tf_transforms[(parent, child)] = (now, transform)
+            world_to_odom = self._tf_transforms.get((world, localization_odom))
+            odom_to_base = self._tf_transforms.get((localization_odom, base))
+            if not world_to_odom or not odom_to_base or self._odom_state is None:
+                return
+            stale_seconds = float(frames.get("localization_stale_seconds", 0.10))
+            if (
+                now - world_to_odom[0] > stale_seconds
+                or now - odom_to_base[0] > stale_seconds
+                or now - self._odom_state["received_monotonic_s"] > stale_seconds
+            ):
+                return
+            first = world_to_odom[1]
+            second = odom_to_base[1]
+            first_yaw = self._yaw(first.transform.rotation)
+            second_yaw = self._yaw(second.transform.rotation)
+            first_translation = first.transform.translation
+            second_translation = second.transform.translation
+            x_m = (
+                float(first_translation.x)
+                + math.cos(first_yaw) * float(second_translation.x)
+                - math.sin(first_yaw) * float(second_translation.y)
+            )
+            y_m = (
+                float(first_translation.y)
+                + math.sin(first_yaw) * float(second_translation.x)
+                + math.cos(first_yaw) * float(second_translation.y)
+            )
+            source_stamp_s = max(
+                self._stamp_seconds(first.header.stamp),
+                self._stamp_seconds(second.header.stamp),
+            )
+            self._append_telemetry(
+                source_stamp_s=source_stamp_s,
+                x_m=x_m,
+                y_m=y_m,
+                yaw_rad=math.atan2(
+                    math.sin(first_yaw + second_yaw),
+                    math.cos(first_yaw + second_yaw),
+                ),
+                speed_mps=self._odom_state["speed_mps"],
+                yaw_rate_rad_s=self._odom_state["yaw_rate_rad_s"],
+                pose_source="composed_tf",
+            )
 
     def _deadman_callback(self, message):
         with self._lock:
@@ -232,4 +335,3 @@ class Ros1AckermannAdapter:
         for subscriber in self._subscribers:
             subscriber.unregister()
         self.publisher.unregister()
-
