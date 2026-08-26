@@ -25,20 +25,28 @@ topics:
   battery_state: null
   additional_bag_topics:
     - /scan
+    - /laser_status
+    - /diagnostics
     - /imu
     - /tf_static
     - /vesc/joy
     - /vesc/sensors/core
     - /vesc/sensors/servo_position_command
     - /vesc/commands/motor/speed
+    - /vesc/commands/motor/brake
+    - /vesc/commands/motor/current
+    - /vesc/commands/motor/duty_cycle
+    - /vesc/commands/motor/position
     - /vesc/commands/motor/unsmoothed_speed
     - /vesc/commands/servo/position
     - /vesc/commands/servo/unsmoothed_position
     - /vesc/high_level/ackermann_cmd_mux/output
+    - /vesc/high_level/ackermann_cmd_mux/active
     - /vesc/low_level/ackermann_cmd_mux/input/navigation
     - /vesc/low_level/ackermann_cmd_mux/input/safety
     - /vesc/low_level/ackermann_cmd_mux/input/teleop
     - /vesc/low_level/ackermann_cmd_mux/output
+    - /vesc/low_level/ackermann_cmd_mux/active
 
 frames:
   command_frame_id: base_link
@@ -64,9 +72,9 @@ calibration:
   stopping_distance_measured: false
 
 vehicle_limits:
-  # Drive notes record 1.5 m/s^2 after the drivetrain/slipper-clutch repair.
-  # Use the current vesc.yaml value and do not exceed this provisional ceiling.
-  controller_max_acceleration_mps2: REPLACE_WITH_VERIFIED_VALUE_AT_OR_BELOW_1P5
+  # The mechanical lead selected 2.0 m/s^2 as the experiment ceiling. The
+  # captured active vesc.yaml must match this site value and may not exceed it.
+  controller_max_acceleration_mps2: 2.0
   controller_min_steering_rad: -0.263
   controller_max_steering_rad: 0.313
 
@@ -83,7 +91,7 @@ course:
 safety_bridge:
   joy_topic: /vesc/joy
   deadman_button_index: 5
-  estop_button_index: REPLACE_WITH_DISTINCT_BUTTON_INDEX
+  estop_button_index: 6
   publish_rate_hz: 20.0
   joy_stale_seconds: 0.25
   # Hold the deadman for this long before the runner arms, allowing the previous

@@ -35,7 +35,7 @@ the key to Frank's checkout; the ROS 1 tools fail closed if it is present.
   preflight, pilot, and study commands.
 - `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — frozen scientific
   and rerun rules.
-- `reproducibility/hardware_validation/amendments/AMENDMENT_002.md` — ROS 1
+- `reproducibility/hardware_validation/amendments/AMENDMENT_003.md` — ROS 1
   compatibility and physical-controller gates.
 
 ## Robot-side prerequisites
@@ -67,13 +67,11 @@ The 2026-08-25 stationary capture resolved the command, mux, Cartographer,
 wheel-odometry, joystick, LiDAR, IMU, and VESC topic interfaces. Before the
 pilot, resolve only the remaining fail-closed fields in the site template:
 
-1. Capture the `max_acceleration` value from the `vesc.yaml` Frank actually
-   loads; the experiment requires a value no greater than 1.5 m/s².
-2. Confirm the physical controller button represented by `/vesc/joy` index 6
-   before assigning it as the experiment stop input.
-3. Record the current axle-center-to-axle-center wheelbase measurement. The
+1. Set and capture `max_acceleration: 2.0` in the `vesc.yaml` Frank actually
+   loads. The previously copied 2.5 m/s² value will fail configuration capture.
+2. Record the current axle-center-to-axle-center wheelbase measurement. The
    approximate 0.250 m configuration value remains provisional until then.
-4. Record the surveyed course radius and taped start pose.
+3. Record the surveyed course radius and taped start pose.
 
 ## Required order
 

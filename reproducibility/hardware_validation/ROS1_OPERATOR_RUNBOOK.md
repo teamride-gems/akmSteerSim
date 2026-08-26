@@ -1,10 +1,10 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_002`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+This runbook implements `AMENDMENT_003`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
-Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. The command topic, Cartographer TF chain, wheel-odometry topic, joystick topic, and deadman index are prefilled from the 2026-08-25 stationary capture and the authoritative Frank configuration report. Resolve the remaining placeholders using live inspection or measurement. Do not infer the physical button for index 6 or the active VESC acceleration value from the stationary bag.
+Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. The command topic, Cartographer TF chain, wheel-odometry topic, joystick topic, deadman index, and stop index are prefilled from the 2026-08-25 captures. Resolve the remaining placeholders using live inspection or measurement. The active VESC configuration must be set to and captured at the selected 2.0 m/s² acceleration ceiling.
 
 Confirm the command interfaces before starting the bridge:
 
@@ -31,7 +31,7 @@ python3 scripts/capture_ros1_configuration.py \
   --output hardware_runs/configuration_capture/session_001
 ```
 
-The capture refuses an unknown topic type, missing controller file, multiple/missing VESC acceleration values, a value above 1.5 m/s², or disagreement between `vesc.yaml` and the site record.
+The capture refuses an unknown topic type, missing controller file, multiple/missing VESC acceleration values, a value above 2.0 m/s², or disagreement between `vesc.yaml` and the site record.
 
 ## 2. Start and test the ROS 1 safety bridge
 

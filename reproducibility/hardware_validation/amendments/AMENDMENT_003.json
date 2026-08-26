@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_003",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "FROZEN_AFTER_LIVE_INTERFACE_CONFIRMATION_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-08-26T16:33:19.1704049Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "stationary_interface_capture_observed": true,
+  "reason": "The mechanical lead confirmed joystick index 6, selected a 2.0 m/s^2 experiment controller ceiling, and supplied Frank's live ROS topic list after amendment 002 was frozen.",
+  "scope": "Robot configuration ceiling, stop-button mapping, bag topic coverage, and operator instructions only. Scientific bundles, schedule, outcome thresholds, failure policy, and analysis are unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "prior_amendment": {
+    "path": "reproducibility/hardware_validation/amendments/AMENDMENT_002.json",
+    "sha256": "BDC27B25D494A31F59A1F63F29021594D1F72614D0C1483B5875F2037BB247D4"
+  },
+  "files": [
+    {
+      "path": "configs/hardware_site_ros1_template.yaml",
+      "sha256": "E8EE45A50AF26D7C93AD7F98FA8D3CAB37379B5F8C552CF8BAECCDBA49F77A97"
+    },
+    {
+      "path": "hardware_study/ros1_adapter.py",
+      "sha256": "F35F8D860C6E3EDEDC351126FC0D8AF69A0E1D3CA628A053CEB98474F78571DF"
+    },
+    {
+      "path": "hardware_study/ros1_runtime.py",
+      "sha256": "0E97119F3743493E3348C6E0C50B7E0BE1D9176EA500163D14C1E97C3DF288CF"
+    },
+    {
+      "path": "scripts/capture_ros1_configuration.py",
+      "sha256": "B121E4EB60AE24FCA770E4A33E4EEB3C05C11C92B43AEC042B84A8FBF60BBD2E"
+    },
+    {
+      "path": "scripts/ros1_hardware_preflight.py",
+      "sha256": "7E7FA2640D40975DDCB1A0DBDD091DA62B611929BF73FF847BE3C7FBFC4E2461"
+    },
+    {
+      "path": "scripts/ros1_hardware_safety_bridge.py",
+      "sha256": "9859519F7C2B166D2AF0AFD8D51CF7694F5E7BDDE436A173150FDE8C0ABE484E"
+    },
+    {
+      "path": "scripts/run_hardware_study_ros1.py",
+      "sha256": "30F9F456365D87763E830F23F7C3EC17B1BA98D7E4F7F0DF6AF557C85DCA89EA"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot_ros1.py",
+      "sha256": "AA37AA64DBC8040226885DAF206237D1323E83AF4602D3051CC6AFE2F6DC37AE"
+    },
+    {
+      "path": "reproducibility/hardware_validation/FRANK_STATIONARY_BAG_20260825.md",
+      "sha256": "8290B8BD27711E9B98BC122A33FF3D3FB5119E3D582620C9664E8A7E9C71B549"
+    },
+    {
+      "path": "reproducibility/hardware_validation/FRANK_LIVE_INTERFACE_20260825.md",
+      "sha256": "61E8C67F3250B8BCE8E9C3359283390FA215A70865E8513595A347EEB15B318E"
+    },
+    {
+      "path": "reproducibility/hardware_validation/amendments/AMENDMENT_003.md",
+      "sha256": "523BA4FCA633BC5D1028D223B3ABD5008C817A356912EB669599A44388EEFFF4"
+    },
+    {
+      "path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md",
+      "sha256": "66C4517475D6CE691FC250DC2959B04EA0E83B1155B759E3C0A54D440A1DCDD9"
+    },
+    {
+      "path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md",
+      "sha256": "ED6A664CD8BC63B3F07B1B76286DBEE3D43C52AC3FD8891B277E1D7D1FFFF870"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md",
+      "sha256": "2E34877907655386F49F1D834C52E30132033B24E9C2DEE25BE009C1E1A7E205"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_ACCEPTANCE_CHECKLIST.md",
+      "sha256": "D4061097265F15CC0D082C48D78840E896CF1DE9ECE0A7149D63B818C8A3F15B"
+    },
+    {
+      "path": "reproducibility/hardware_validation/PRE_ROBOT_READINESS.md",
+      "sha256": "88051931EB67A1B37EDB5ED399CB6CC118348687777C08EB13B60575E243D105"
+    }
+  ]
+}

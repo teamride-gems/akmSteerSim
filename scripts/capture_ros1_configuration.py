@@ -18,7 +18,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from hardware_study.integrity import sha256_file, write_json
-from hardware_study.ros1_runtime import validate_ros1_site, verify_ros1_amendment
+from hardware_study.ros1_runtime import (
+    MAX_CONTROLLER_ACCELERATION_MPS2,
+    validate_ros1_site,
+    verify_ros1_amendment,
+)
 
 
 EXPECTED_TYPES = {
@@ -78,7 +82,10 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
         raise RuntimeError(
             f"expected exactly one max_acceleration in VESC config, found {acceleration_values}"
         )
-    if acceleration_values[0] <= 0.0 or acceleration_values[0] > 1.5:
+    if (
+        acceleration_values[0] <= 0.0
+        or acceleration_values[0] > MAX_CONTROLLER_ACCELERATION_MPS2
+    ):
         raise RuntimeError(
             f"unsafe/unverified VESC max_acceleration: {acceleration_values[0]} m/s^2"
         )

@@ -35,7 +35,7 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 - [ ] Slipper clutch/spring is installed, adjusted, and marked so loosening can be detected.
 - [ ] Five gradual launches produce no grinding, wheel-free motor spin, clutch slip, or intermittent engagement.
 - [ ] Five direction-neutral-stop tests produce no abrupt reversal or drivetrain shock.
-- [ ] `vesc.yaml` has exactly one `max_acceleration` value and it is ≤ 1.5 m/s².
+- [ ] `vesc.yaml` has exactly one `max_acceleration` value and it is 2.0 m/s².
 - [ ] The car remains stopped for 10 s after zero-speed commands and after deadman release.
 
 ## Sensing, localization, and recording

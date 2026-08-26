@@ -12,10 +12,11 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
-AMENDMENT_ID = "AMENDMENT_002"
+AMENDMENT_ID = "AMENDMENT_003"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_002.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_003.json"
 )
+MAX_CONTROLLER_ACCELERATION_MPS2 = 2.0
 SEALED_PREPARED_PATH = "condition_key.json"
 
 
@@ -93,10 +94,10 @@ def validate_ros1_site(site: dict) -> None:
     controller_limit = float(
         site.get("vehicle_limits", {}).get("controller_max_acceleration_mps2", 999.0)
     )
-    if controller_limit <= 0.0 or controller_limit > 1.5:
+    if abs(controller_limit - MAX_CONTROLLER_ACCELERATION_MPS2) > 1e-9:
         raise RuntimeError(
-            "verified VESC controller acceleration must be positive and no more than "
-            "the 1.5 m/s^2 provisional Drive-documented limit"
+            "verified VESC controller acceleration must equal the frozen "
+            f"{MAX_CONTROLLER_ACCELERATION_MPS2:.1f} m/s^2 mechanical-lead setting"
         )
     localization = site.get("course", {}).get("localization_system")
     if not localization or "REPLACE_WITH" in str(localization):

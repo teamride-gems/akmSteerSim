@@ -116,7 +116,7 @@ def valid_site():
             "steering_joint_name": None,
         },
         "calibration": {"wheelbase_measured": True},
-        "vehicle_limits": {"controller_max_acceleration_mps2": 1.5},
+        "vehicle_limits": {"controller_max_acceleration_mps2": 2.0},
         "course": {"localization_system": "cartographer"},
         "safety_bridge": {
             "joy_topic": "/joy",
@@ -264,7 +264,7 @@ class Ros1AmendmentTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             validate_ros1_site(site)
         site = valid_site()
-        site["vehicle_limits"]["controller_max_acceleration_mps2"] = 2.0
+        site["vehicle_limits"]["controller_max_acceleration_mps2"] = 2.1
         with self.assertRaises(RuntimeError):
             validate_ros1_site(site)
 
@@ -302,10 +302,11 @@ class Ros1AmendmentTests(unittest.TestCase):
             "/vesc/high_level/ackermann_cmd_mux/input/nav_0",
         )
         self.assertEqual(template["topics"]["localization_tf"], "/tf")
-        self.assertIn(
-            "REPLACE_WITH",
-            str(template["vehicle_limits"]["controller_max_acceleration_mps2"]),
+        self.assertEqual(
+            template["vehicle_limits"]["controller_max_acceleration_mps2"],
+            2.0,
         )
+        self.assertEqual(template["safety_bridge"]["estop_button_index"], 6)
 
     def test_amendment_and_base_freeze_hashes_verify(self):
         amendment = verify_ros1_amendment(ROOT)

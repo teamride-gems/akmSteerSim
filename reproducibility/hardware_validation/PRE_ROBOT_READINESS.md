@@ -3,7 +3,7 @@
 **Status: SUPERSEDED FOR FRANK BY ROS 1 AMENDMENT 001**
 
 The RiDE Drive audit subsequently confirmed that Frank uses ROS 1 Noetic. For
-Frank, use `amendments/AMENDMENT_002.md`, `ROS1_OPERATOR_RUNBOOK.md`, and
+Frank, use `amendments/AMENDMENT_003.md`, `ROS1_OPERATOR_RUNBOOK.md`, and
 `MECHANICAL_ACCEPTANCE_CHECKLIST.md`. The ROS 2 readiness record below remains
 historical evidence of the pre-amendment state and must not be used to launch
 Frank.
