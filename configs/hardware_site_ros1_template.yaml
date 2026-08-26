@@ -20,6 +20,7 @@ topics:
   localization_tf: /tf
   deadman: /hardware_study/deadman
   estop: /hardware_study/estop
+  run_active: /hardware_study/run_active
   safety_override: /vesc/low_level/ackermann_cmd_mux/input/safety
   joint_states: null
   battery_state: null
@@ -90,12 +91,16 @@ course:
 
 safety_bridge:
   joy_topic: /vesc/joy
+  # Retained for compatibility with the original frozen site schema. Button 5
+  # is not held and does not authorize motion under Amendment 005.
   deadman_button_index: 5
+  # Pressing button 6 latches the software e-stop.
   estop_button_index: 6
   publish_rate_hz: 20.0
   joy_stale_seconds: 0.25
-  # Hold the deadman for this long before the runner arms, allowing the previous
-  # zero-command safety override to expire in the mux.
+  run_active_stale_seconds: 0.25
+  # Wait this long after a fresh runner heartbeat releases the zero-command
+  # override before reporting autonomous authorization to the runner.
   deadman_clearance_seconds: 1.0
   estop_latched: true
 

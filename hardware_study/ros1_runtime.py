@@ -12,9 +12,9 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
-AMENDMENT_ID = "AMENDMENT_004"
+AMENDMENT_ID = "AMENDMENT_005"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_004.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_005.json"
 )
 MAX_CONTROLLER_ACCELERATION_MPS2 = 2.0
 SEALED_PREPARED_PATH = "condition_key.json"
@@ -126,10 +126,21 @@ def validate_ros1_site(site: dict) -> None:
                 f"Cartographer TF pose requires resolved frames: {unresolved}"
             )
     topics = site.get("topics", {})
-    for key in ("drive", "odometry", "deadman", "estop", "safety_override"):
+    required_topic_keys = (
+        "drive",
+        "odometry",
+        "deadman",
+        "estop",
+        "run_active",
+        "safety_override",
+    )
+    for key in required_topic_keys:
         value = topics.get(key)
         if not value or "REPLACE_WITH" in str(value):
             raise RuntimeError(f"ROS 1 topic {key!r} must be resolved")
+    required_topic_values = [str(topics[key]) for key in required_topic_keys]
+    if len(set(required_topic_values)) != len(required_topic_values):
+        raise RuntimeError("ROS 1 command, safety, and state topics must be distinct")
     bridge = site.get("safety_bridge", {})
     joy_topic = bridge.get("joy_topic")
     if not joy_topic or "REPLACE_WITH" in str(joy_topic):
@@ -141,13 +152,24 @@ def validate_ros1_site(site: dict) -> None:
         raise RuntimeError("safety bridge button indices must be resolved integers") from exc
     if min(deadman_index, estop_index) < 0 or deadman_index == estop_index:
         raise RuntimeError("deadman and e-stop buttons must be distinct and nonnegative")
-    if deadman_index != 5 or estop_index != 6:
+    if estop_index != 6:
         raise RuntimeError(
-            "Frank's confirmed experiment controls are deadman index 5 and e-stop index 6"
+            "Frank's confirmed experiment software e-stop is joystick index 6"
         )
+    joy_stale = float(bridge.get("joy_stale_seconds", 0.0))
+    run_active_stale = float(bridge.get("run_active_stale_seconds", 0.0))
+    if min(joy_stale, run_active_stale) <= 0.0 or max(
+        joy_stale, run_active_stale
+    ) > 0.25:
+        raise RuntimeError(
+            "joystick and runner heartbeat timeouts must be greater than zero "
+            "and at most 0.25 seconds"
+        )
+    if float(bridge.get("publish_rate_hz", 0.0)) < 20.0:
+        raise RuntimeError("safety bridge publish rate must be at least 20 Hz")
     clearance = float(bridge.get("deadman_clearance_seconds", 0.0))
-    if clearance < 0.5:
-        raise RuntimeError("deadman mux-clearance interval must be at least 0.5 seconds")
+    if abs(clearance - 1.0) > 1e-9:
+        raise RuntimeError("autonomous mux-clearance interval must equal 1.0 second")
 
 
 def ros1_bag_topics(site: dict) -> list[str]:
@@ -156,6 +178,7 @@ def ros1_bag_topics(site: dict) -> list[str]:
         site["topics"]["odometry"],
         site["topics"]["deadman"],
         site["topics"]["estop"],
+        site["topics"]["run_active"],
         site["topics"]["safety_override"],
     ]
     if site["topics"].get("localization_tf"):

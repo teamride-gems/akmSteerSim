@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed deadman and latched software e-stop bridge for ROS 1 Noetic."""
+"""Fail-closed runner authorization and latched e-stop bridge for ROS 1."""
 
 from __future__ import annotations
 
@@ -18,19 +18,24 @@ class SafetyState:
 
     def __init__(
         self,
-        deadman_index: int,
         estop_index: int,
-        stale_seconds: float,
-        deadman_clearance_seconds: float = 0.0,
+        joy_stale_seconds: float,
+        run_active_stale_seconds: float,
+        authorization_clearance_seconds: float = 0.0,
     ):
-        if deadman_index == estop_index or min(deadman_index, estop_index) < 0:
-            raise ValueError("deadman and e-stop must be distinct nonnegative buttons")
-        self.deadman_index = int(deadman_index)
+        if estop_index < 0:
+            raise ValueError("e-stop must be a nonnegative button index")
         self.estop_index = int(estop_index)
-        self.stale_seconds = float(stale_seconds)
-        self.deadman_clearance_seconds = float(deadman_clearance_seconds)
+        self.joy_stale_seconds = float(joy_stale_seconds)
+        self.run_active_stale_seconds = float(run_active_stale_seconds)
+        self.authorization_clearance_seconds = float(
+            authorization_clearance_seconds
+        )
         self.last_joy_time = None
-        self.deadman_requested_since = None
+        self.last_run_active_time = None
+        self.run_active = False
+        self.run_active_source_count = 0
+        self.authorization_requested_since = None
         self.buttons = []
         self.estop_latched = True
         self.lock = threading.Lock()
@@ -38,69 +43,87 @@ class SafetyState:
     def _button(self, index: int) -> bool:
         return index < len(self.buttons) and bool(self.buttons[index])
 
-    def _deadman_held_alone(self) -> bool:
-        return self._button(self.deadman_index) and not any(
-            bool(value)
-            for index, value in enumerate(self.buttons)
-            if index != self.deadman_index
+    def _fresh(self, last_time, timeout: float, current: float) -> bool:
+        return last_time is not None and current - float(last_time) <= float(timeout)
+
+    def _raw_authorized(self, current: float) -> bool:
+        return (
+            self._fresh(self.last_joy_time, self.joy_stale_seconds, current)
+            and self._fresh(
+                self.last_run_active_time,
+                self.run_active_stale_seconds,
+                current,
+            )
+            and self.run_active
+            and self.run_active_source_count == 1
+            and not self.estop_latched
         )
 
-    def update(self, buttons: list[int], now: float | None = None) -> None:
+    def _refresh_authorization(self, current: float) -> bool:
+        raw = self._raw_authorized(current)
+        if raw and self.authorization_requested_since is None:
+            self.authorization_requested_since = current
+        elif not raw:
+            self.authorization_requested_since = None
+        return raw
+
+    def update_joy(self, buttons: list[int], now: float | None = None) -> None:
         with self.lock:
             current = time.monotonic() if now is None else float(now)
             self.last_joy_time = current
             self.buttons = list(buttons)
             if self._button(self.estop_index):
                 self.estop_latched = True
-            if self._deadman_held_alone() and not self.estop_latched:
-                if self.deadman_requested_since is None:
-                    self.deadman_requested_since = current
-            else:
-                self.deadman_requested_since = None
+            self._refresh_authorization(current)
+
+    def update_run_active(self, active: bool, now: float | None = None) -> None:
+        with self.lock:
+            current = time.monotonic() if now is None else float(now)
+            self.last_run_active_time = current
+            self.run_active = bool(active)
+            self._refresh_authorization(current)
+
+    def update_run_active_source_count(
+        self, source_count: int, now: float | None = None
+    ) -> None:
+        with self.lock:
+            current = time.monotonic() if now is None else float(now)
+            self.run_active_source_count = int(source_count)
+            self._refresh_authorization(current)
 
     def snapshot(self, now: float | None = None) -> tuple[bool, bool]:
         with self.lock:
             current = time.monotonic() if now is None else float(now)
-            fresh = self.last_joy_time is not None and (
-                current - self.last_joy_time <= self.stale_seconds
-            )
+            raw = self._refresh_authorization(current)
             clearance_elapsed = (
-                self.deadman_requested_since is not None
-                and current - self.deadman_requested_since
-                >= self.deadman_clearance_seconds
+                self.authorization_requested_since is not None
+                and current - self.authorization_requested_since
+                >= self.authorization_clearance_seconds
             )
-            deadman = (
-                fresh
-                and self._deadman_held_alone()
-                and not self.estop_latched
-                and clearance_elapsed
-            )
-            return bool(deadman), bool(self.estop_latched)
+            authorized = raw and clearance_elapsed
+            return bool(authorized), bool(self.estop_latched)
 
     def stop_override_required(self, now: float | None = None) -> bool:
-        """Return true unless fresh raw deadman input authorizes mux release."""
+        """Return true unless fresh joystick and runner heartbeats allow release."""
         with self.lock:
             current = time.monotonic() if now is None else float(now)
-            fresh = self.last_joy_time is not None and (
-                current - self.last_joy_time <= self.stale_seconds
-            )
-            return not (
-                fresh
-                and self._deadman_held_alone()
-                and not self.estop_latched
-            )
+            return not self._refresh_authorization(current)
 
     def reset(self, now: float | None = None) -> tuple[bool, str]:
         with self.lock:
             current = time.monotonic() if now is None else float(now)
-            fresh = self.last_joy_time is not None and (
-                current - self.last_joy_time <= self.stale_seconds
+            fresh = self._fresh(
+                self.last_joy_time, self.joy_stale_seconds, current
             )
             safe = fresh and not any(bool(value) for value in self.buttons)
             if safe:
                 self.estop_latched = False
-                self.deadman_requested_since = None
-                return True, "software e-stop reset; deadman remains released"
+                self.authorization_requested_since = None
+                self._refresh_authorization(current)
+                return (
+                    True,
+                    "software e-stop reset; motion still requires a fresh runner heartbeat",
+                )
             return False, "reset denied: require fresh joystick with all buttons released"
 
 
@@ -111,9 +134,9 @@ def main() -> int:  # pragma: no cover - requires ROS 1 robot runtime
     site = yaml.safe_load((ROOT / args.site).read_text(encoding="utf-8"))
     bridge = site["safety_bridge"]
     state = SafetyState(
-        int(bridge["deadman_button_index"]),
         int(bridge["estop_button_index"]),
         float(bridge["joy_stale_seconds"]),
+        float(bridge["run_active_stale_seconds"]),
         float(bridge.get("deadman_clearance_seconds", 1.0)),
     )
     try:
@@ -129,7 +152,9 @@ def main() -> int:  # pragma: no cover - requires ROS 1 robot runtime
         ) from exc
 
     rospy.init_node("ride_hardware_safety_bridge", anonymous=False)
-    deadman_pub = rospy.Publisher(site["topics"]["deadman"], Bool, queue_size=10)
+    authorization_pub = rospy.Publisher(
+        site["topics"]["deadman"], Bool, queue_size=10
+    )
     estop_pub = rospy.Publisher(site["topics"]["estop"], Bool, queue_size=10)
     stop_pub = rospy.Publisher(
         site["topics"]["safety_override"],
@@ -138,7 +163,10 @@ def main() -> int:  # pragma: no cover - requires ROS 1 robot runtime
     )
 
     def on_joy(message):
-        state.update(list(message.buttons))
+        state.update_joy(list(message.buttons))
+
+    def on_run_active(message):
+        state.update_run_active(bool(message.data))
 
     def on_reset(request):
         del request
@@ -146,11 +174,17 @@ def main() -> int:  # pragma: no cover - requires ROS 1 robot runtime
         return TriggerResponse(success=success, message=message)
 
     rospy.Subscriber(bridge["joy_topic"], Joy, on_joy, queue_size=20)
+    run_active_subscriber = rospy.Subscriber(
+        site["topics"]["run_active"], Bool, on_run_active, queue_size=20
+    )
     rospy.Service("/hardware_study/reset_software_estop", Trigger, on_reset)
     rate = rospy.Rate(float(bridge["publish_rate_hz"]))
     while not rospy.is_shutdown():
-        deadman, estop = state.snapshot()
-        deadman_pub.publish(Bool(data=deadman))
+        state.update_run_active_source_count(
+            run_active_subscriber.get_num_connections()
+        )
+        authorized, estop = state.snapshot()
+        authorization_pub.publish(Bool(data=authorized))
         estop_pub.publish(Bool(data=estop))
         if state.stop_override_required():
             stop = AckermannDriveStamped()

@@ -20,7 +20,7 @@ from scripts import capture_hardware_site as frozen_capture
 class ValidatedRos1Adapter(Ros1AckermannAdapter):
     def __init__(self, site: dict):
         validate_ros1_site(site)
-        super().__init__(site)
+        super().__init__(site, authorize_motion=False)
 
 
 def argument_value(arguments: list[str], name: str, default: str) -> str:

@@ -50,7 +50,7 @@ class Ros1AckermannAdapter:
     name = "ros1_ackermann_noetic"
     is_real = True
 
-    def __init__(self, site: dict, runtime=None):
+    def __init__(self, site: dict, runtime=None, authorize_motion: bool = False):
         self.runtime = runtime or load_ros1_runtime()
         self.rospy = self.runtime.rospy
         self.site = site
@@ -66,6 +66,8 @@ class Ros1AckermannAdapter:
         self._odom_state = None
         self._tf_transforms = {}
         self._subscribers = []
+        self._authorize_motion = bool(authorize_motion)
+        self.run_active_publisher = None
 
         if not self.rospy.core.is_initialized():
             self.rospy.init_node(
@@ -76,6 +78,11 @@ class Ros1AckermannAdapter:
             self.runtime.AckermannDriveStamped,
             queue_size=10,
         )
+        if self._authorize_motion:
+            self.run_active_publisher = self.rospy.Publisher(
+                site["topics"]["run_active"], self.runtime.Bool, queue_size=10
+            )
+            self._publish_run_active(True)
         self._subscribers.append(
             self.rospy.Subscriber(
                 site["topics"]["odometry"],
@@ -135,9 +142,19 @@ class Ros1AckermannAdapter:
         return time.monotonic()
 
     def wait_until(self, target_monotonic_s: float) -> None:
-        remaining = float(target_monotonic_s) - time.monotonic()
-        if remaining > 0.0:
-            time.sleep(remaining)
+        while True:
+            self._publish_run_active(True)
+            remaining = float(target_monotonic_s) - time.monotonic()
+            if remaining <= 0.0:
+                return
+            time.sleep(min(remaining, 0.05))
+
+    def _publish_run_active(self, active: bool) -> None:
+        if self.run_active_publisher is None:
+            return
+        message = self.runtime.Bool()
+        message.data = bool(active)
+        self.run_active_publisher.publish(message)
 
     @staticmethod
     def _yaw(quaternion) -> float:
@@ -299,12 +316,15 @@ class Ros1AckermannAdapter:
     def wait_for_ready(self, timeout_seconds: float) -> bool:
         deadline = time.monotonic() + float(timeout_seconds)
         while time.monotonic() < deadline:
+            self._publish_run_active(True)
             with self._lock:
-                ready = (
-                    self._latest is not None
-                    and self._deadman is not None
-                    and self._estop is not None
+                safety_observed = self._deadman is not None and self._estop is not None
+                safety_authorized = (
+                    self._deadman is True and self._estop is False
+                    if self._authorize_motion
+                    else safety_observed
                 )
+                ready = self._latest is not None and safety_authorized
             if ready:
                 return True
             time.sleep(0.02)
@@ -312,6 +332,7 @@ class Ros1AckermannAdapter:
 
     def publish(self, steering_rad: float, speed_mps: float, duration_s: float) -> None:
         del duration_s
+        self._publish_run_active(True)
         message = self.runtime.AckermannDriveStamped()
         message.header.stamp = self.rospy.Time.now()
         message.header.frame_id = self.site["frames"]["command_frame_id"]
@@ -332,6 +353,12 @@ class Ros1AckermannAdapter:
         return output
 
     def close(self) -> None:
+        if self.run_active_publisher is not None:
+            for _ in range(3):
+                self._publish_run_active(False)
+                time.sleep(0.01)
         for subscriber in self._subscribers:
             subscriber.unregister()
         self.publisher.unregister()
+        if self.run_active_publisher is not None:
+            self.run_active_publisher.unregister()

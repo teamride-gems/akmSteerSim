@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_005",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "FROZEN_AFTER_AUTONOMOUS_SAFETY_REVIEW_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-08-26T17:23:55.8033872Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "stationary_interface_capture_observed": true,
+  "reason": "The hold-to-run button was replaced before motion with runner-owned heartbeat authorization so experiments remain autonomous without weakening fail-closed stop behavior.",
+  "scope": "ROS 1 motion authorization, timeout enforcement, bounded stands verification, rosbag heartbeat coverage, and operator documentation only. Scientific commands, prepared inputs, schedule, outcomes, thresholds, rerun rules, and analysis are unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "prior_amendment": {
+    "path": "reproducibility/hardware_validation/amendments/AMENDMENT_004.json",
+    "sha256": "1F9580E56542FE1F684EEE3F178ECE4E42F3643BAB266E2C2634B482333E6D27"
+  },
+  "files": [
+    {
+      "path": "configs/hardware_site_ros1_template.yaml",
+      "sha256": "8E0081F2C6997F80CD421F39DD3C3289567ECD78FDEF07365CF1D86D296C651C"
+    },
+    {
+      "path": "hardware_study/ros1_adapter.py",
+      "sha256": "6E61D79D5DD642E71374547821CDE036AEFC11EA643E8D826945D1A284C0FF70"
+    },
+    {
+      "path": "hardware_study/ros1_runtime.py",
+      "sha256": "533E043A560EC400E6AF47E6275B53209DD22AD7E67E0C8102C5C07422054D3F"
+    },
+    {
+      "path": "scripts/capture_hardware_site_ros1.py",
+      "sha256": "41A5F593B40278B6D0289C0F469988D8F7D35455589417C37806B8BA003E4A1F"
+    },
+    {
+      "path": "scripts/capture_ros1_configuration.py",
+      "sha256": "36A03640DCFF427A89E0D16B92B93586ED1F183D6F31406501ACB6ED73B4D796"
+    },
+    {
+      "path": "scripts/ros1_hardware_preflight.py",
+      "sha256": "6077CFF5F4F0A4F1722C5D0F7E9227F8E0AEF503A55437B0EB1C65AACFEE4BC0"
+    },
+    {
+      "path": "scripts/ros1_hardware_safety_bridge.py",
+      "sha256": "023C7917E5E424E414FF37ABD448292A1B0546F3F860EEFB1ABF721F3A4820DD"
+    },
+    {
+      "path": "scripts/run_hardware_study_ros1.py",
+      "sha256": "DD4B92E51521803083C92188C7EA4187528241D03A4C9CC4CA3FB2A9FFEAD1DD"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot_ros1.py",
+      "sha256": "1BE69D8A7993F988D320FE5FEB6BB83BBC45EA5F72CA78E98227A1D29C54F9FC"
+    },
+    {
+      "path": "scripts/test_ros1_safety_heartbeat.py",
+      "sha256": "50AF354AA8A6A276C2087181615905E005B61D36B1F122FD39895532693363F0"
+    },
+    {
+      "path": "scripts/analyze_hardware_study_ros1.py",
+      "sha256": "EDDB89CC97AC01006ABB56CBC99F378DD718C47E95EE713618A421BA9D2C9BF1"
+    },
+    {
+      "path": "scripts/prepare_ros1_operator_package.py",
+      "sha256": "4663C9F8AC51792B70F193DDB44B87A7F5D34700027AD1602E01A5FD594CF270"
+    },
+    {
+      "path": "reproducibility/hardware_validation/study_v1/operator_prepared/PREPARED_MANIFEST.json",
+      "sha256": "B2892C4F795F5446CD054884D342FB26BF462E329F5DAFED96ECC1DB0B2971A6"
+    },
+    {
+      "path": "FRANK_START_HERE.md",
+      "sha256": "E7F0868F40D7675E6ACD3623B40D0976E83CFDD1C533745D407C5AA584AD29C1"
+    },
+    {
+      "path": "README.MD",
+      "sha256": "CC1D1173578CE593E23DEC488984F294AE65830ADCB398B96A378396889F7855"
+    },
+    {
+      "path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md",
+      "sha256": "F116345832235BD90819CA9F5D73498679E9E29E185596DB115151F4B9F853E0"
+    },
+    {
+      "path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md",
+      "sha256": "C7B0B653318AA74B7F522B2FE61DFCCA452FA6967D7AFA834295B8E8B857FC81"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md",
+      "sha256": "BB95312A65F5325AFCB4ED5293D50501FDD82C6000E3049BE630EAEF4209C256"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_ACCEPTANCE_CHECKLIST.md",
+      "sha256": "A460D726AC8D156C2DDA7A6943D6E2DF8A49119090EEE5DE02671A1751C4084A"
+    },
+    {
+      "path": "reproducibility/hardware_validation/PRE_ROBOT_READINESS.md",
+      "sha256": "336B29741E4CF9C1A3826ED59084EA16C9C755DD46E56C04C7697D19D2B7EB62"
+    },
+    {
+      "path": "reproducibility/hardware_validation/DATA_DICTIONARY.md",
+      "sha256": "4022A4F8C34131293E1853A405D8600D9DD8A11827EE5EA7E26038F8EB1C8527"
+    },
+    {
+      "path": "reproducibility/hardware_validation/amendments/AMENDMENT_005.md",
+      "sha256": "398489F8AD704F6A0DD8C9534911D7C0CBE70DBE34870414376E04A0C2023666"
+    }
+  ]
+}

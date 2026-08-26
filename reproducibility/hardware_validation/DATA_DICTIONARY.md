@@ -21,17 +21,22 @@ Each scientific run is stored as `hardware_runs/study_v1/HW###/attempt_###/`.
 - `run_manifest.json`: identity, hashes, adapter, start-pose error, completion/motion status, abort reason, packet counts, and terminal log hash.
 - `validation.json`: binding per-run integrity, timing, telemetry, command, safety, bag, and eligibility checks.
 - `rosbag/`: raw ROS messages for commands, odometry, safety state, and
-  configured auxiliary sensors. Amendment 004 records Frank runs as rosbag1.
+  configured auxiliary sensors. Amendment 005 records Frank runs as rosbag1.
 - `rosbag_process.log`: bag-recorder console output.
 - `launch_failure.json`: preserved pre-motion adapter/logger/bag failure; only this enumerated class may be attempted again.
 
 `motion_started` becomes true on the first positive sent speed. A failed attempt with motion is an outcome. `technical_valid` means all archival and runtime validity checks passed. `eligible_outcome` means the valid record is either complete or a preserved post-motion failure.
 
+`/hardware_study/run_active` is the heartbeat published only by an approved
+preflight, pilot, or scientific runner. `/hardware_study/deadman` is retained as
+the frozen telemetry field name, but under Amendment 005 it means the bridge's
+derived autonomous authorization; it is not a held-button state.
+
 ## Hash-chained record types
 
 - `run_start`: adapter, opaque condition code, bundle, initial telemetry, and static hashes.
 - `command`: packet/phase indices, planned and actual monotonic time, lateness, target command, sent command, and limiter flags.
-- `telemetry`: receive/source time, world pose, yaw, speed, yaw rate, steering feedback/source, deadman/e-stop state/times, and optional battery voltage; command context is included after execution starts.
+- `telemetry`: receive/source time, world pose, yaw, speed, yaw rate, steering feedback/source, autonomous authorization/e-stop state and times, and optional battery voltage; command context is included after execution starts.
 - `safe_stop_command`: one of twenty zero-command packets emitted on every exit.
 - `run_end`: completion, motion, and abort state.
 

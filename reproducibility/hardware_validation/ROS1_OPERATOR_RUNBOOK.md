@@ -1,10 +1,10 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_004`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+This runbook implements `AMENDMENT_005`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
-Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. The command topic, Cartographer TF chain, wheel-odometry topic, joystick topic, deadman index, and stop index are prefilled from the 2026-08-25 captures. Resolve the remaining placeholders using live inspection or measurement. The active VESC configuration must be set to and captured at the selected 2.0 m/s² acceleration ceiling.
+Copy `configs/hardware_site_ros1_template.yaml` to the ignored file `local_hardware_site_ros1_draft.yaml`. The command topic, Cartographer TF chain, wheel-odometry topic, joystick topic, autonomous-heartbeat topic, and stop index are prefilled from the 2026-08-25 captures and Amendment 005. Resolve the remaining placeholders using live inspection or measurement. The active VESC configuration must be set to and captured at the selected 2.0 m/s² acceleration ceiling.
 
 Confirm the command interfaces before starting the bridge:
 
@@ -44,28 +44,48 @@ python3 scripts/ros1_hardware_safety_bridge.py \
   --site local_hardware_site_ros1_draft.yaml
 ```
 
-The software e-stop starts latched. While the deadman is released, stale, or
-the e-stop is latched, the bridge publishes a zero command to Frank's low-level
-safety mux input. With a fresh joystick and both configured buttons released:
+The software e-stop starts latched. The bridge publishes a zero command to
+Frank's low-level safety mux unless the joystick connection and the active
+runner's heartbeat are both fresh. With the joystick connected and every
+button released, reset the latch:
 
 ```bash
 rosservice call /hardware_study/reset_software_estop
 ```
 
-On stands, verify all five behaviors: the safety mux selects the zero-command
-override while disarmed; holding `/vesc/joy` button index 5 (the right bumper)
-by itself for one second releases that override and then publishes true;
-pressing any other joystick button at the same time or releasing the bumper
-immediately publishes false and restores the override; joystick disconnection
-fails closed within the configured stale interval; and button index 6 latches
-the e-stop until a deliberate reset. Keep three terminals visible while doing
-this check:
+Keep these four terminals visible during the stands-only bridge check:
 
 ```bash
 rostopic echo /hardware_study/deadman
 rostopic echo /hardware_study/estop
+rostopic echo /hardware_study/run_active
 rostopic echo /vesc/low_level/ackermann_cmd_mux/active
 ```
+
+With Frank securely on stands, run the bounded heartbeat test from a fifth
+terminal:
+
+```bash
+python3 scripts/test_ros1_safety_heartbeat.py \
+  --site local_hardware_site_ros1_draft.yaml \
+  --stands-confirm "FRANK ON STANDS - TEST HEARTBEAT"
+```
+
+Verify that the low-level zero-command override is selected before the test;
+the runner heartbeat becomes true, the override releases, and the authorization
+topic becomes true after the one-second mux-clearance interval; then the test
+ends automatically, the heartbeat becomes false, and the zero-command override
+returns on the next bridge cycle. Repeat the bounded test and press joystick button
+index 6 while it is active. The e-stop and zero-command override must remain
+latched after the test finishes, until every button is released and the reset
+service is called again. Also verify that disconnecting the joystick restores
+the override no later than 0.30 seconds after the last joystick message. Button
+index 5 is not held and has no safety
+authorization role under Amendment 005.
+
+The bounded test must finish and print that authorization was withdrawn before
+starting preflight or a pilot. The bridge rejects multiple heartbeat publishers,
+so a leftover test process cannot authorize a real run.
 
 ## 3. Capture the stationary start pose
 
@@ -88,7 +108,7 @@ This reuses the frozen stationary-capture requirements: at least 40 samples, spe
 
 ## 4. Signed live preflight
 
-Restart the bridge with the final site file, reset its latch, put the car securely on stands, and run. The safety supervisor must hold the right bumper by itself throughout every motion-producing part of the check:
+Restart the bridge with the final site file, reset its latch, put the car securely on stands, and run. The runner supplies its own heartbeat; nobody holds a button. The safety supervisor keeps the connected joystick in hand with button 6 immediately reachable:
 
 ```bash
 python3 scripts/ros1_hardware_preflight.py \
@@ -108,8 +128,8 @@ A passing record is valid for at most 12 hours and only while the site file is b
 
 ## 5. Engineering qualification
 
-Run the 0.20 m/s stands pilot first. The safety supervisor must hold the right
-bumper by itself from arming until the final stop packet train completes:
+Run the 0.20 m/s stands pilot first. The runner supplies its own heartbeat, and
+the safety supervisor presses button 6 at the first reason to stop:
 
 ```bash
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
@@ -121,8 +141,8 @@ python3 scripts/run_hardware_engineering_pilot_ros1.py \
 ```
 
 Inspect the bag and confirm steering/speed signs, mux ownership, stop behavior,
-timestamps, localization, deadman, and e-stop behavior. Only after it passes,
-run the 0.50 m/s ground pilot with the same right-bumper-only rule:
+timestamps, localization, autonomous authorization, and e-stop behavior. Only after it passes,
+run the 0.50 m/s ground pilot with the same press-button-6-to-stop rule:
 
 ```bash
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
@@ -158,10 +178,14 @@ python3 scripts/run_hardware_study_ros1.py \
 
 Use the next opaque code from the operator schedule. The amended runner still enforces schedule order, refuses overwrite, records rosbag1 before motion, archives the original freeze and amendment, and applies the original post-motion no-rerun rule.
 
-For every main run, the safety supervisor holds the right bumper by itself
-from arming until the final stop packet train completes. Releasing it or
-pressing any other joystick button is an immediate stop, not a reason to rerun
-an attempt that already moved.
+For every main run, nobody holds an authorization button. The safety supervisor
+keeps the connected joystick and physical motor e-stop immediately reachable
+and presses button 6 at the first concern. Do not touch other joystick controls
+during autonomous execution. Runner exit, heartbeat loss, joystick loss, or an
+e-stop press automatically restores the zero-command override. A stopped
+attempt that already moved remains an outcome under the frozen rerun rule.
+After pressing button 6, do not call the reset service until the runner has
+exited and `/hardware_study/run_active` is false.
 
 ## 7. Outcome lock and analysis
 

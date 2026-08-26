@@ -226,6 +226,10 @@ steps are in `ROS1_OPERATOR_RUNBOOK.md`, and the physical sign-off is
 schedule, command bundles, safety/preflight tools, native ROS 1 runner, and
 locked analysis. Generated robot data stay under ignored `hardware_runs/`.
 
+Autonomous motion requires no held button. The runner publishes a short-timeout
+heartbeat, while joystick index 6 latches the software e-stop. Runner exit,
+heartbeat loss, or joystick loss restores the low-level zero-command override.
+
 The ROS 1 runners use `study_v1/operator_prepared`, whose schedules, bundles,
 and archives expose only opaque condition codes. The condition key is excluded
 and retained separately by the study lead until collection is complete.

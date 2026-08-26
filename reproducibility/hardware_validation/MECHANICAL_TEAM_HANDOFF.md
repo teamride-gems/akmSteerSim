@@ -39,7 +39,7 @@ ROS 1 tools fail closed if it is added to the operator package.
   preflight, pilot, and study commands.
 - `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — frozen scientific
   and rerun rules.
-- `reproducibility/hardware_validation/amendments/AMENDMENT_004.md` — ROS 1
+- `reproducibility/hardware_validation/amendments/AMENDMENT_005.md` — ROS 1
   compatibility and physical-controller gates.
 
 ## Robot-side prerequisites
@@ -83,17 +83,20 @@ pilot, resolve only the remaining fail-closed fields in the site template:
 2. Fill the draft site file and capture the live ROS/configuration record using
    `scripts/capture_ros1_configuration.py`.
 3. Start `scripts/ros1_hardware_safety_bridge.py`; verify the low-level
-   zero-command safety override, deadman timeout, and latched software e-stop.
+   zero-command override, runner-heartbeat timeout, joystick timeout, and
+   latched software e-stop using `scripts/test_ros1_safety_heartbeat.py`.
 4. Capture the taped start pose with `scripts/capture_hardware_site_ros1.py`.
 5. Run the signed `scripts/ros1_hardware_preflight.py` on stands.
 6. Pass the 0.20 m/s stands pilot.
 7. Pass the 0.50 m/s ground pilot in the surveyed clear area.
 8. Preserve and review both engineering-only bags before authorizing `HW001`.
 
-During every bridge motion check, preflight, pilot, and scientific run, the
-safety supervisor holds `/vesc/joy` button index 5 (the right bumper) by itself.
-Any simultaneous button, bumper release, or stale joystick stream withdraws
-deadman authorization; index 6 latches the software e-stop.
+No button is held during autonomous execution. Each approved runner supplies
+its own short-timeout heartbeat. The safety supervisor keeps the connected
+joystick in hand and presses index 6 to latch the software e-stop. Runner exit,
+heartbeat loss, joystick loss, or button 6 restores the zero-command override.
+Do not touch other joystick controls while the autonomous runner is active, and
+do not reset an e-stop until the runner has exited and its heartbeat is false.
 
 ## Immediate stop conditions
 

@@ -36,8 +36,9 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 - [ ] Five gradual launches produce no grinding, wheel-free motor spin, clutch slip, or intermittent engagement.
 - [ ] Five direction-neutral-stop tests produce no abrupt reversal or drivetrain shock.
 - [ ] `vesc.yaml` has exactly one `max_acceleration` value and it is 2.0 m/s².
-- [ ] The car remains stopped for 10 s after zero-speed commands and after deadman release.
-- [ ] `/vesc/joy` index 5 authorizes motion only when held by itself; pressing any other button simultaneously restores the zero-command override.
+- [ ] The car remains stopped for 10 s after zero-speed commands and after autonomous-runner exit.
+- [ ] No button must be held to run autonomously; the bounded heartbeat test releases the override and automatically restores it when the heartbeat ends.
+- [ ] `/vesc/joy` index 6 latches the software e-stop, and joystick disconnection restores the zero-command override no later than 0.30 s after the last message.
 
 ## Sensing, localization, and recording
 
@@ -48,7 +49,7 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 - [ ] Independent evaluation system: ____________________________
 - [ ] ArUco/external pose accuracy and update rate were measured, or its unavailability was documented before outcomes.
 - [ ] If independent tracking is used, onboard and independent poses agree in translation, heading, direction, and time alignment during a slow figure-eight; otherwise mark this N/A under the prospectively documented Cartographer-only limitation.
-- [ ] rosbag1 contains command, odometry, deadman, e-stop, scan, and configured VESC feedback topics.
+- [ ] rosbag1 contains command, odometry, authorization, runner-heartbeat, e-stop, scan, and configured VESC feedback topics.
 - [ ] Independent video covers the entire course and visibly identifies run ID.
 
 ## Course and safety release

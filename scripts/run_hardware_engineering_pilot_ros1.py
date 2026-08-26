@@ -28,7 +28,7 @@ def make_ros1_adapter(name: str, site: dict):
     if name != "ros2":
         raise ValueError("amended pilot cannot construct a mock adapter")
     validate_ros1_site(site)
-    return Ros1AckermannAdapter(site)
+    return Ros1AckermannAdapter(site, authorize_motion=True)
 
 
 def main() -> int:

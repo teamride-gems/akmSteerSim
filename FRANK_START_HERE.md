@@ -28,18 +28,22 @@ The configuration capture checks both the supplied `vesc.yaml` and the active
 `/vesc` ROS parameters. A file that says 2.0 while the running controller uses
 another value is rejected.
 
-## Operator rule that matters throughout motion testing
+## Autonomous safety behavior
 
-The safety supervisor must hold `/vesc/joy` button index 5, the right bumper,
-by itself throughout every preflight motion check, pilot, and scientific run.
-Pressing any other joystick button at the same time, releasing the bumper, or
-losing joystick messages withdraws authorization and restores the zero-command
-override. Button index 6 latches the software e-stop.
+Nobody holds a button during a run. The preflight, pilot, and study runners
+publish a short-timeout authorization heartbeat while they are actively in
+control. The safety supervisor keeps the connected joystick in hand and presses
+button index 6 to stop. Button 6 latches the software e-stop; runner exit,
+runner-heartbeat loss, or joystick-message loss also restores the low-level
+zero-command override automatically. Do not touch the other joystick controls
+during autonomous execution because Frank's normal teleoperation stack remains
+connected to the command mux. After pressing button 6, do not reset the latch
+until the runner has exited and `/hardware_study/run_active` is false.
 
 ## Required order
 
 1. Complete the site draft and controller/interface capture.
-2. Start and verify the safety bridge on stands.
+2. Start and verify the autonomous heartbeat safety bridge on stands.
 3. Capture the taped start pose into `local_hardware_site_ros1.yaml`.
 4. Complete the signed live preflight.
 5. Pass and inspect the 0.20 m/s stands pilot.
