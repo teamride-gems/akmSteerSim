@@ -19,6 +19,9 @@ from hardware_study.ros1_runtime import (
 )
 from hardware_study.integrity import sha256_file
 from scripts.capture_ros1_configuration import find_named_values
+from scripts.capture_hardware_site_ros1 import restore_template_course_fields
+from scripts.analyze_hardware_study_ros1 import classify_ros1_evidence
+from scripts.prepare_ros1_operator_package import build_operator_package
 from scripts.ros1_hardware_safety_bridge import SafetyState
 from scripts.run_hardware_study_ros1 import translate_arguments
 
@@ -117,11 +120,14 @@ def valid_site():
         },
         "calibration": {"wheelbase_measured": True},
         "vehicle_limits": {"controller_max_acceleration_mps2": 2.0},
-        "course": {"localization_system": "cartographer"},
+        "course": {
+            "localization_system": "cartographer",
+            "evaluation_ground_truth_system": "none_onboard_cartographer_only",
+        },
         "safety_bridge": {
             "joy_topic": "/joy",
-            "deadman_button_index": 0,
-            "estop_button_index": 1,
+            "deadman_button_index": 5,
+            "estop_button_index": 6,
             "deadman_clearance_seconds": 1.0,
         },
         "rosbag": {"compression": "none"},
@@ -257,6 +263,22 @@ class Ros1AmendmentTests(unittest.TestCase):
         self.assertTrue(state.stop_override_required(now=2.2))
         self.assertEqual(state.snapshot(now=2.2), (False, False))
 
+    def test_safety_bridge_requires_deadman_button_alone(self):
+        state = SafetyState(
+            deadman_index=1,
+            estop_index=2,
+            stale_seconds=1.0,
+            deadman_clearance_seconds=0.0,
+        )
+        state.update([0, 0, 0], now=1.0)
+        self.assertTrue(state.reset(now=1.0)[0])
+        state.update([1, 1, 0], now=1.1)
+        self.assertEqual(state.snapshot(now=1.1), (False, False))
+        self.assertTrue(state.stop_override_required(now=1.1))
+        state.update([0, 1, 0], now=1.2)
+        self.assertEqual(state.snapshot(now=1.2), (True, False))
+        self.assertFalse(state.stop_override_required(now=1.2))
+
     def test_site_gate_rejects_unmeasured_or_excess_acceleration(self):
         site = valid_site()
         validate_ros1_site(site)
@@ -265,6 +287,16 @@ class Ros1AmendmentTests(unittest.TestCase):
             validate_ros1_site(site)
         site = valid_site()
         site["vehicle_limits"]["controller_max_acceleration_mps2"] = 2.1
+        with self.assertRaises(RuntimeError):
+            validate_ros1_site(site)
+
+    def test_site_gate_requires_confirmed_controls_and_ground_truth_declaration(self):
+        site = valid_site()
+        site["safety_bridge"]["deadman_button_index"] = 4
+        with self.assertRaises(RuntimeError):
+            validate_ros1_site(site)
+        site = valid_site()
+        site["course"].pop("evaluation_ground_truth_system")
         with self.assertRaises(RuntimeError):
             validate_ros1_site(site)
 
@@ -288,6 +320,10 @@ class Ros1AmendmentTests(unittest.TestCase):
         translated = translate_arguments(["--run-id", "HW001", "--adapter", "ros1"])
         self.assertIn("ros2", translated)
         self.assertIn("local_hardware_site_ros1.yaml", translated)
+        self.assertIn(
+            "reproducibility/hardware_validation/study_v1/operator_prepared",
+            translated,
+        )
         with self.assertRaises(ValueError):
             translate_arguments(["--run-id", "HW001", "--adapter", "ros2"])
 
@@ -307,6 +343,43 @@ class Ros1AmendmentTests(unittest.TestCase):
             2.0,
         )
         self.assertEqual(template["safety_bridge"]["estop_button_index"], 6)
+        self.assertEqual(template["safety_bridge"]["deadman_button_index"], 5)
+
+    def test_ros1_site_capture_preserves_ground_truth_declaration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            template = root / "template.yaml"
+            output = root / "output.yaml"
+            template.write_text(
+                yaml.safe_dump(
+                    {
+                        "course": {
+                            "surveyed_clear_radius_m": "REPLACE_WITH_RADIUS",
+                            "localization_system": "cartographer_tf",
+                            "evaluation_ground_truth_system": "none_onboard_cartographer_only",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output.write_text(
+                yaml.safe_dump(
+                    {
+                        "course": {
+                            "surveyed_clear_radius_m": 6.0,
+                            "localization_system": "cartographer_tf",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            restore_template_course_fields(template, output)
+            captured = yaml.safe_load(output.read_text(encoding="utf-8"))
+            self.assertEqual(captured["course"]["surveyed_clear_radius_m"], 6.0)
+            self.assertEqual(
+                captured["course"]["evaluation_ground_truth_system"],
+                "none_onboard_cartographer_only",
+            )
 
     def test_amendment_and_base_freeze_hashes_verify(self):
         amendment = verify_ros1_amendment(ROOT)
@@ -337,6 +410,66 @@ class Ros1AmendmentTests(unittest.TestCase):
             key.write_text("{}", encoding="utf-8")
             with self.assertRaises(RuntimeError):
                 verify_operator_prepared(prepared)
+
+    def test_generated_operator_package_contains_only_opaque_conditions(self):
+        semantic_conditions = {
+            "clean_a",
+            "clean_b",
+            "direct",
+            "innovation_gate",
+            "timing_placebo",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "operator_prepared"
+            build_operator_package(
+                ROOT / "reproducibility/hardware_validation/study_v1/prepared",
+                output,
+            )
+            verify_operator_prepared(output)
+            schedule = json.loads(
+                (output / "machine_schedule.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(
+                all(row["condition"] == row["condition_code"] for row in schedule)
+            )
+            envelope_conditions = {
+                row.split(",")[4]
+                for row in (output / "safety_envelope.csv")
+                .read_text(encoding="utf-8")
+                .splitlines()[1:]
+            }
+            self.assertEqual(envelope_conditions, {"A", "B", "C", "D", "E"})
+            for path in output.rglob("*"):
+                if path.is_file():
+                    text = path.read_text(encoding="utf-8")
+                    self.assertFalse(
+                        any(
+                            f'"{condition}"' in text
+                            or f',{condition},' in text
+                            for condition in semantic_conditions
+                        ),
+                        str(path),
+                    )
+
+    def test_ros1_analysis_labels_only_ros1_outcomes_as_physical(self):
+        result = {
+            "adapter_names": ["ros1_ackermann_noetic"],
+            "evidence_class": "ENGINEERING_MOCK_ONLY",
+            "invalid_reasons": [],
+            "verdict": "NOT_REPRODUCED",
+        }
+        classified = classify_ros1_evidence(result)
+        self.assertEqual(classified["evidence_class"], "PHYSICAL_HARDWARE")
+
+        mixed = {
+            "adapter_names": ["ros1_ackermann_noetic", "mock"],
+            "evidence_class": "ENGINEERING_MOCK_ONLY",
+            "invalid_reasons": [],
+            "verdict": "NOT_REPRODUCED",
+        }
+        classified = classify_ros1_evidence(mixed)
+        self.assertEqual(classified["verdict"], "INVALID")
+        self.assertIn("mixed_adapter_evidence", classified["invalid_reasons"])
 
 
 if __name__ == "__main__":

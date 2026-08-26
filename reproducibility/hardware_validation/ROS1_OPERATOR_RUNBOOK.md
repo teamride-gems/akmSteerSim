@@ -1,6 +1,6 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_003`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+This runbook implements `AMENDMENT_004`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
@@ -31,7 +31,11 @@ python3 scripts/capture_ros1_configuration.py \
   --output hardware_runs/configuration_capture/session_001
 ```
 
-The capture refuses an unknown topic type, missing controller file, multiple/missing VESC acceleration values, a value above 2.0 m/s², or disagreement between `vesc.yaml` and the site record.
+Add every other controller, mux, or Cartographer file actually loaded for the
+session with a repeatable `--loaded-file PATH` argument. The capture refuses an
+unknown topic type, a missing file, multiple/missing VESC acceleration values,
+or any disagreement among `vesc.yaml`, the site record, and the active `/vesc`
+ROS parameters. All three must report exactly 2.0 m/s².
 
 ## 2. Start and test the ROS 1 safety bridge
 
@@ -49,10 +53,19 @@ rosservice call /hardware_study/reset_software_estop
 ```
 
 On stands, verify all five behaviors: the safety mux selects the zero-command
-override while disarmed; holding the deadman for one second releases that
-override and then publishes true; release immediately publishes false and
-restores the override; joystick disconnection fails closed within the configured
-stale interval; and the e-stop remains latched until a deliberate reset.
+override while disarmed; holding `/vesc/joy` button index 5 (the right bumper)
+by itself for one second releases that override and then publishes true;
+pressing any other joystick button at the same time or releasing the bumper
+immediately publishes false and restores the override; joystick disconnection
+fails closed within the configured stale interval; and button index 6 latches
+the e-stop until a deliberate reset. Keep three terminals visible while doing
+this check:
+
+```bash
+rostopic echo /hardware_study/deadman
+rostopic echo /hardware_study/estop
+rostopic echo /vesc/low_level/ackermann_cmd_mux/active
+```
 
 ## 3. Capture the stationary start pose
 
@@ -68,14 +81,14 @@ python3 scripts/capture_hardware_site_ros1.py \
   --operator OPERATOR_NAME \
   --safety-supervisor SUPERVISOR_NAME \
   --clear-radius-m MEASURED_RADIUS \
-    --localization-system cartographer_tf
+  --localization-system cartographer_tf
 ```
 
 This reuses the frozen stationary-capture requirements: at least 40 samples, speed no greater than 0.03 m/s, and no more than 0.02 m positional dispersion.
 
 ## 4. Signed live preflight
 
-Restart the bridge with the final site file, reset its latch, put the car securely on stands, and run:
+Restart the bridge with the final site file, reset its latch, put the car securely on stands, and run. The safety supervisor must hold the right bumper by itself throughout every motion-producing part of the check:
 
 ```bash
 python3 scripts/ros1_hardware_preflight.py \
@@ -95,7 +108,8 @@ A passing record is valid for at most 12 hours and only while the site file is b
 
 ## 5. Engineering qualification
 
-Run the 0.20 m/s stands pilot first:
+Run the 0.20 m/s stands pilot first. The safety supervisor must hold the right
+bumper by itself from arming until the final stop packet train completes:
 
 ```bash
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
@@ -106,7 +120,9 @@ python3 scripts/run_hardware_engineering_pilot_ros1.py \
   --operator-confirmation "RUN ENGINEERING PILOT ON STANDS"
 ```
 
-Inspect the bag and confirm steering/speed signs, mux ownership, stop behavior, timestamps, localization, deadman, and e-stop behavior. Only after it passes, run the 0.50 m/s ground pilot:
+Inspect the bag and confirm steering/speed signs, mux ownership, stop behavior,
+timestamps, localization, deadman, and e-stop behavior. Only after it passes,
+run the 0.50 m/s ground pilot with the same right-bumper-only rule:
 
 ```bash
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
@@ -123,10 +139,13 @@ Both archives are permanently engineering-only.
 
 Begin only after both pilots pass. This package prospectively records that the current study uses onboard Cartographer localization without independent trajectory ground truth; paper claims must not describe Cartographer trajectories as independently validated ground truth.
 
-The unblinding file `study_v1/prepared/condition_key.json` is deliberately not
-distributed with this branch. The study lead retains it separately until all
-120 outcomes are locked. Do not copy it onto Frank: the amended preflight,
-pilot, and study runners require it to be absent.
+Use only
+`study_v1/operator_prepared/operator_schedule.csv` during collection. The ROS 1
+runners default to the opaque operator package, so the schedule, packet bundle,
+validation file, and run manifest expose only the run's code. Do not inspect
+the lead-side `study_v1/prepared` directory or compare bundles before all 120
+outcomes are locked. The unblinding key is deliberately absent, and the tools
+fail closed if it is added to the operator package.
 
 ```bash
 python3 scripts/run_hardware_study_ros1.py \
@@ -138,3 +157,17 @@ python3 scripts/run_hardware_study_ros1.py \
 ```
 
 Use the next opaque code from the operator schedule. The amended runner still enforces schedule order, refuses overwrite, records rosbag1 before motion, archives the original freeze and amendment, and applies the original post-motion no-rerun rule.
+
+For every main run, the safety supervisor holds the right bumper by itself
+from arming until the final stop packet train completes. Releasing it or
+pressing any other joystick button is an immediate stop, not a reason to rerun
+an attempt that already moved.
+
+## 7. Outcome lock and analysis
+
+After collection, return the complete `hardware_runs/study_v1/` tree to the
+study lead and lock its hashes before unblinding. The study lead—not the robot
+operator—then runs `scripts/analyze_hardware_study_ros1.py`. That wrapper
+preserves the frozen analysis while correctly classifying archives from the
+native Noetic adapter as physical hardware evidence. Do not run or inspect the
+semantic analysis during data collection.

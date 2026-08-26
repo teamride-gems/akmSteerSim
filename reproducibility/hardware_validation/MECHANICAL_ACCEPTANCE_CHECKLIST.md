@@ -37,6 +37,7 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 - [ ] Five direction-neutral-stop tests produce no abrupt reversal or drivetrain shock.
 - [ ] `vesc.yaml` has exactly one `max_acceleration` value and it is 2.0 m/s².
 - [ ] The car remains stopped for 10 s after zero-speed commands and after deadman release.
+- [ ] `/vesc/joy` index 5 authorizes motion only when held by itself; pressing any other button simultaneously restores the zero-command override.
 
 ## Sensing, localization, and recording
 

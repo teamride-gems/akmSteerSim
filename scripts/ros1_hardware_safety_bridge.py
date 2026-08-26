@@ -38,6 +38,13 @@ class SafetyState:
     def _button(self, index: int) -> bool:
         return index < len(self.buttons) and bool(self.buttons[index])
 
+    def _deadman_held_alone(self) -> bool:
+        return self._button(self.deadman_index) and not any(
+            bool(value)
+            for index, value in enumerate(self.buttons)
+            if index != self.deadman_index
+        )
+
     def update(self, buttons: list[int], now: float | None = None) -> None:
         with self.lock:
             current = time.monotonic() if now is None else float(now)
@@ -45,7 +52,7 @@ class SafetyState:
             self.buttons = list(buttons)
             if self._button(self.estop_index):
                 self.estop_latched = True
-            if self._button(self.deadman_index) and not self.estop_latched:
+            if self._deadman_held_alone() and not self.estop_latched:
                 if self.deadman_requested_since is None:
                     self.deadman_requested_since = current
             else:
@@ -64,7 +71,7 @@ class SafetyState:
             )
             deadman = (
                 fresh
-                and self._button(self.deadman_index)
+                and self._deadman_held_alone()
                 and not self.estop_latched
                 and clearance_elapsed
             )
@@ -79,7 +86,7 @@ class SafetyState:
             )
             return not (
                 fresh
-                and self._button(self.deadman_index)
+                and self._deadman_held_alone()
                 and not self.estop_latched
             )
 
@@ -89,16 +96,12 @@ class SafetyState:
             fresh = self.last_joy_time is not None and (
                 current - self.last_joy_time <= self.stale_seconds
             )
-            safe = (
-                fresh
-                and not self._button(self.estop_index)
-                and not self._button(self.deadman_index)
-            )
+            safe = fresh and not any(bool(value) for value in self.buttons)
             if safe:
                 self.estop_latched = False
                 self.deadman_requested_since = None
                 return True, "software e-stop reset; deadman remains released"
-            return False, "reset denied: require fresh joystick with both buttons released"
+            return False, "reset denied: require fresh joystick with all buttons released"
 
 
 def main() -> int:  # pragma: no cover - requires ROS 1 robot runtime

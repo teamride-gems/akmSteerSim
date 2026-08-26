@@ -73,7 +73,7 @@ calibration:
 
 vehicle_limits:
   # The mechanical lead selected 2.0 m/s^2 as the experiment ceiling. The
-  # captured active vesc.yaml must match this site value and may not exceed it.
+  # supplied vesc.yaml and active /vesc ROS parameters must exactly match it.
   controller_max_acceleration_mps2: 2.0
   controller_min_steering_rad: -0.263
   controller_max_steering_rad: 0.313

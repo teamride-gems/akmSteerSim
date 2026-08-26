@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_004",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "FROZEN_AFTER_RELEASE_AUDIT_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-08-26T16:55:10.6194000Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "stationary_interface_capture_observed": true,
+  "reason": "The final pre-motion release audit closed operator semantic leakage, ROS 1 evidence labeling, site-field preservation, simultaneous-button deadman authorization, and active-controller parameter verification gaps.",
+  "scope": "Blinding enforcement, integration validation, safety authorization, evidence labeling, and operator documentation only. Scientific command values, schedule order, condition-code assignment, thresholds, retry rules, and frozen numerical analysis are unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "prior_amendment": {
+    "path": "reproducibility/hardware_validation/amendments/AMENDMENT_003.json",
+    "sha256": "67202CAD85312BCB6F173C26B5770D9FBBE14B6CAE13CA8CAB95FF5B42045374"
+  },
+  "files": [
+    {
+      "path": "configs/hardware_site_ros1_template.yaml",
+      "sha256": "3EB4E73604E6381C9E877F1BB61AF15B8E3B1CE16E077B6A1797218C9AA3BD56"
+    },
+    {
+      "path": "hardware_study/ros1_runtime.py",
+      "sha256": "FD24310B1F04561A7E9F7E41D09951CB981CE1A4CDE084BA51E618C5371F4D73"
+    },
+    {
+      "path": "scripts/capture_hardware_site_ros1.py",
+      "sha256": "711C7158C5761AE2AA3176719682E1593BD94BC08B6D001365507F2F509E6C40"
+    },
+    {
+      "path": "scripts/capture_ros1_configuration.py",
+      "sha256": "36A03640DCFF427A89E0D16B92B93586ED1F183D6F31406501ACB6ED73B4D796"
+    },
+    {
+      "path": "scripts/ros1_hardware_preflight.py",
+      "sha256": "7E7FA2640D40975DDCB1A0DBDD091DA62B611929BF73FF847BE3C7FBFC4E2461"
+    },
+    {
+      "path": "scripts/ros1_hardware_safety_bridge.py",
+      "sha256": "B3EEEC09576FAFAB2D3F14455D2136B81A47010E2F7507D94BC993A9A809E9A7"
+    },
+    {
+      "path": "scripts/run_hardware_study_ros1.py",
+      "sha256": "7A4EB74E424A55F448AA131F545E5572B652A2E78E230F4E5CA8887E1F4859E7"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot_ros1.py",
+      "sha256": "AA37AA64DBC8040226885DAF206237D1323E83AF4602D3051CC6AFE2F6DC37AE"
+    },
+    {
+      "path": "scripts/analyze_hardware_study_ros1.py",
+      "sha256": "EDDB89CC97AC01006ABB56CBC99F378DD718C47E95EE713618A421BA9D2C9BF1"
+    },
+    {
+      "path": "scripts/prepare_ros1_operator_package.py",
+      "sha256": "4663C9F8AC51792B70F193DDB44B87A7F5D34700027AD1602E01A5FD594CF270"
+    },
+    {
+      "path": "reproducibility/hardware_validation/study_v1/operator_prepared/PREPARED_MANIFEST.json",
+      "sha256": "B2892C4F795F5446CD054884D342FB26BF462E329F5DAFED96ECC1DB0B2971A6"
+    },
+    {
+      "path": "FRANK_START_HERE.md",
+      "sha256": "F9CF1EF49C6F4264E3E7D95784A6B10FB93E46FD64E8D1F5475C6A95F99B370D"
+    },
+    {
+      "path": "README.MD",
+      "sha256": "3B472345A292D944993540F54A1A5BFE5257E2A623C08832616947AED0B82AC6"
+    },
+    {
+      "path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md",
+      "sha256": "A64B2D1CA720DF352A4A8062EA9D44889B85975DDF19D2FAFFC3D217D5819924"
+    },
+    {
+      "path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md",
+      "sha256": "389268E15080E59B4C53F5D6427157E9DB83F5E68E8B099DA8036E982D266719"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md",
+      "sha256": "3EC9AB5F0D85DF65F7271515740212E7B25692A46E702D528C027BB7E3F8F75A"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_ACCEPTANCE_CHECKLIST.md",
+      "sha256": "1369C0DD042DCCBCEAA3D94CC24619BDF7D388E66987E569BFDFF7CC31EA5719"
+    },
+    {
+      "path": "reproducibility/hardware_validation/PRE_ROBOT_READINESS.md",
+      "sha256": "2C33D214D3EC48B3F09CD2A57F8195D60F51B2C3D80F052E8F4D484213DD3F28"
+    },
+    {
+      "path": "reproducibility/hardware_validation/DATA_DICTIONARY.md",
+      "sha256": "1B13C9144E8E22F14EAE7934F2737B9F624EAA5217B5A39E83181BEF1064B621"
+    },
+    {
+      "path": "reproducibility/hardware_validation/amendments/AMENDMENT_004.md",
+      "sha256": "E162EAD8F1EAE0AA0779144254A1D1DF9C4A7488C8977B78C3EEC9CD4D69944A"
+    }
+  ]
+}

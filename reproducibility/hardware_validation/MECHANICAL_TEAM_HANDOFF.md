@@ -4,6 +4,9 @@ This is the entry point for preparing Frank. Do not begin a scientific run from
 this page alone: the ROS 1 runbook and signed acceptance checklist remain
 binding.
 
+Start with the shorter repository entry page, `FRANK_START_HERE.md`, then use
+this handoff for prerequisites and the binding runbook for commands.
+
 ## Get the operator package
 
 For a new checkout on Frank:
@@ -21,10 +24,11 @@ records and collected data outside Git; both are ignored by this branch.
 
 ## Files to use
 
-This operator package intentionally excludes
-`study_v1/prepared/condition_key.json`. The study lead retains that sealed file
-until all 120 scheduled outcomes are locked. Do not request, recreate, or add
-the key to Frank's checkout; the ROS 1 tools fail closed if it is present.
+Use only `study_v1/operator_prepared` during collection. Its schedule, bundles,
+and safety envelope contain opaque codes rather than semantic condition names.
+Do not inspect the lead-side `study_v1/prepared` directory while operating the
+study. The condition key remains absent until all 120 outcomes are locked; the
+ROS 1 tools fail closed if it is added to the operator package.
 
 - `configs/hardware_site_ros1_template.yaml` — copy to the ignored
   `local_hardware_site_ros1_draft.yaml` and fill only measured or live-verified
@@ -35,7 +39,7 @@ the key to Frank's checkout; the ROS 1 tools fail closed if it is present.
   preflight, pilot, and study commands.
 - `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — frozen scientific
   and rerun rules.
-- `reproducibility/hardware_validation/amendments/AMENDMENT_003.md` — ROS 1
+- `reproducibility/hardware_validation/amendments/AMENDMENT_004.md` — ROS 1
   compatibility and physical-controller gates.
 
 ## Robot-side prerequisites
@@ -75,7 +79,7 @@ pilot, resolve only the remaining fail-closed fields in the site template:
 
 ## Required order
 
-1. Complete mechanical inspection and measurements with propulsion disabled.
+1. Complete the required wheelbase/course measurements with propulsion disabled.
 2. Fill the draft site file and capture the live ROS/configuration record using
    `scripts/capture_ros1_configuration.py`.
 3. Start `scripts/ros1_hardware_safety_bridge.py`; verify the low-level
@@ -85,6 +89,11 @@ pilot, resolve only the remaining fail-closed fields in the site template:
 6. Pass the 0.20 m/s stands pilot.
 7. Pass the 0.50 m/s ground pilot in the surveyed clear area.
 8. Preserve and review both engineering-only bags before authorizing `HW001`.
+
+During every bridge motion check, preflight, pilot, and scientific run, the
+safety supervisor holds `/vesc/joy` button index 5 (the right bumper) by itself.
+Any simultaneous button, bumper release, or stale joystick stream withdraws
+deadman authorization; index 6 latches the software e-stop.
 
 ## Immediate stop conditions
 

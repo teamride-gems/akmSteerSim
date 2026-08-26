@@ -34,6 +34,13 @@ def translate_arguments(arguments: list[str]) -> list[str]:
         translated.extend(["--adapter", "ros2"])
     if "--site" not in translated:
         translated.extend(["--site", "local_hardware_site_ros1.yaml"])
+    if "--prepared-dir" not in translated:
+        translated.extend(
+            [
+                "--prepared-dir",
+                "reproducibility/hardware_validation/study_v1/operator_prepared",
+            ]
+        )
     return translated
 
 

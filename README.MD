@@ -219,15 +219,16 @@ editable simulator, map loading, Numba runtime, and real physics step.
 
 ## Frank hardware experiment package
 
-Frank's ROS 1 Noetic deployment starts with
+Frank's ROS 1 Noetic deployment starts with `FRANK_START_HERE.md`, followed by
 `reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md`. The binding
 steps are in `ROS1_OPERATOR_RUNBOOK.md`, and the physical sign-off is
 `MECHANICAL_ACCEPTANCE_CHECKLIST.md`. The package includes the frozen blinded
 schedule, command bundles, safety/preflight tools, native ROS 1 runner, and
 locked analysis. Generated robot data stay under ignored `hardware_runs/`.
 
-The condition key is deliberately excluded from operator clones and retained
-separately by the study lead until collection is complete.
+The ROS 1 runners use `study_v1/operator_prepared`, whose schedules, bundles,
+and archives expose only opaque condition codes. The condition key is excluded
+and retained separately by the study lead until collection is complete.
 
 ## Reproducibility baseline
 

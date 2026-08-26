@@ -58,6 +58,8 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
     parser.add_argument("--vesc-config", required=True)
     parser.add_argument("--joy-config", required=True)
     parser.add_argument("--launch-file", action="append", default=[])
+    parser.add_argument("--loaded-file", action="append", default=[])
+    parser.add_argument("--rosparam-namespace", default="/vesc")
     parser.add_argument("--output", default="hardware_runs/configuration_capture")
     args = parser.parse_args()
 
@@ -72,7 +74,12 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
 
     vesc_path = Path(args.vesc_config).expanduser().resolve()
     joy_path = Path(args.joy_config).expanduser().resolve()
-    source_files = [vesc_path, joy_path, *[Path(p).expanduser().resolve() for p in args.launch_file]]
+    supplied_files = [*args.launch_file, *args.loaded_file]
+    source_files = [
+        vesc_path,
+        joy_path,
+        *[Path(p).expanduser().resolve() for p in supplied_files],
+    ]
     for path in source_files:
         if not path.is_file():
             raise FileNotFoundError(path)
@@ -92,6 +99,19 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
     configured = float(site["vehicle_limits"]["controller_max_acceleration_mps2"])
     if abs(configured - acceleration_values[0]) > 1e-9:
         raise RuntimeError("site acceleration value does not match captured vesc.yaml")
+
+    active_parameters_text = run_checked(
+        ["rosparam", "get", str(args.rosparam_namespace)]
+    )
+    active_parameters = yaml.safe_load(active_parameters_text)
+    active_acceleration_values = find_named_values(
+        active_parameters, "max_acceleration"
+    )
+    if active_acceleration_values != acceleration_values:
+        raise RuntimeError(
+            "active ROS parameters do not match the supplied VESC configuration: "
+            f"active={active_acceleration_values}, file={acceleration_values}"
+        )
 
     topic_rows = []
     expected_topics = [
@@ -132,6 +152,9 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
             }
         )
     shutil.copy2(site_path, output / "hardware_site_draft.yaml")
+    (output / "active_ros_parameters.yaml").write_text(
+        active_parameters_text + "\n", encoding="utf-8"
+    )
     manifest = {
         "schema_version": 1,
         "capture_id": "ROS1_CONFIGURATION_CAPTURE",
@@ -142,6 +165,8 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
         "ros_topics": run_checked(["rostopic", "list"]).splitlines(),
         "required_topic_interfaces": topic_rows,
         "vesc_max_acceleration_mps2": acceleration_values[0],
+        "active_rosparam_namespace": str(args.rosparam_namespace),
+        "active_rosparam_max_acceleration_mps2": active_acceleration_values[0],
         "files": copied,
         "site_sha256": sha256_file(site_path),
     }

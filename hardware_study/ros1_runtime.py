@@ -12,9 +12,9 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
-AMENDMENT_ID = "AMENDMENT_003"
+AMENDMENT_ID = "AMENDMENT_004"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_003.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_004.json"
 )
 MAX_CONTROLLER_ACCELERATION_MPS2 = 2.0
 SEALED_PREPARED_PATH = "condition_key.json"
@@ -99,9 +99,15 @@ def validate_ros1_site(site: dict) -> None:
             "verified VESC controller acceleration must equal the frozen "
             f"{MAX_CONTROLLER_ACCELERATION_MPS2:.1f} m/s^2 mechanical-lead setting"
         )
-    localization = site.get("course", {}).get("localization_system")
+    course = site.get("course", {})
+    localization = course.get("localization_system")
     if not localization or "REPLACE_WITH" in str(localization):
         raise RuntimeError("localization system must be resolved before preflight")
+    ground_truth = course.get("evaluation_ground_truth_system")
+    if not ground_truth or "REPLACE_WITH" in str(ground_truth):
+        raise RuntimeError(
+            "evaluation ground-truth availability must be declared before preflight"
+        )
     localization_tf = site.get("topics", {}).get("localization_tf")
     if localization_tf:
         frames = site.get("frames", {})
@@ -135,6 +141,10 @@ def validate_ros1_site(site: dict) -> None:
         raise RuntimeError("safety bridge button indices must be resolved integers") from exc
     if min(deadman_index, estop_index) < 0 or deadman_index == estop_index:
         raise RuntimeError("deadman and e-stop buttons must be distinct and nonnegative")
+    if deadman_index != 5 or estop_index != 6:
+        raise RuntimeError(
+            "Frank's confirmed experiment controls are deadman index 5 and e-stop index 6"
+        )
     clearance = float(bridge.get("deadman_clearance_seconds", 0.0))
     if clearance < 0.5:
         raise RuntimeError("deadman mux-clearance interval must be at least 0.5 seconds")
