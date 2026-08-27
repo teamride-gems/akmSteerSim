@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_006",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "FROZEN_AFTER_OPERATOR_WORKFLOW_SIMPLIFICATION_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-08-27T00:00:00Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "reason": "Typed confirmations and acknowledgements did not provide a runtime safety control and were removed while retaining the fail-closed safety interlock and concrete preflight diagnostics.",
+  "scope": "Operator prompt simplification only. Scientific commands, prepared inputs, schedule, outcomes, thresholds, rerun rules, and analysis are unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "prior_amendment": {
+    "path": "reproducibility/hardware_validation/amendments/AMENDMENT_005.json",
+    "sha256": "A070DB375C7C9443B39124D51D858032074BEF2196F05F22FB82F0C0B02BAC17"
+  },
+  "files": [
+    {"path": "hardware_study/ros1_runtime.py", "sha256": "833C176BD308EB7C661D0C64EFBA43CD021EF77D43CA18ED05D190592AD70565"},
+    {"path": "scripts/run_hardware_study.py", "sha256": "99D8D6B67D821462781A18AD5957882AEEF586FB96D4D7C706CC7398A4625518"},
+    {"path": "scripts/run_hardware_engineering_pilot.py", "sha256": "AECE1C70D83026602FEB7D9C06BE852863B3D9D2B57A32B52FC14542D017C978"},
+    {"path": "scripts/test_ros1_safety_heartbeat.py", "sha256": "7B0262B417D458E5903254F5BAE7D9424F66156AFEEE38E5580578DED949E3EB"},
+    {"path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md", "sha256": "A99A77F63634FC86B36BEF24ADD3F149FDCF07E61CDB09F2CEB7343F57AE6F89"},
+    {"path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md", "sha256": "9FBD0791C3072EE7B7C58419FCCFF7EEBD8E1760985A6C70CD6A36043B3AE256"},
+    {"path": "reproducibility/hardware_validation/amendments/AMENDMENT_006.md", "sha256": "B5130F98DD1DF3A0805713E56A98BE0495FD212F6FF98089EE82040581578FE2"}
+  ]
+}

@@ -67,8 +67,7 @@ terminal:
 
 ```bash
 python3 scripts/test_ros1_safety_heartbeat.py \
-  --site local_hardware_site_ros1_draft.yaml \
-  --stands-confirm "FRANK ON STANDS - TEST HEARTBEAT"
+  --site local_hardware_site_ros1_draft.yaml
 ```
 
 Verify that the low-level zero-command override is selected before the test;
@@ -135,9 +134,7 @@ the safety supervisor presses button 6 at the first reason to stop:
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
   --mode stands --adapter ros1 \
   --site local_hardware_site_ros1.yaml \
-  --preflight hardware_runs/preflight/robot_preflight_ros1.json \
-  --arm "AREA CLEAR - ESTOP READY" \
-  --operator-confirmation "RUN ENGINEERING PILOT ON STANDS"
+  --preflight hardware_runs/preflight/robot_preflight_ros1.json
 ```
 
 Inspect the bag and confirm steering/speed signs, mux ownership, stop behavior,
@@ -148,9 +145,7 @@ run the 0.50 m/s ground pilot with the same press-button-6-to-stop rule:
 python3 scripts/run_hardware_engineering_pilot_ros1.py \
   --mode ground --adapter ros1 \
   --site local_hardware_site_ros1.yaml \
-  --preflight hardware_runs/preflight/robot_preflight_ros1.json \
-  --arm "AREA CLEAR - ESTOP READY" \
-  --operator-confirmation "RUN ENGINEERING PILOT ON GROUND"
+  --preflight hardware_runs/preflight/robot_preflight_ros1.json
 ```
 
 Both archives are permanently engineering-only.
@@ -171,9 +166,7 @@ fail closed if it is added to the operator package.
 python3 scripts/run_hardware_study_ros1.py \
   --run-id HW001 --adapter ros1 \
   --site local_hardware_site_ros1.yaml \
-  --preflight hardware_runs/preflight/robot_preflight_ros1.json \
-  --arm "AREA CLEAR - ESTOP READY" \
-  --operator-confirmation "RUN HW001 CODE C"
+  --preflight hardware_runs/preflight/robot_preflight_ros1.json
 ```
 
 Use the next opaque code from the operator schedule. The amended runner still enforces schedule order, refuses overwrite, records rosbag1 before motion, archives the original freeze and amendment, and applies the original post-motion no-rerun rule.

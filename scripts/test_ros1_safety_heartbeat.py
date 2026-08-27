@@ -18,9 +18,6 @@ if str(ROOT) not in sys.path:
 from hardware_study.ros1_runtime import validate_ros1_site, verify_ros1_amendment
 
 
-CONFIRMATION = "FRANK ON STANDS - TEST HEARTBEAT"
-
-
 def validate_duration(value: float) -> float:
     duration = float(value)
     if not math.isfinite(duration) or duration < 2.0 or duration > 5.0:
@@ -32,11 +29,8 @@ def main() -> int:  # pragma: no cover - requires Frank's ROS 1 environment
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", default="local_hardware_site_ros1_draft.yaml")
     parser.add_argument("--duration-seconds", type=float, default=3.0)
-    parser.add_argument("--stands-confirm", required=True)
     args = parser.parse_args()
     duration = validate_duration(args.duration_seconds)
-    if args.stands_confirm != CONFIRMATION:
-        raise RuntimeError(f"stands confirmation must be exactly: {CONFIRMATION}")
 
     verify_ros1_amendment(ROOT)
     site = yaml.safe_load((ROOT / args.site).read_text(encoding="utf-8"))

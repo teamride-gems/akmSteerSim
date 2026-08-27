@@ -254,8 +254,6 @@ def main() -> int:
     parser.add_argument("--freeze", default=DEFAULT_FREEZE)
     parser.add_argument("--output-root", default="hardware_runs/study_v1")
     parser.add_argument("--preflight")
-    parser.add_argument("--arm", default="")
-    parser.add_argument("--operator-confirmation", default="")
     parser.add_argument(
         "--allow-unfrozen-mock",
         action="store_true",
@@ -296,14 +294,7 @@ def main() -> int:
     if len(matches) != 1:
         raise RuntimeError(f"run id must occur exactly once in schedule: {args.run_id}")
     row = matches[0]
-    expected_confirmation = f"RUN {row['run_id']} CODE {row['condition_code']}"
     if args.adapter == "ros2":
-        if args.arm != config["safety"]["real_adapter_requires_explicit_arm_phrase"]:
-            raise RuntimeError("exact frozen arm phrase was not supplied")
-        if args.operator_confirmation != expected_confirmation:
-            raise RuntimeError(
-                f"operator confirmation must be exactly: {expected_confirmation}"
-            )
         if not args.preflight:
             raise RuntimeError("a recent passed ROS 2 preflight record is required")
         verify_preflight(

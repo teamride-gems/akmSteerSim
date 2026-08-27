@@ -108,9 +108,7 @@ First run the straight 0.20 m/s sequence while still on stands:
 python scripts/run_hardware_engineering_pilot.py `
   --mode stands --adapter ros2 `
   --site local_hardware_site.yaml `
-  --preflight hardware_runs/preflight/robot_preflight.json `
-  --arm "AREA CLEAR - ESTOP READY" `
-  --operator-confirmation "RUN ENGINEERING PILOT ON STANDS"
+  --preflight hardware_runs/preflight/robot_preflight.json
 ```
 
 Require `completed: true` and `technical_valid: true`. Check steering direction, speed sign, odometry sign/frame, stop behavior, deadman release, bag contents, and command timestamps. Do not change frozen main-study code to make the pilot look better; correct only a proven integration defect through a disclosed pre-outcome amendment.
@@ -121,9 +119,7 @@ Place the car on the taped ground pose, clear the area, hold the deadman, and ru
 python scripts/run_hardware_engineering_pilot.py `
   --mode ground --adapter ros2 `
   --site local_hardware_site.yaml `
-  --preflight hardware_runs/preflight/robot_preflight.json `
-  --arm "AREA CLEAR - ESTOP READY" `
-  --operator-confirmation "RUN ENGINEERING PILOT ON GROUND"
+  --preflight hardware_runs/preflight/robot_preflight.json
 ```
 
 Again require both success fields. Pilot data are permanently marked engineering-only and cannot enter the paper analysis.
@@ -138,9 +134,7 @@ For the first row the command form is:
 python scripts/run_hardware_study.py `
   --run-id HW001 --adapter ros2 `
   --site local_hardware_site.yaml `
-  --preflight hardware_runs/preflight/robot_preflight.json `
-  --arm "AREA CLEAR - ESTOP READY" `
-  --operator-confirmation "RUN HW001 CODE C"
+  --preflight hardware_runs/preflight/robot_preflight.json
 ```
 
 Replace only the run ID and opaque code using the next operator-schedule row. Before every command:

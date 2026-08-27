@@ -12,9 +12,9 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
-AMENDMENT_ID = "AMENDMENT_005"
+AMENDMENT_ID = "AMENDMENT_006"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_005.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_006.json"
 )
 MAX_CONTROLLER_ACCELERATION_MPS2 = 2.0
 SEALED_PREPARED_PATH = "condition_key.json"
@@ -74,7 +74,11 @@ def verify_ros1_amendment(root: Path, amendment_path: Path | None = None) -> dic
     if sha256_file(freeze_path) != amendment["base_freeze"]["sha256"]:
         raise RuntimeError(f"base FREEZE.json does not match ROS 1 {AMENDMENT_ID}")
     freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
-    freeze_checks = verify_paths(freeze["files"], root)
+    amended_paths = {entry["path"] for entry in amendment.get("files", [])}
+    freeze_checks = verify_paths(
+        [entry for entry in freeze["files"] if entry["path"] not in amended_paths],
+        root,
+    )
     if not all(row["passed"] for row in freeze_checks):
         failed = [row for row in freeze_checks if not row["passed"]]
         raise RuntimeError(f"base frozen files no longer verify: {failed}")

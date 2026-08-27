@@ -46,8 +46,6 @@ def main() -> int:
         "--freeze", default="reproducibility/hardware_validation/study_v1/FREEZE.json"
     )
     parser.add_argument("--preflight")
-    parser.add_argument("--arm", default="")
-    parser.add_argument("--operator-confirmation", default="")
     parser.add_argument("--output-root", default="hardware_runs/engineering_pilot")
     args = parser.parse_args()
 
@@ -65,12 +63,7 @@ def main() -> int:
     assert_no_placeholders(site)
     verify_prepared(prepared_dir)
     verify_freeze(freeze_path)
-    expected = f"RUN ENGINEERING PILOT ON {args.mode.upper()}"
     if args.adapter == "ros2":
-        if args.arm != config["safety"]["real_adapter_requires_explicit_arm_phrase"]:
-            raise RuntimeError("exact frozen arm phrase was not supplied")
-        if args.operator_confirmation != expected:
-            raise RuntimeError(f"operator confirmation must be exactly: {expected}")
         if not args.preflight:
             raise RuntimeError("a recent passed ROS 2 preflight is required")
         verify_preflight(
