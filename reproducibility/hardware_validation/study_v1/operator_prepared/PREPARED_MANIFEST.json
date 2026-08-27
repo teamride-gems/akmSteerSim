@@ -1,132 +1,84 @@
 {
-  "bundle_count": 24,
-  "config_sha256": "9583AADB2E1D6AA910F91638C9F2610891E1B4EB20E7FCF2FD234FB0EBBF511C",
+  "bundle_count": 12,
+  "config_sha256": "0CD40906B74E2388428CEA8B83488F4AAD43EA9E16AE40326996EBFA7A50A669",
   "files": [
     {
       "path": "machine_schedule.json",
-      "sha256": "B52E2BEF298BF7D7662930A8919C3D953A84AAF562657D0DA2B926573E1AD433"
+      "sha256": "6BE0BF84B34D8A6193FD3CEA503391C1E5917C2A3F2E80EA61B58CF5601626D6"
     },
     {
       "path": "operator_schedule.csv",
-      "sha256": "B5D001D26F762F3A247D3C92870473F8F3345A0EAA5F58CAFDA3368513C9E0DA"
+      "sha256": "B500DDBE45AF1FE97B50FA9FEDD81B8F7BA804A77D652D4424F462DDC4DD082B"
     },
     {
       "path": "safety_envelope.csv",
-      "sha256": "D8E35E8B4E5F353C3960F339242E3101CBD79FFAA3C80D19D4E71905CE89466A"
+      "sha256": "F9610022A0E54DB180F813EFB71D490309535D47416C43E3CCED81A5B8FE18D8"
     },
     {
       "path": "bundle_manifest.json",
-      "sha256": "24AE23FEE3815CA4F4E03D01617C8C71A54A1F1EB099EBE700A19953C894F70B"
+      "sha256": "A56197A2BA5D593117EFEBC91FB974B17A8532F922DDA6570BF079EF2D7FA01E"
     },
     {
       "path": "README.md",
       "sha256": "4F0551F322D15B1CD31256B49B9FDC322258D3AFCB485E32ED7F765B78EEE33A"
     },
     {
-      "path": "bundles/direct_s0_spawn292_speed1p0.json",
-      "sha256": "2FEB9FF1CAA3EE40E5B4143103EEA875E203DC09BFB3F694E46331CB51C8B4B6"
+      "path": "bundles/direct_s0_spawn292_speed0p5.json",
+      "sha256": "83326C73F5B55C14695E66D596BA9772E6793AB7F37B0D749DF141DEC4BD3B0C"
     },
     {
-      "path": "bundles/direct_s0_spawn11_speed1p0.json",
-      "sha256": "725B9EEB257EEDEDB6BEE430E4D6387A40E14CAE7EBD8AA3D53A97E0D07FF71E"
+      "path": "bundles/direct_s0_spawn11_speed0p5.json",
+      "sha256": "66AB3A669733F7A485BB59B4EACC794D37A1006B8922EC852237AF2DEEBF66B7"
     },
     {
-      "path": "bundles/direct_s0_spawn76_speed1p0.json",
-      "sha256": "06AC19391291677DB62A2B14188EDC12D5FAB8966659477DDD622CFB2487D410"
+      "path": "bundles/direct_s0_spawn76_speed0p5.json",
+      "sha256": "5E2EA3BC6241771F16030E1DF80EE10E20593CE447FE9B37DE8366EFDA64908E"
     },
     {
-      "path": "bundles/direct_s0_spawn855_speed1p0.json",
-      "sha256": "0F4F2485184216FA37A8DBBC8D0F3D4AC4E2FD34061B0D4F0653E6E229972044"
+      "path": "bundles/direct_s0_spawn855_speed0p5.json",
+      "sha256": "A9252BF1C7C997479F6954934BA71E42418F54A2F51A73A6FAF3202895640A92"
     },
     {
-      "path": "bundles/direct_s0_spawn574_speed1p0.json",
-      "sha256": "92A595EE16B55420B9EFEDC0F18222BD2AF31E81B9DB469F7D0119016D1DD4D4"
+      "path": "bundles/direct_s0_spawn574_speed0p5.json",
+      "sha256": "6AA56F169068993F5532A8FA9C81A0C31F413AC89510540270964B82C4ADBB18"
     },
     {
-      "path": "bundles/direct_s0_spawn1006_speed1p0.json",
-      "sha256": "6B71E755FC3BB6BCF79F4258C1FC29F777A99340C5735BD035C4A6DFDD9E7363"
+      "path": "bundles/direct_s0_spawn1006_speed0p5.json",
+      "sha256": "616FE15FEE9B632224D79E95576F457021A149FB46F9BF1AACCB18BA433C5337"
     },
     {
-      "path": "bundles/direct_s4_spawn638_speed1p0.json",
-      "sha256": "84EA122B207FFF267606BBC4E16523D59E8D17854F6C458F7E74EF2889BFD61B"
+      "path": "bundles/direct_s4_spawn638_speed0p5.json",
+      "sha256": "D276C4DEAE2404AC2D34D851BC0A1F65F4FAC0E135F25F0CF183BCE4E25A25DD"
     },
     {
-      "path": "bundles/direct_s4_spawn725_speed1p0.json",
-      "sha256": "F0DCB37A0967BB4FE290938C6CF313174398CB745F01CE28335D4F7AA5EECF02"
+      "path": "bundles/direct_s4_spawn725_speed0p5.json",
+      "sha256": "1B3717D21CD4492521BEC88FF773A43E6F060E6D08B90DDB16D202B59F34DA9A"
     },
     {
-      "path": "bundles/direct_s4_spawn574_speed1p0.json",
-      "sha256": "84208E4A621931E7767A427A3E58E9CE2E7C63017CAF670C1C1AAE099B500C27"
+      "path": "bundles/direct_s4_spawn574_speed0p5.json",
+      "sha256": "23413569F945DD0D7CF9F31E941FBE381A166767F011279CC4A7FB8769F12C8D"
     },
     {
-      "path": "bundles/direct_s4_spawn76_speed1p0.json",
-      "sha256": "11FFB60F1527CAE274180D5C04FE98E4905F2B445A28B8EDB3A31F344B9A52A9"
+      "path": "bundles/direct_s4_spawn76_speed0p5.json",
+      "sha256": "75891F15EF26BC4D72064DC20F670C9CE88FD8FE2294C25E907FE965FF3EC49E"
     },
     {
-      "path": "bundles/direct_s4_spawn855_speed1p0.json",
-      "sha256": "256ADCB4ACA06635745ABF6133C0AECA5BA403DA55D62324217ACC072A1DF33B"
+      "path": "bundles/direct_s4_spawn855_speed0p5.json",
+      "sha256": "1FFCFF360CFF1728D368E1B3C93F59B7B128C6A5CA105B153B9B37F930D87544"
     },
     {
-      "path": "bundles/direct_s4_spawn1006_speed1p0.json",
-      "sha256": "C11BCFCD3B3A42F827120F5246B79383FB8E83B9E17A0E14E03747CB09ED7EB7"
-    },
-    {
-      "path": "bundles/direct_s0_spawn292_speed1p5.json",
-      "sha256": "2EBB09A847AE66F732861F7F7F7AA9C56390A58BC141A20E1953FAE390FBBEF8"
-    },
-    {
-      "path": "bundles/direct_s0_spawn11_speed1p5.json",
-      "sha256": "B589094B7DAC54F75D873DE930198C4D1B867242834FDFE0D79D5C940732EA93"
-    },
-    {
-      "path": "bundles/direct_s0_spawn76_speed1p5.json",
-      "sha256": "C2D246B3B20113A6D31F1215111F274DC1939548BBDF5A40F321690EE7EC0400"
-    },
-    {
-      "path": "bundles/direct_s0_spawn855_speed1p5.json",
-      "sha256": "4465833EBFA356277A0F213F4409F812769ADC5B556E0513E7890DFF987A3987"
-    },
-    {
-      "path": "bundles/direct_s0_spawn574_speed1p5.json",
-      "sha256": "5CABEF591D8652367F9C5BBA82D0D69D2D0CA5F564E25A8FAC734BD4AAF8F897"
-    },
-    {
-      "path": "bundles/direct_s0_spawn1006_speed1p5.json",
-      "sha256": "3DAE26DC97105BC16F2E38DEE5B85F2C1E8934D9D4632FA7BCB971E3A991DDE3"
-    },
-    {
-      "path": "bundles/direct_s4_spawn638_speed1p5.json",
-      "sha256": "74B299904CA4828CB576B6E34D96A47DB39070978D6371656A34147F729937BD"
-    },
-    {
-      "path": "bundles/direct_s4_spawn725_speed1p5.json",
-      "sha256": "32AFCC5C8D6414AF7E7FA7CEC3CA442D11627151D59FA88552D5B34EBC32071B"
-    },
-    {
-      "path": "bundles/direct_s4_spawn574_speed1p5.json",
-      "sha256": "0589FFFF7FF00EF59CD6A3341A2AE88DA4CAD6643B4EDD4C717EA46C0237ADE1"
-    },
-    {
-      "path": "bundles/direct_s4_spawn76_speed1p5.json",
-      "sha256": "92766F31873419D7FD3671B9D608BB07BA64C98FFC3BB24B65D8C997352B2F3A"
-    },
-    {
-      "path": "bundles/direct_s4_spawn855_speed1p5.json",
-      "sha256": "9D19384CFCBA28023881FE19B2D6C9912BC49FC20C0AF50EC1BD32DB267055DC"
-    },
-    {
-      "path": "bundles/direct_s4_spawn1006_speed1p5.json",
-      "sha256": "5A7D8B0A3AF9BFD2E0FAB8D37A8CD56CDBE2EAFA5ECEAF8836E0038EB56DC399"
+      "path": "bundles/direct_s4_spawn1006_speed0p5.json",
+      "sha256": "59E5639656E36A2B4A17408EE2A3CD0A0FA30FCAD4D890F511A70D3A31CD3A2D"
     },
     {
       "path": "condition_key.json",
-      "sha256": "513E2E2DF10E65B5BEC39FF7851280CAA014A4B5D5E4ED34C3B4EAE92983D260"
+      "sha256": "D71E7638F0A3099B0F0231FC48220882B8805745F3B747D13BAB22E65074C4B8"
     }
   ],
   "package_role": "ROS1_BLINDED_OPERATOR_INPUTS",
-  "schedule_runs": 120,
+  "schedule_runs": 60,
   "schema_version": 1,
   "semantic_conditions_present": false,
-  "source_prepared_manifest_sha256": "AC23E247D7C7ABC1EBD7D7CD4683538CD066A68976C253A9740DC4EEACD091FB",
+  "source_prepared_manifest_sha256": "B935543F5469224FB343F723B635941283487E96D56CBFCBF669893F0430A249",
   "study_id": "innovation_gate_f1tenth_hardware_v1"
 }
