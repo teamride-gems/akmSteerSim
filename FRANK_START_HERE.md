@@ -45,7 +45,7 @@ until the runner has exited and `/hardware_study/run_active` is false.
 1. Complete the site draft and controller/interface capture.
 2. Start and verify the autonomous heartbeat safety bridge on stands.
 3. Capture the taped start pose into `local_hardware_site_ros1.yaml`.
-4. Complete the signed live preflight.
+4. Complete the live preflight.
 5. Pass and inspect the 0.20 m/s stands pilot.
 6. Pass and inspect the 0.50 m/s ground pilot.
 7. Only then start `HW001` and continue in the printed operator schedule order.
@@ -54,5 +54,5 @@ Use only
 `reproducibility/hardware_validation/study_v1/operator_prepared/operator_schedule.csv`
 during collection. Do not inspect the lead-side `study_v1/prepared` directory
 or compare packet bundles until every outcome is locked. Return the complete
-ignored `hardware_runs/` directory, both local site YAML files, and the signed
-acceptance checklist to the study lead after collection.
+ignored `hardware_runs/` directory, both local site YAML files, and the
+completed acceptance checklist to the study lead after collection.

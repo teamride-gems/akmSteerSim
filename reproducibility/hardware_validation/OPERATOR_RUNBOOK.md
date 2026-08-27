@@ -1,7 +1,7 @@
 # RiDE F1TENTH hardware-study operator runbook
 
 > **Frank uses ROS 1 Noetic. Do not use the ROS 2 commands below on Frank.**
-> Use `ROS1_OPERATOR_RUNBOOK.md` under pre-outcome `AMENDMENT_005`. This file is
+> Use `ROS1_OPERATOR_RUNBOOK.md` under pre-outcome `AMENDMENT_006`. This file is
 > retained as the original ROS 2 integration record.
 
 ## Stop conditions
@@ -70,15 +70,13 @@ python scripts/capture_hardware_site.py `
   --site-id UMD_SITE_ID `
   --robot-id RIDE_CAR_ID `
   --course-id COURSE_ID `
-  --operator OPERATOR_NAME `
-  --safety-supervisor SUPERVISOR_NAME `
   --clear-radius-m MEASURED_RADIUS `
   --localization-system SYSTEM_NAME
 ```
 
 The capture refuses overwrite, motion over 0.03 m/s, fewer than 40 samples, or localization dispersion over 0.02 m. Restart the bridge with `local_hardware_site.yaml`, reset its latch, and keep this site file unchanged for the entire study.
 
-## 3. Signed live preflight on stands
+## 3. Live preflight on stands
 
 With wheels securely off the ground, test the physical e-stop using the robot's normal low-speed commissioning/teleoperation procedure. Confirm it cuts propulsion independently of this study software. Clear the full ground course and complete the printed checklist.
 
@@ -89,8 +87,6 @@ python scripts/hardware_preflight.py `
   --adapter ros2 `
   --site local_hardware_site.yaml `
   --output hardware_runs/preflight/robot_preflight.json `
-  --operator-sign "OPERATOR NAME" `
-  --supervisor-sign "SUPERVISOR NAME" `
   --wheels-on-stands-verified `
   --physical-estop-tested `
   --course-cleared `

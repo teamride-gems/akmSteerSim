@@ -221,7 +221,7 @@ editable simulator, map loading, Numba runtime, and real physics step.
 
 Frank's ROS 1 Noetic deployment starts with `FRANK_START_HERE.md`, followed by
 `reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md`. The binding
-steps are in `ROS1_OPERATOR_RUNBOOK.md`, and the physical sign-off is
+steps are in `ROS1_OPERATOR_RUNBOOK.md`, and the physical checklist is
 `MECHANICAL_ACCEPTANCE_CHECKLIST.md`. The package includes the frozen blinded
 schedule, command bundles, safety/preflight tools, native ROS 1 runner, and
 locked analysis. Generated robot data stay under ignored `hardware_runs/`.

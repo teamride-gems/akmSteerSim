@@ -10,8 +10,9 @@
 
 This amendment removes typed arm and run-confirmation phrases from the pilot and
 study runners, and removes the typed stands confirmation from the bounded
-heartbeat utility. The utility remains bounded and must be used only with the
-vehicle securely on stands.
+heartbeat utility. It also removes operator and supervisor identity fields and
+signatures from the site capture, preflight result, and checklist. The utility
+remains bounded and must be used only with the vehicle securely on stands.
 
 Runtime safety behavior is unchanged: the bridge keeps the zero-command
 override active unless the runner heartbeat and joystick stream are fresh, and

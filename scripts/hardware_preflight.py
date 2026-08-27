@@ -64,8 +64,6 @@ def main() -> int:
         "--freeze", default="reproducibility/hardware_validation/study_v1/FREEZE.json"
     )
     parser.add_argument("--output")
-    parser.add_argument("--operator-sign", default="")
-    parser.add_argument("--supervisor-sign", default="")
     parser.add_argument("--wheels-on-stands-verified", action="store_true")
     parser.add_argument("--physical-estop-tested", action="store_true")
     parser.add_argument("--course-cleared", action="store_true")
@@ -112,8 +110,6 @@ def main() -> int:
         != int(site["safety_bridge"]["estop_button_index"]),
     }
     human_checks = {
-        "operator_signed": bool(args.operator_sign.strip()),
-        "supervisor_signed": bool(args.supervisor_sign.strip()),
         "wheels_on_stands_verified": args.wheels_on_stands_verified,
         "physical_estop_tested": args.physical_estop_tested,
         "course_cleared": args.course_cleared,
@@ -200,8 +196,6 @@ def main() -> int:
             prepared_dir / "PREPARED_MANIFEST.json"
         ),
         "freeze_sha256": sha256_file(freeze_path),
-        "operator_sign": args.operator_sign,
-        "supervisor_sign": args.supervisor_sign,
         "static_checks": static_checks,
         "human_checks": human_checks,
         "live_checks": live_checks,

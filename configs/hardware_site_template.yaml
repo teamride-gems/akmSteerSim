@@ -1,8 +1,6 @@
 site_id: REPLACE_WITH_SITE_ID
 robot_id: REPLACE_WITH_ROBOT_ID
 course_id: REPLACE_WITH_COURSE_ID
-operator: REPLACE_WITH_OPERATOR
-safety_supervisor: REPLACE_WITH_SUPERVISOR
 ros_domain_id: 0
 
 topics:

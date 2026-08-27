@@ -34,8 +34,6 @@ def main() -> int:  # pragma: no cover - requires robot runtime
     parser.add_argument("--site-id", required=True)
     parser.add_argument("--robot-id", required=True)
     parser.add_argument("--course-id", required=True)
-    parser.add_argument("--operator", required=True)
-    parser.add_argument("--safety-supervisor", required=True)
     parser.add_argument("--clear-radius-m", required=True, type=float)
     parser.add_argument("--localization-system", required=True)
     parser.add_argument("--sample-seconds", type=float, default=3.0)
@@ -85,8 +83,6 @@ def main() -> int:  # pragma: no cover - requires robot runtime
             "site_id": args.site_id,
             "robot_id": args.robot_id,
             "course_id": args.course_id,
-            "operator": args.operator,
-            "safety_supervisor": args.safety_supervisor,
         }
     )
     site["expected_start_pose"] = {"x_m": x, "y_m": y, "yaw_rad": yaw}

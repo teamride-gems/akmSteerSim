@@ -1,7 +1,7 @@
 # Mechanical-team handoff for Frank experiments
 
 This is the entry point for preparing Frank. Do not begin a scientific run from
-this page alone: the ROS 1 runbook and signed acceptance checklist remain
+this page alone: the ROS 1 runbook and acceptance checklist remain
 binding.
 
 Start with the shorter repository entry page, `FRANK_START_HERE.md`, then use
@@ -39,7 +39,7 @@ ROS 1 tools fail closed if it is added to the operator package.
   preflight, pilot, and study commands.
 - `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — frozen scientific
   and rerun rules.
-- `reproducibility/hardware_validation/amendments/AMENDMENT_005.md` — ROS 1
+- `reproducibility/hardware_validation/amendments/AMENDMENT_006.md` — ROS 1
   compatibility and physical-controller gates.
 
 ## Robot-side prerequisites
@@ -86,7 +86,7 @@ pilot, resolve only the remaining fail-closed fields in the site template:
    zero-command override, runner-heartbeat timeout, joystick timeout, and
    latched software e-stop using `scripts/test_ros1_safety_heartbeat.py`.
 4. Capture the taped start pose with `scripts/capture_hardware_site_ros1.py`.
-5. Run the signed `scripts/ros1_hardware_preflight.py` on stands.
+5. Run `scripts/ros1_hardware_preflight.py` on stands.
 6. Pass the 0.20 m/s stands pilot.
 7. Pass the 0.50 m/s ground pilot in the surveyed clear area.
 8. Preserve and review both engineering-only bags before authorizing `HW001`.

@@ -1,6 +1,6 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_005`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+This runbook implements `AMENDMENT_006`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
@@ -97,15 +97,13 @@ python3 scripts/capture_hardware_site_ros1.py \
   --site-id UMD_SITE_ID \
   --robot-id frank \
   --course-id COURSE_ID \
-  --operator OPERATOR_NAME \
-  --safety-supervisor SUPERVISOR_NAME \
   --clear-radius-m MEASURED_RADIUS \
   --localization-system cartographer_tf
 ```
 
 This reuses the frozen stationary-capture requirements: at least 40 samples, speed no greater than 0.03 m/s, and no more than 0.02 m positional dispersion.
 
-## 4. Signed live preflight
+## 4. Live preflight
 
 Restart the bridge with the final site file, reset its latch, put the car securely on stands, and run. The runner supplies its own heartbeat; nobody holds a button. The safety supervisor keeps the connected joystick in hand with button 6 immediately reachable:
 
@@ -114,8 +112,6 @@ python3 scripts/ros1_hardware_preflight.py \
   --adapter ros1 \
   --site local_hardware_site_ros1.yaml \
   --output hardware_runs/preflight/robot_preflight_ros1.json \
-  --operator-sign "OPERATOR NAME" \
-  --supervisor-sign "SUPERVISOR NAME" \
   --wheels-on-stands-verified \
   --physical-estop-tested \
   --course-cleared \

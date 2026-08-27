@@ -57,10 +57,6 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 - [ ] Start pose is taped and captured after the robot has remained stationary.
 - [ ] Obstacle-free radius is at least 6.0 m and was measured rather than estimated.
 - [ ] No spectators can enter the test area during motion.
-- [ ] Operator: __________________  Date/time: __________________
-- [ ] Safety supervisor: __________  Date/time: __________________
-- [ ] Mechanical lead: ____________  Date/time: __________________
-
 **Release decision:** [ ] PASS FOR STANDS ONLY  [ ] PASS FOR GROUND PILOT  [ ] FAIL
 
 Any failure blocks the main study. Engineering repairs and pilots may continue, but their data remain excluded from the paper analysis.

@@ -1,8 +1,6 @@
 site_id: local_mock
 robot_id: mock_f1tenth
 course_id: virtual_clear_area
-operator: automated_mock
-safety_supervisor: automated_mock
 ros_domain_id: 0
 topics:
   drive: /mock/drive
