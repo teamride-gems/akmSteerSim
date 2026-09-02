@@ -1,8 +1,9 @@
 # Mechanical-team handoff for Frank experiments
 
-This is the entry point for preparing Frank. Do not begin a scientific run from
-this page alone: the ROS 1 runbook and signed acceptance checklist remain
-binding.
+Scientific collection is paused. This is the entry point for Frank interface
+qualification and engineering pilots only; it does not authorize a scientific
+run. The ROS 1 runbook and signed acceptance checklist remain binding for the
+qualification work they cover.
 
 Start with the shorter repository entry page, `FRANK_START_HERE.md`, then use
 this handoff for prerequisites and the binding runbook for commands.
@@ -12,23 +13,21 @@ this handoff for prerequisites and the binding runbook for commands.
 For a new checkout on Frank:
 
 ```bash
-git clone --branch ride/frank-experiment-package-20260821 --single-branch \
+git clone --branch ride/project-leadership-handoff-20260901 --single-branch \
   https://github.com/teamride-gems/akmSteerSim.git
 cd akmSteerSim
 git submodule update --init --recursive
 ```
 
 For an existing checkout, preserve any local robot configuration first, then
-fetch and switch to `ride/frank-experiment-package-20260821`. Keep local site
+fetch and switch to `ride/project-leadership-handoff-20260901`. Keep local site
 records and collected data outside Git; both are ignored by this branch.
 
 ## Files to use
 
-Use only `study_v1/operator_prepared` during collection. Its schedule, bundles,
-and safety envelope contain opaque codes rather than semantic condition names.
-Do not inspect the lead-side `study_v1/prepared` directory while operating the
-study. The condition key remains absent until all 120 outcomes are locked; the
-ROS 1 tools fail closed if it is added to the operator package.
+The historical `study_v1/operator_prepared` schedule remains in the repository
+for provenance. Do not use it during current qualification work and do not
+start any of its 120 scheduled runs. The scientific runner is disabled.
 
 - `configs/hardware_site_ros1_template.yaml` — copy to the ignored
   `local_hardware_site_ros1_draft.yaml` and fill only measured or live-verified
@@ -37,10 +36,11 @@ ROS 1 tools fail closed if it is added to the operator package.
   print and complete before ground motion.
 - `reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md` — exact setup,
   preflight, pilot, and study commands.
-- `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — frozen scientific
-  and rerun rules.
-- `reproducibility/hardware_validation/amendments/AMENDMENT_005.md` — ROS 1
-  compatibility and physical-controller gates.
+- `reproducibility/hardware_validation/STUDY_PROTOCOL_V1.md` — historical
+  frozen protocol; retained for provenance, not current authorization.
+- `reproducibility/hardware_validation/amendments/AMENDMENT_006.md` — current
+  authorization status; the ROS 1 safety interface remains documented in
+  `AMENDMENT_005.md`.
 
 ## Robot-side prerequisites
 
@@ -62,10 +62,10 @@ rospack find racecar
 
 If an import is missing, install the matching Noetic package through the team's
 normal ROS dependency process. Do not upgrade Frank's operating system, ROS
-distribution, workspace, VESC firmware, or controller package during study
-collection.
+distribution, workspace, VESC firmware, or controller package during a
+qualification session.
 
-## Remaining experiment inputs
+## Remaining qualification inputs
 
 The 2026-08-25 stationary capture resolved the command, mux, Cartographer,
 wheel-odometry, joystick, LiDAR, IMU, and VESC topic interfaces. Before the
@@ -89,7 +89,9 @@ pilot, resolve only the remaining fail-closed fields in the site template:
 5. Run the signed `scripts/ros1_hardware_preflight.py` on stands.
 6. Pass the 0.20 m/s stands pilot.
 7. Pass the 0.50 m/s ground pilot in the surveyed clear area.
-8. Preserve and review both engineering-only bags before authorizing `HW001`.
+8. Preserve and review both engineering-only bags. Do not authorize `HW001`;
+   the historical scientific collection is paused pending a new prospective
+   protocol.
 
 No button is held during autonomous execution. Each approved runner supplies
 its own short-timeout heartbeat. The safety supervisor keeps the connected
@@ -104,5 +106,5 @@ Stop for grinding, clutch slip, intermittent propulsion, steering binding,
 unexpected mux ownership, reversed signs, stale localization, missing bag
 topics, battery brownout, deadman/e-stop failure, any person entering the clear
 area, or any unresolved checklist item. Engineering troubleshooting may resume
-after the cause is documented; a scheduled run that moved remains an outcome
-under the frozen no-silent-rerun policy.
+after the cause is documented. No scientific scheduled runs are currently
+authorized.

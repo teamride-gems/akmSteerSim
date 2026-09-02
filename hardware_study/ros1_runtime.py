@@ -12,9 +12,9 @@ import time
 from .integrity import sha256_file, verify_paths
 
 
-AMENDMENT_ID = "AMENDMENT_005"
+AMENDMENT_ID = "AMENDMENT_006"
 AMENDMENT_PATH = Path(
-    "reproducibility/hardware_validation/amendments/AMENDMENT_005.json"
+    "reproducibility/hardware_validation/amendments/AMENDMENT_006.json"
 )
 MAX_CONTROLLER_ACCELERATION_MPS2 = 2.0
 SEALED_PREPARED_PATH = "condition_key.json"

@@ -1,8 +1,9 @@
 # RiDE F1TENTH hardware-study operator runbook
 
 > **Frank uses ROS 1 Noetic. Do not use the ROS 2 commands below on Frank.**
-> Use `ROS1_OPERATOR_RUNBOOK.md` under pre-outcome `AMENDMENT_005`. This file is
-> retained as the original ROS 2 integration record.
+> Use `ROS1_OPERATOR_RUNBOOK.md` for qualification work under the current
+> `AMENDMENT_006` status. Scientific collection is paused, and this file is
+> retained only as the original ROS 2 integration record.
 
 ## Stop conditions
 

@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "amendment_id": "AMENDMENT_006",
+  "study_id": "innovation_gate_f1tenth_hardware_v1",
+  "status": "SCIENTIFIC_COLLECTION_PAUSED_BEFORE_PHYSICAL_OUTCOMES",
+  "created_at_utc": "2026-09-02T03:34:19.8473923Z",
+  "physical_outcomes_observed_before_amendment": false,
+  "engineering_interface_captures_observed": true,
+  "reason": "The frozen study replays open-loop command sequences and does not directly test closed-loop policy transfer induced by action-space representations. Scientific collection is paused prospectively while reusable qualification and engineering pilots remain available.",
+  "scope": "Future scientific-run authorization and leadership-handoff consistency. The main ROS 1 study runner fails closed, all current robot-facing documents point to the published handoff branch, and qualification documents explicitly do not authorize scientific collection. Prior freezes, schedules, scientific inputs, thresholds, retry rules, records, and analysis remain unchanged.",
+  "base_freeze": {
+    "path": "reproducibility/hardware_validation/study_v1/FREEZE.json",
+    "sha256": "38A58B34F57D5CE2056B1863B98E24A7D4AB8FFC1D6429F509DA09CC54E48A02"
+  },
+  "prior_amendment": {
+    "path": "reproducibility/hardware_validation/amendments/AMENDMENT_005.json",
+    "sha256": "A070DB375C7C9443B39124D51D858032074BEF2196F05F22FB82F0C0B02BAC17"
+  },
+  "files": [
+    {
+      "path": "configs/hardware_site_ros1_template.yaml",
+      "sha256": "8E0081F2C6997F80CD421F39DD3C3289567ECD78FDEF07365CF1D86D296C651C"
+    },
+    {
+      "path": "hardware_study/ros1_adapter.py",
+      "sha256": "6E61D79D5DD642E71374547821CDE036AEFC11EA643E8D826945D1A284C0FF70"
+    },
+    {
+      "path": "hardware_study/ros1_runtime.py",
+      "sha256": "4CB33A5B3AC14811D240431FC6709E2C16C8C46B8CEABF159A31AD35207A2857"
+    },
+    {
+      "path": "scripts/capture_hardware_site_ros1.py",
+      "sha256": "41A5F593B40278B6D0289C0F469988D8F7D35455589417C37806B8BA003E4A1F"
+    },
+    {
+      "path": "scripts/capture_ros1_configuration.py",
+      "sha256": "36A03640DCFF427A89E0D16B92B93586ED1F183D6F31406501ACB6ED73B4D796"
+    },
+    {
+      "path": "scripts/ros1_hardware_preflight.py",
+      "sha256": "6077CFF5F4F0A4F1722C5D0F7E9227F8E0AEF503A55437B0EB1C65AACFEE4BC0"
+    },
+    {
+      "path": "scripts/ros1_hardware_safety_bridge.py",
+      "sha256": "023C7917E5E424E414FF37ABD448292A1B0546F3F860EEFB1ABF721F3A4820DD"
+    },
+    {
+      "path": "scripts/run_hardware_study_ros1.py",
+      "sha256": "96831E00A07BAB7BEB77174D90B133B7050DCEFDC4107BE9DD9AB1A82A964C46"
+    },
+    {
+      "path": "scripts/run_hardware_engineering_pilot_ros1.py",
+      "sha256": "1BE69D8A7993F988D320FE5FEB6BB83BBC45EA5F72CA78E98227A1D29C54F9FC"
+    },
+    {
+      "path": "scripts/test_ros1_safety_heartbeat.py",
+      "sha256": "50AF354AA8A6A276C2087181615905E005B61D36B1F122FD39895532693363F0"
+    },
+    {
+      "path": "scripts/analyze_hardware_study_ros1.py",
+      "sha256": "EDDB89CC97AC01006ABB56CBC99F378DD718C47E95EE713618A421BA9D2C9BF1"
+    },
+    {
+      "path": "scripts/prepare_ros1_operator_package.py",
+      "sha256": "4663C9F8AC51792B70F193DDB44B87A7F5D34700027AD1602E01A5FD594CF270"
+    },
+    {
+      "path": "reproducibility/hardware_validation/study_v1/operator_prepared/PREPARED_MANIFEST.json",
+      "sha256": "B2892C4F795F5446CD054884D342FB26BF462E329F5DAFED96ECC1DB0B2971A6"
+    },
+    {
+      "path": "FRANK_START_HERE.md",
+      "sha256": "37A677ED7D3BA23AEA6696C913AC653775E7E67B76A119EACCD13D6A53E16E64"
+    },
+    {
+      "path": "README.MD",
+      "sha256": "147EBA5E91CD85F0282A364F09FD9594B2654B99192D132BF649C09A84670D67"
+    },
+    {
+      "path": "BRIAN_HANDOFF.md",
+      "sha256": "21642DC20C341F0AFE91FFE28BE0E9689CF9157E899583E4FAFDAF0EC3F23166"
+    },
+    {
+      "path": "PROJECT_CONTEXT.md",
+      "sha256": "F71098ECC5C6177F2525A8A0BE883DB4F1D2251EFB972E97F9DCCFAD3CEB00DE"
+    },
+    {
+      "path": "reproducibility/hardware_validation/ROS1_OPERATOR_RUNBOOK.md",
+      "sha256": "85F4AFEF8C9A042B91C5FFAF3FA6867B6D77AB7E51195C2DBAA80808809821AE"
+    },
+    {
+      "path": "reproducibility/hardware_validation/OPERATOR_RUNBOOK.md",
+      "sha256": "2EA63A6B6D5D99831F2E9A242FA473755D931FEEB87B8B2FB44AECC3A8C857F0"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_TEAM_HANDOFF.md",
+      "sha256": "64191129DC6CD39CE3800962FB3C7708C7C3C24074A0C5A5418486ECA30F74B7"
+    },
+    {
+      "path": "reproducibility/hardware_validation/MECHANICAL_ACCEPTANCE_CHECKLIST.md",
+      "sha256": "7C64F8592AE311A06C5017DBE191A9D61711AB60EE260DFD2C5A385DD20B3765"
+    },
+    {
+      "path": "reproducibility/hardware_validation/PRE_ROBOT_READINESS.md",
+      "sha256": "3933DA83296B777C708F750A034B7DC165078E94AAE87F04698CB95901196CDC"
+    },
+    {
+      "path": "reproducibility/hardware_validation/DATA_DICTIONARY.md",
+      "sha256": "4022A4F8C34131293E1853A405D8600D9DD8A11827EE5EA7E26038F8EB1C8527"
+    },
+    {
+      "path": "reproducibility/hardware_validation/LAB_SESSION_20260826.md",
+      "sha256": "0694832B4E30829C69DF1D7C64486F1CDC9E3B6BE26FF432D263478E5A5E0BFC"
+    },
+    {
+      "path": "reproducibility/hardware_validation/amendments/AMENDMENT_006.md",
+      "sha256": "E25DF1E7F45FE59FF68AAE95B33B32182B9519A0CFD5B98923F4F3766F04801D"
+    }
+  ]
+}

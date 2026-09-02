@@ -1,6 +1,15 @@
 # Frank ROS 1 Noetic hardware-study runbook
 
-This runbook implements `AMENDMENT_005`. The original frozen protocol and operator rules still apply. Use these commands on Frank instead of the ROS 2 commands in `OPERATOR_RUNBOOK.md`.
+> Current status under `AMENDMENT_006`: the historical 120-run scientific
+> collection is paused. The configuration capture, safety checks, preflight,
+> and explicitly labeled engineering pilots remain available. The main-study
+> runner refuses to start until a new prospective protocol is reviewed and
+> frozen.
+
+This runbook documents the ROS 1 interface introduced through
+`AMENDMENT_005`, with the current authorization status defined by
+`AMENDMENT_006`. Use these commands on Frank instead of the ROS 2 commands in
+`OPERATOR_RUNBOOK.md`.
 
 ## 1. Prepare a local site record
 
@@ -157,35 +166,14 @@ Both archives are permanently engineering-only.
 
 ## 6. Main blinded study
 
-Begin only after both pilots pass. This package prospectively records that the current study uses onboard Cartographer localization without independent trajectory ground truth; paper claims must not describe Cartographer trajectories as independently validated ground truth.
+Do not start `HW001` or any later scheduled run. The command previously shown
+here is intentionally disabled in code by `AMENDMENT_006`. The historical
+schedule and opaque operator package remain in the repository for provenance,
+not as current collection authorization.
 
-Use only
-`study_v1/operator_prepared/operator_schedule.csv` during collection. The ROS 1
-runners default to the opaque operator package, so the schedule, packet bundle,
-validation file, and run manifest expose only the run's code. Do not inspect
-the lead-side `study_v1/prepared` directory or compare bundles before all 120
-outcomes are locked. The unblinding key is deliberately absent, and the tools
-fail closed if it is added to the operator package.
-
-```bash
-python3 scripts/run_hardware_study_ros1.py \
-  --run-id HW001 --adapter ros1 \
-  --site local_hardware_site_ros1.yaml \
-  --preflight hardware_runs/preflight/robot_preflight_ros1.json \
-  --arm "AREA CLEAR - ESTOP READY" \
-  --operator-confirmation "RUN HW001 CODE C"
-```
-
-Use the next opaque code from the operator schedule. The amended runner still enforces schedule order, refuses overwrite, records rosbag1 before motion, archives the original freeze and amendment, and applies the original post-motion no-rerun rule.
-
-For every main run, nobody holds an authorization button. The safety supervisor
-keeps the connected joystick and physical motor e-stop immediately reachable
-and presses button 6 at the first concern. Do not touch other joystick controls
-during autonomous execution. Runner exit, heartbeat loss, joystick loss, or an
-e-stop press automatically restores the zero-command override. A stopped
-attempt that already moved remains an outcome under the frozen rerun rule.
-After pressing button 6, do not call the reset service until the runner has
-exited and `/hardware_study/run_active` is false.
+A future scientific collection requires a new prospective protocol, competent
+closed-loop policies, matched controls, review, and a later amendment created
+before observing the new study's outcomes.
 
 ## 7. Outcome lock and analysis
 

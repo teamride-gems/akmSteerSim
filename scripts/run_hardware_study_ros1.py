@@ -23,6 +23,14 @@ from hardware_study.ros1_runtime import (
 from scripts import run_hardware_study as frozen_runner
 
 
+STUDY_COLLECTION_PAUSED = True
+STUDY_COLLECTION_PAUSE_MESSAGE = (
+    "The historical 120-run open-loop replay study is paused by AMENDMENT_006. "
+    "Safety qualification and explicitly labeled engineering pilots remain "
+    "available; a new prospective protocol is required before scientific runs."
+)
+
+
 def translate_arguments(arguments: list[str]) -> list[str]:
     translated = list(arguments)
     if "--adapter" in translated:
@@ -53,6 +61,8 @@ def make_ros1_adapter(name: str, site: dict):
 
 def main() -> int:
     amendment = verify_ros1_amendment(ROOT)
+    if STUDY_COLLECTION_PAUSED:
+        raise RuntimeError(STUDY_COLLECTION_PAUSE_MESSAGE)
     original_archive = frozen_runner.archive_inputs
     original_sha256 = frozen_runner.sha256_file
 

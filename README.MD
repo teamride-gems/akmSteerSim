@@ -1,5 +1,10 @@
 # akmSteerSim: F1TENTH + SAC action-space experiments
 
+> Project leadership handoff: start with `BRIAN_HANDOFF.md` on branch
+> `ride/project-leadership-handoff-20260901`. There is currently no authorized main physical
+> study. The historical 120-run Frank replay protocol is paused; do not run
+> `HW001` or describe it as closed-loop policy transfer.
+
 This repository studies how policy action representations affect reinforcement
 learning for Ackermann-steered racing. It provides direct steering, curvature,
 lookahead-point, and Bezier action decoders while keeping the simulator,
@@ -182,6 +187,12 @@ git clone https://github.com/teamride-gems/akmSteerSim.git
 cd akmSteerSim
 git submodule update --init --recursive
 
+cd ..
+git clone https://github.com/f1tenth/f1tenth_gym.git
+cd f1tenth_gym
+git checkout 4fdb9c7e6fb7c701290f4dc18377d07c1681724f
+cd ..\akmSteerSim
+
 py -3.10 -m venv .venv310
 .\.venv310\Scripts\Activate.ps1
 python -m pip install --upgrade "pip<24.1" "setuptools<66" "wheel<0.39"
@@ -189,7 +200,9 @@ python -m pip install -r requirements_min.txt
 python -m pip install -e ..\f1tenth_gym
 ```
 
-Adjust the editable F1TENTH path to its local clone. The wrapper redirects
+Commit `4fdb9c7e6fb7c701290f4dc18377d07c1681724f` is the simulator revision used
+by the verified local smoke test. Adjust the editable F1TENTH path if the clone
+is not adjacent to this repository. The wrapper redirects
 Numba's cache into ignored `.numba_cache/`; this avoids import stalls when the
 editable simulator source is outside a writable workspace.
 
@@ -229,6 +242,14 @@ locked analysis. Generated robot data stay under ignored `hardware_runs/`.
 Autonomous motion requires no held button. The runner publishes a short-timeout
 heartbeat, while joystick index 6 latches the software e-stop. Runner exit,
 heartbeat loss, or joystick loss restores the low-level zero-command override.
+
+The package is retained as hardware-interface and reproducibility
+infrastructure. Scientific collection is paused because its frozen 120-run
+design replays policy-generated commands open loop; it does not execute a
+trained policy on Frank or compare closed-loop action-space transfer. General
+qualification checks and engineering pilots remain useful, but `HW001` is not
+authorized. See `BRIAN_HANDOFF.md` and
+`reproducibility/hardware_validation/LAB_SESSION_20260826.md`.
 
 The ROS 1 runners use `study_v1/operator_prepared`, whose schedules, bundles,
 and archives expose only opaque condition codes. The condition key is excluded

@@ -1,5 +1,8 @@
 # Frank mechanical and instrumentation acceptance checklist
 
+> This checklist covers qualification only. Passing it does not authorize
+> `HW001`, the historical 120-run schedule, or any scientific collection.
+
 Complete and sign this checklist before the ROS 1 live preflight. Record a value or an explicit pass/fail result for every row; blank cells are failures.
 
 ## Identification and configuration
@@ -63,4 +66,7 @@ Complete and sign this checklist before the ROS 1 live preflight. Record a value
 
 **Release decision:** [ ] PASS FOR STANDS ONLY  [ ] PASS FOR GROUND PILOT  [ ] FAIL
 
-Any failure blocks the main study. Engineering repairs and pilots may continue, but their data remain excluded from the paper analysis.
+Any failure blocks further qualification at the affected level. Passing this
+checklist authorizes only the marked engineering level; it does not authorize a
+scientific study. Qualification data remain excluded from paper analysis unless
+a later prospective protocol explicitly defines their use.

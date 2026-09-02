@@ -23,7 +23,11 @@ from scripts.capture_hardware_site_ros1 import restore_template_course_fields
 from scripts.analyze_hardware_study_ros1 import classify_ros1_evidence
 from scripts.prepare_ros1_operator_package import build_operator_package
 from scripts.ros1_hardware_safety_bridge import SafetyState
-from scripts.run_hardware_study_ros1 import translate_arguments
+from scripts.run_hardware_study_ros1 import (
+    STUDY_COLLECTION_PAUSED,
+    STUDY_COLLECTION_PAUSE_MESSAGE,
+    translate_arguments,
+)
 from scripts.test_ros1_safety_heartbeat import validate_duration
 
 
@@ -492,6 +496,10 @@ class Ros1AmendmentTests(unittest.TestCase):
         amendment = verify_ros1_amendment(ROOT)
         self.assertEqual(amendment["amendment_id"], AMENDMENT_ID)
         self.assertFalse(amendment["physical_outcomes_observed_before_amendment"])
+
+    def test_main_scientific_collection_is_fail_closed(self):
+        self.assertTrue(STUDY_COLLECTION_PAUSED)
+        self.assertIn("new prospective protocol", STUDY_COLLECTION_PAUSE_MESSAGE)
 
     def test_operator_package_requires_sealed_key_to_be_absent(self):
         with tempfile.TemporaryDirectory() as temporary:

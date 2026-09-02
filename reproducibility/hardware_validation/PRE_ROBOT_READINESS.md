@@ -1,6 +1,6 @@
 # Pre-robot readiness record
 
-**Status: SUPERSEDED FOR FRANK BY ROS 1 AMENDMENT 005**
+**Status: HISTORICAL; SCIENTIFIC COLLECTION PAUSED BY AMENDMENT 006**
 
 The original official freeze remains intact at
 `study_v1/FREEZE.json` (`FROZEN_BEFORE_PHYSICAL_OUTCOMES`, SHA-256
@@ -13,7 +13,7 @@ Frank's current operator path is:
 1. repository root `FRANK_START_HERE.md`;
 2. `MECHANICAL_TEAM_HANDOFF.md`;
 3. `MECHANICAL_ACCEPTANCE_CHECKLIST.md`; and
-4. `ROS1_OPERATOR_RUNBOOK.md` under `AMENDMENT_005`.
+4. `ROS1_OPERATOR_RUNBOOK.md` under the current `AMENDMENT_006` status.
 
 The package now includes Frank's native ROS 1 Noetic adapter, Cartographer TF
 composition, rosbag1 logging, an opaque-code operator schedule and command set,
@@ -22,8 +22,9 @@ signed live preflight, two engineering pilots, and a ROS 1-aware locked-analysis
 wrapper. The current branch is the intentionally published experiment branch;
 the earlier warning about an uncommitted `ablation` working tree is obsolete.
 
-Physical collection is authorized only after the remaining site facts are
-captured: measured wheelbase, surveyed course radius, taped start pose, and an
-active VESC acceleration setting of exactly 2.0 m/s². Both engineering pilots
-must pass before `HW001`. Offline or mock results remain pipeline evidence and
-must not be reported as physical outcomes.
+The remaining site facts and both engineering pilots are qualification work
+only. They do not authorize `HW001` or any scientific collection. A new
+closed-loop protocol must be reviewed, frozen, and authorized prospectively
+before scientific physical outcomes are collected. Offline, mock, and
+engineering results remain pipeline evidence and must not be reported as
+binding physical-study outcomes.
